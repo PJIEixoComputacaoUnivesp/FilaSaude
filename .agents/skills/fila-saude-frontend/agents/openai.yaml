@@ -1,0 +1,4 @@
+interface:
+  display_name: "FilaSaúde Frontend"
+  short_description: "Interfaces acessíveis e coerentes para o FilaSaúde"
+  default_prompt: "Use $fila-saude-frontend para implementar uma tela acessível em apps/web."
