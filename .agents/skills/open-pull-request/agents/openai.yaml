@@ -1,0 +1,4 @@
+interface:
+  display_name: "Open Pull Request"
+  short_description: "Prepara e abre PRs consistentes com GitHub CLI"
+  default_prompt: "Use $open-pull-request para preparar e abrir um PR desta branch."
