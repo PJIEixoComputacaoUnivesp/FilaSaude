@@ -53,7 +53,9 @@ branch. Do not commit unrelated files just to make the tree clean.
 
 ## Write a useful PR
 
-Use a concise Conventional Commit-style title that describes the outcome. When
+Use a concise Conventional Commit-style title in Brazilian Portuguese that
+describes the outcome. Keep only the conventional type/scope prefix in English
+when useful (for example, `feat(web): ...`). When
 `.github/pull_request_template.md` exists, use it as the body structure, replace
 its comments/placeholders with inspected evidence, and remove inapplicable
 sections or checklist items. Otherwise, compose the body with these sections when
