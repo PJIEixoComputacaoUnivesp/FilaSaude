@@ -2,17 +2,18 @@
 
 ## Pergunta do projeto
 
-Como facilitar a consulta de informações sobre unidades públicas de pronto atendimento disponíveis em determinada região?
+Como tornar mais simples e acessível a consulta de informações sobre unidades públicas de pronto atendimento em uma determinada região?
 
 ## Proposta
 
-Desenvolver uma plataforma web que centralize informações públicas sobre estabelecimentos que realizam pronto atendimento pelo SUS.
+O FilaSaude propõe o desenvolvimento de uma plataforma web para reunir, em um único lugar, dados públicos sobre estabelecimentos que oferecem pronto atendimento pelo SUS.
 
-A plataforma terá caráter exclusivamente informativo e não realizará diagnóstico, triagem ou recomendação sobre qual estabelecimento o usuário deve procurar.
+A solução terá caráter exclusivamente informativo: não realizará diagnóstico, triagem clínica nem recomendação sobre qual unidade o usuário deve procurar.
 
-O objetivo será organizar informações provenientes de fontes públicas e apresentá-las de maneira simples e acessível.
+Seu objetivo é organizar informações provenientes de fontes oficiais e apresentá-las de forma clara, objetiva e de fácil compreensão.
 
 ## Limitações
 
-- A plataforma não substituirá os canais oficiais de saúde e emergência e não realizará orientação médica.
-- A plataforma não informará que determinada unidade é a mais adequada para o quadro apresentado pelo usuário.
+- A plataforma não substitui os canais oficiais de saúde, urgência ou emergência.
+- A plataforma não presta orientação médica.
+- A plataforma não define nem sugere qual unidade é a mais adequada para cada caso.
