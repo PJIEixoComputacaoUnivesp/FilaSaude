@@ -2,7 +2,7 @@
 
 <!-- Explique o resultado deste PR e por que a mudança é necessária. -->
 
-- 
+-
 
 ## Como validar
 
@@ -21,7 +21,7 @@
 
 <!-- Informe PRs dependentes, variáveis de ambiente, migrações, contratos alterados ou escreva "Nenhum". -->
 
-- 
+-
 
 ## Checklist
 
