@@ -53,8 +53,11 @@ branch. Do not commit unrelated files just to make the tree clean.
 
 ## Write a useful PR
 
-Use a concise Conventional Commit-style title that describes the outcome. Compose
-the body from inspected evidence with these sections when relevant:
+Use a concise Conventional Commit-style title that describes the outcome. When
+`.github/pull_request_template.md` exists, use it as the body structure, replace
+its comments/placeholders with inspected evidence, and remove inapplicable
+sections or checklist items. Otherwise, compose the body with these sections when
+relevant:
 
 ```markdown
 ## Summary
