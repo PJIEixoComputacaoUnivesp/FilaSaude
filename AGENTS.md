@@ -27,6 +27,9 @@ orientação médica ou recomendação de estabelecimentos.
 
 - Escreva código e nomes técnicos em inglês; documentação e textos de interface
   podem ser escritos em português do Brasil.
+- Endpoints da API (`apps/api`) seguem REST com nomenclatura em inglês
+  (paths, recursos e parâmetros). Rotas do frontend (`apps/web`, ex. React
+  Router) podem usar português, já que refletem a navegação vista pelo usuário.
 - Mantenha TypeScript em modo estrito e evite `any` sem justificativa.
 - Prefira módulos pequenos, responsabilidades claras e imports explícitos.
 - Não versione segredos. Documente variáveis obrigatórias em `.env.example`.
