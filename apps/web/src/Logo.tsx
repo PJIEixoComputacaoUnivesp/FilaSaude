@@ -1,10 +1,3 @@
-import React from 'react';
-
-interface LogoProps {
-  className?: string;
-  showText?: boolean;
-}
-
 export function Logo({ className = "h-10", showText = true }: { className?: string; showText?: boolean }) {
   return (
     <div className="flex items-center gap-3 cursor-pointer select-none">
