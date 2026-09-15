@@ -1,22 +1,13 @@
 @import 'tailwindcss';
 
-/* Importing the Poppins font directly from Google Fonts ... */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap');
-
 @theme {
   --font-sans:
-    'Poppins', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     sans-serif;
-
-  /* Adicionando as cores exatas do manual de identidade visual */
-  --color-fila-blue: #0D47A1;   /* Confiança */
-  --color-fila-green: #009688;  /* Saúde */
-  --color-fila-cyan: #4FC3F7;   /* Acessibilidade */
-  --color-fila-light: #E8F5E9;  /* Bem-estar */
-  --color-fila-bg: #F2F4F7;     /* Neutro */  
 }
 
 @theme inline {
+  --color-canvas: var(--color-slate-50);
   --color-ink: var(--color-slate-900);
   --color-copy: var(--color-slate-600);
   --color-brand-50: var(--color-emerald-50);
