@@ -10,6 +10,13 @@
   --color-canvas: var(--color-slate-50);
 }
 
+@theme {
+  --color-fila-blue: #1266cc;
+  --color-fila-green: #00a88f;
+  --color-fila-cyan: #00a5e3;
+  --color-fila-bg: var(--color-slate-50);
+}
+
 @layer base {
   body {
     min-width: 20rem;
