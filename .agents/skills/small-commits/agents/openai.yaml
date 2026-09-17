@@ -1,0 +1,4 @@
+interface:
+  display_name: "Small Commits"
+  short_description: "Commits pequenos, em português, sem coautoria de IA"
+  default_prompt: "Use $small-commits para dividir e commitar essas mudanças."
