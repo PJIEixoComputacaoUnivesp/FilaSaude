@@ -12,8 +12,11 @@
 - Spacing base: 4px, using the Tailwind spacing scale.
 - Typography: system sans-serif for fast loading and broad character support.
 - Corners: restrained; pills only for short statuses or compact metadata.
-- Color: slate for text, emerald for brand/informational emphasis, and amber for
-  cautions. Use the semantic aliases declared in `apps/web/src/index.css`.
+- Color: gray for text, the `fila-*` brand palette (`fila-blue` #1266CC,
+  `fila-green` #00A88F, `fila-cyan` #00A5E3, `fila-bg` canvas) for brand and
+  informational emphasis, and amber for cautions. The brand palette matches
+  the gradient used in the logo (`apps/web/src/Logo.tsx`). Use the semantic
+  aliases declared in `apps/web/src/index.css`.
 - Never rely on color alone for status or meaning.
 
 ## Initial patterns
