@@ -41,10 +41,16 @@ orientação médica ou recomendação de estabelecimentos.
 
 ## Git e revisão
 
-- Faça commits pequenos e focados, usando Conventional Commits.
+- Faça commits pequenos e focados, usando Conventional Commits, agrupados por
+  contexto/motivo da mudança (veja a skill `small-commits`).
+- Mensagens de commit são em português do Brasil (mantendo o prefixo
+  convencional em inglês, ex. `feat:`, `fix:`, `chore:`), sem acentos
+  faltando, e sem trailers de coautoria de IA (`Co-Authored-By: ...`) ou
+  rodapés como "Generated with ...".
 - Não inclua arquivos gerados, dependências ou configurações pessoais do editor.
 - Inclua ou atualize testes sempre que o comportamento mudar.
-- Descreva no PR o objetivo, como validar e eventuais riscos ou pendências.
+- Descreva no PR o objetivo, como validar e eventuais riscos ou pendências,
+  também em português do Brasil e sem atribuição de IA.
 
 <!-- ai-memory:start -->
 ## Long-term memory (ai-memory)
