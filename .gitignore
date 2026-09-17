@@ -64,3 +64,11 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 pnpm-debug.log*
+
+# Local AI agent tooling: `.agents/skills` is the source of truth for this
+# project's skills. `.claude/skills` should be a symlink to it, but installers
+# that don't preserve symlinks turn it into a real directory full of
+# marketplace skills unrelated to this project — never commit that copy.
+.claude/skills/
+skills-lock.json
+*.bak-[0-9]*
