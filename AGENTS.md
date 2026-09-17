@@ -25,8 +25,12 @@ orientação médica ou recomendação de estabelecimentos.
 
 ## Convenções de implementação
 
-- Escreva código e nomes técnicos em inglês; documentação e textos de interface
-  podem ser escritos em português do Brasil.
+- Código em inglês: nomes de variáveis, funções, componentes, tipos, arquivos
+  e commits são sempre em inglês.
+- Frontend em português do Brasil: todo texto visível ao usuário em `apps/web`
+  (labels, navegação, botões, mensagens, placeholders) é em português do
+  Brasil. Preste atenção especial à acentuação correta (á, ã, â, é, ê, í, ó,
+  õ, ô, ú, ç) — é um erro comum deixar palavras sem acento.
 - Endpoints da API (`apps/api`) seguem REST com nomenclatura em inglês
   (paths, recursos e parâmetros). Rotas do frontend (`apps/web`, ex. React
   Router) podem usar português, já que refletem a navegação vista pelo usuário.
