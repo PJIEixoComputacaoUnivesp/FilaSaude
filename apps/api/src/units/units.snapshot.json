@@ -1,0 +1,1066 @@
+[
+  {
+    "id": "6156959",
+    "name": "AMA 12H JARDIM PERI PERI",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA JOAO GUERRA",
+      "number": "0247",
+      "district": "JD PERI PERI",
+      "postalCode": "05535100",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.586,
+      "longitude": -46.732
+    },
+    "serviceHours": "ATENDIMENTO NOS TURNOS DA MANHA, TARDE E NOITE",
+    "lastUpdatedAt": "2026-09-15"
+  },
+  {
+    "id": "6133525",
+    "name": "AMA 12H JARDIM SAO LUIZ",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA LUIZ ANTONIO VERNEY",
+      "number": "98",
+      "district": "JARDIM SAO LUIZ",
+      "postalCode": "05846380",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.66082810789832,
+      "longitude": -46.74356460571289
+    },
+    "serviceHours": "ATENDIMENTO NOS TURNOS DA MANHA, TARDE E NOITE",
+    "lastUpdatedAt": "2025-10-29"
+  },
+  {
+    "id": "5268125",
+    "name": "AMA 12H MAURICE PATE",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA FREI GERMANO",
+      "number": "50",
+      "district": "PENHA",
+      "postalCode": "03604030",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.526643420633416,
+      "longitude": -46.550903700304026
+    },
+    "serviceHours": "ATENDIMENTO NOS TURNOS DA MANHA, TARDE E NOITE",
+    "lastUpdatedAt": "2025-10-14"
+  },
+  {
+    "id": "6135978",
+    "name": "AMA 12H PRESIDENTE JUSCELINO KUBITSCHEK",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "AV UTARO KANAI",
+      "number": "286",
+      "district": "COHAB JUSCELINO",
+      "postalCode": "08465000",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.5651366,
+      "longitude": -46.397266
+    },
+    "serviceHours": "ATENDIMENTO NOS TURNOS DA MANHA, TARDE E NOITE",
+    "lastUpdatedAt": "2026-09-15"
+  },
+  {
+    "id": "6143180",
+    "name": "AMA 24H ENGENHEIRO GOULART DR JOSE PIRES",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA AUGUSTO CORREA LEITE",
+      "number": "538",
+      "district": "ENGENHEIRO GOULART",
+      "postalCode": "03726100",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.5003425,
+      "longitude": -46.5175558
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2025-09-03"
+  },
+  {
+    "id": "2042827",
+    "name": "AMA 24H JARDIM NORDESTE DR CARLOS NEDER",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA NICOLO TARTAGLA",
+      "number": "45",
+      "district": "JARDIM COIMBRA",
+      "postalCode": "03693050",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.56784207958939,
+      "longitude": -46.570186614990234
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-09-15"
+  },
+  {
+    "id": "4639057",
+    "name": "AMA 24H JOSE BONIFACIO ITAQUERA",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA SILVIO BARBINI",
+      "number": "40",
+      "district": "ITAQUERA",
+      "postalCode": "08250650",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.54081,
+      "longitude": -46.43928
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-09-15"
+  },
+  {
+    "id": "4493478",
+    "name": "AMA 24H PARQUE FIGUEIRA GRANDE",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA DANIEL KLEIN",
+      "number": "211",
+      "district": "PQ FIGUEIRA GRANDE",
+      "postalCode": "04915170",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.678783,
+      "longitude": -46.749001
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-04-16"
+  },
+  {
+    "id": "4488318",
+    "name": "AMA 24H PARQUE NOVO SANTO AMARO",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA PORTA DO PRADO",
+      "number": "18",
+      "district": "PARQUE NOVO SANTO AM",
+      "postalCode": "05874130",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.7001797,
+      "longitude": -46.782313071274196
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-04-02"
+  },
+  {
+    "id": "6144055",
+    "name": "AMA 24H SAPOPEMBA",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA JOAO LOPES DE LIMA",
+      "number": "1151",
+      "district": "JARDIM SAPOPEMBA",
+      "postalCode": "03976020",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.61157604540152,
+      "longitude": -46.49309992790222
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2025-09-11"
+  },
+  {
+    "id": "6998208",
+    "name": "AMA 24H SOROCABANA",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA CATAO",
+      "number": "380",
+      "district": "VILA ROMANA",
+      "postalCode": "05049000",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.524227,
+      "longitude": -46.700973
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-04-02"
+  },
+  {
+    "id": "5713870",
+    "name": "AMA BORACEA DR LUIZ BACALLA",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA DOUTOR RIBEIRO DE ALMEIDA",
+      "number": "14",
+      "district": "BARRA FUNDA",
+      "postalCode": "01137020",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.5248024,
+      "longitude": -46.6540096
+    },
+    "serviceHours": "ATENDIMENTO NOS TURNOS DA MANHA, TARDE E NOITE",
+    "lastUpdatedAt": "2026-02-10"
+  },
+  {
+    "id": "6218830",
+    "name": "AMA CAPAO REDONDO",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "AVENIDA COMENDADOR SANTANA",
+      "number": "774",
+      "district": "CAPAO REDONDO",
+      "postalCode": "05866000",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.6420677,
+      "longitude": -46.7532547
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-04-02"
+  },
+  {
+    "id": "6964028",
+    "name": "AMA COMPLEXO PRATES",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA PRATES",
+      "number": "1101",
+      "district": "BOM RETIRO",
+      "postalCode": "01121000",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.5343625,
+      "longitude": -46.6367448
+    },
+    "serviceHours": "ATENDIMENTO NOS TURNOS DA MANHA, TARDE E NOITE",
+    "lastUpdatedAt": "2025-09-03"
+  },
+  {
+    "id": "6131670",
+    "name": "AMA JARDIM PIRAJUSSARA",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "AVENIDA AMADEU DA SILVA SAMELO",
+      "number": "423",
+      "district": "JARDIM MARTINICA",
+      "postalCode": "05760140",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.631559200010212,
+      "longitude": -46.7661751192582
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2025-09-03"
+  },
+  {
+    "id": "6728626",
+    "name": "AMA PARAISOPOLIS",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA SILVEIRA SAMPAIO",
+      "number": "160",
+      "district": "JARDIM MORUMBI",
+      "postalCode": "05656010",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.61638059180085,
+      "longitude": -46.7205392634345
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2025-11-18"
+  },
+  {
+    "id": "5636469",
+    "name": "AMA SE",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA FREDERICO ALVARENGA",
+      "number": "259",
+      "district": "SE",
+      "postalCode": "01020030",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.5508397,
+      "longitude": -46.628688
+    },
+    "serviceHours": "ATENDIMENTO NOS TURNOS DA MANHA, TARDE E NOITE",
+    "lastUpdatedAt": "2025-09-03"
+  },
+  {
+    "id": "2069040",
+    "name": "PA MUN DRA GLORIA RODRIGUES DOS SANTOS BONFIM",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "AV DOS METALURGICOS",
+      "number": "2820",
+      "district": "CIDADE TIRADENTES",
+      "postalCode": "08471004",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.60348,
+      "longitude": -46.39798
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-09-15"
+  },
+  {
+    "id": "4049918",
+    "name": "PA MUN J MACEDONIA",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA LOUIS BOULOGNE",
+      "number": "133",
+      "district": "JARDIM MACEDONIA",
+      "postalCode": "05894350",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.652994573375413,
+      "longitude": -46.790154488195206
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-09-15"
+  },
+  {
+    "id": "2075423",
+    "name": "PA MUN SAO MATEUS II",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA DOUTOR CARLOS JULIO SPERA",
+      "number": "188",
+      "district": "CIDADE SAO MATEUS",
+      "postalCode": "03963090",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.61050849485667,
+      "longitude": -46.47930844662758
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-05-08"
+  },
+  {
+    "id": "9051422",
+    "name": "UPA 26 DE AGOSTO",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "AV MIGUEL INACIO CURI",
+      "number": "44",
+      "district": "ITAQUERA",
+      "postalCode": "08295005",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.54578,
+      "longitude": -46.46133
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-09-15"
+  },
+  {
+    "id": "8363072",
+    "name": "UPA ANHANGUERA RESIDENCIAL DAS ORQUIDEAS",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "ESTRADA DE PIRAPORA",
+      "number": "1300",
+      "district": "JARDIM JARAGUA",
+      "postalCode": "05275010",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.4353438,
+      "longitude": -46.8018442
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-09-15"
+  },
+  {
+    "id": "7479387",
+    "name": "UPA CAMPO LIMPO DR FERNANDO PRO",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA THEREZA MOUCO DE OLIVEIRA",
+      "number": "121",
+      "district": "VILA MARACANA",
+      "postalCode": "05846420",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.649141,
+      "longitude": -46.749169
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-09-15"
+  },
+  {
+    "id": "0812226",
+    "name": "UPA CIDADE TIRADENTES",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA IGARAPE DA DIANA",
+      "number": "125",
+      "district": "CONJUNTO HABITACIONA",
+      "postalCode": "08472170",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.5717,
+      "longitude": -46.40325
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-02-27"
+  },
+  {
+    "id": "0852074",
+    "name": "UPA CITY JARAGUA",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "ESTRADA DAS TAIPAS",
+      "number": "1650",
+      "district": "JARAGUA",
+      "postalCode": "02991000",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.4418741,
+      "longitude": -46.7362749
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-02-27"
+  },
+  {
+    "id": "0997730",
+    "name": "UPA DONA MARIA ANTONIETA FERREIRA DE BARROS",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA ANTONIO FELIPE FILHO",
+      "number": "180",
+      "district": "GRAJAU",
+      "postalCode": "04845000",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.7494978,
+      "longitude": -46.6900968
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-02-27"
+  },
+  {
+    "id": "2040727",
+    "name": "UPA DR ATUALPA GIRAO RABELO",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA ILHA DO ARVOREDO",
+      "number": "251",
+      "district": "ITAIM PAULISTA",
+      "postalCode": "08140000",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.5083112,
+      "longitude": -46.4004166
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-04-02"
+  },
+  {
+    "id": "9971513",
+    "name": "UPA ERMELINO MATARAZZO",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA MIGUEL NOVAIS",
+      "number": "113",
+      "district": "VILA PARANAGUA",
+      "postalCode": "03807370",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.499121139790365,
+      "longitude": -46.47366636179218
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-04-02"
+  },
+  {
+    "id": "2029189",
+    "name": "UPA III 21 DE JUNHO",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "AV JOAO PAULO I",
+      "number": "421",
+      "district": "FREGUESIA DO O",
+      "postalCode": "02738000",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.4735754,
+      "longitude": -46.6837286
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-02-27"
+  },
+  {
+    "id": "4091248",
+    "name": "UPA III CARRAO MASATAKA OTA",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "AV CONSELHEIRO CARRAO",
+      "number": "2893",
+      "district": "VILA CARRAO",
+      "postalCode": "03403002",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.55012262888866,
+      "longitude": -46.53383195400238
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2025-09-03"
+  },
+  {
+    "id": "2075407",
+    "name": "UPA III DR JOSE MAURO DEL ROIO CORREA",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "PRACA ENGENHEIRO HUGO BRANDI",
+      "number": "15",
+      "district": "VILA MARIA BAIXA",
+      "postalCode": "02168050",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.517233564170837,
+      "longitude": -46.57732150326356
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-05-14"
+  },
+  {
+    "id": "6148344",
+    "name": "UPA III JARDIM PERI",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA AFONSO LOPES VIEIRA",
+      "number": "35",
+      "district": "VILA DIONISIA",
+      "postalCode": "02671100",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.46711,
+      "longitude": -46.66743
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2025-09-03"
+  },
+  {
+    "id": "2082837",
+    "name": "UPA III LAPA PROF JOAO CATARIN MEZOMO",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "AVENIDA QUEIROZ FILHO",
+      "number": "313",
+      "district": "VILA HAMBURGUESA",
+      "postalCode": "05319000",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.533,
+      "longitude": -46.722
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-09-15"
+  },
+  {
+    "id": "4434722",
+    "name": "UPA III RIO PEQUENO",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA JOSE VICENTE DA CRUZ",
+      "number": "90",
+      "district": "VILA ANTONIO",
+      "postalCode": "05376000",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.56835098369041,
+      "longitude": -46.75682544708252
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-04-07"
+  },
+  {
+    "id": "2037971",
+    "name": "UPA IPIRANGA DR AUGUSTO GOMES DE MATTOS",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA JULIO DE FELIPE GUEDES",
+      "number": "200",
+      "district": "JARDIM BOTUCATU",
+      "postalCode": "04174040",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.633363841785595,
+      "longitude": -46.60772144794464
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-02-27"
+  },
+  {
+    "id": "0873268",
+    "name": "UPA JABAQUARA",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA CRUZ DAS ALMAS",
+      "number": "290",
+      "district": "VILA CAMPESTRE",
+      "postalCode": "04330060",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.431722,
+      "longitude": -46.4301968
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-02-27"
+  },
+  {
+    "id": "9997091",
+    "name": "UPA JACANA",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA ESTER ELISA",
+      "number": "229",
+      "district": "VILA NILO",
+      "postalCode": "02278040",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.4590358,
+      "longitude": -46.5789607
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-03-12"
+  },
+  {
+    "id": "3474674",
+    "name": "UPA JARDIM ANGELA",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "ESTRADA GUAVIRITUBA",
+      "number": "49",
+      "district": "VL SANTA LUCIA",
+      "postalCode": "04937000",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.6866667,
+      "longitude": -46.7543873
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-02-27"
+  },
+  {
+    "id": "2878259",
+    "name": "UPA JARDIM ELISA MARIA I",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA ROMULO NALDI",
+      "number": "57",
+      "district": "CONJUNTO PROMORAR ES",
+      "postalCode": "02873250",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.455204,
+      "longitude": -46.683945
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-02-27"
+  },
+  {
+    "id": "3044769",
+    "name": "UPA JARDIM HELENA",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA KUMAKI AOKI",
+      "number": "785",
+      "district": "JARDIM HELENA",
+      "postalCode": "08090370",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.4791315,
+      "longitude": -46.4199837
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-09-15"
+  },
+  {
+    "id": "6360890",
+    "name": "UPA JARDIM ICARAI QUINTANA",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA SAO ROQUE DO PARAGACU",
+      "number": "190",
+      "district": "VILA SAO JOSE",
+      "postalCode": "04837150",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.743845796672538,
+      "longitude": -46.705725315342626
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-03-10"
+  },
+  {
+    "id": "2069032",
+    "name": "UPA JULIO TUPY",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA SERRA DA QUEIMADA",
+      "number": "800",
+      "district": "PARQUE GUAIANASES",
+      "postalCode": "08431640",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.527537000000002,
+      "longitude": -46.41129214160651
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-09-15"
+  },
+  {
+    "id": "0466611",
+    "name": "UPA MOOCA III DOM PAULO EVARISTO ARNS",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA DR FOMM",
+      "number": "261",
+      "district": "BELENZINHO",
+      "postalCode": "03163030",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.5466591,
+      "longitude": -46.5950668
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-02-27"
+  },
+  {
+    "id": "0974730",
+    "name": "UPA PARELHEIROS",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "ESTR ECOTURISTICA DE PARELHEIROS",
+      "number": "5252",
+      "district": "JD DOS ALAMOS",
+      "postalCode": "04883025",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.815368,
+      "longitude": -46.73653277087121
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-03-10"
+  },
+  {
+    "id": "4234774",
+    "name": "UPA PARQUE DOROTEIA",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA DOS ANIQUIS",
+      "number": "3",
+      "district": "JD SANTA TEREZINHA",
+      "postalCode": "04474000",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.6977416,
+      "longitude": -46.6479497
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2025-09-03"
+  },
+  {
+    "id": "6133460",
+    "name": "UPA PEDREIRA DR CESAR ANTUNES DA ROCHA",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "AVENIDA NOSSA SENHORA DO SABARA",
+      "number": "4901",
+      "district": "VILA EMIR",
+      "postalCode": "04447021",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.6964255,
+      "longitude": -46.6603715
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2025-09-03"
+  },
+  {
+    "id": "4050169",
+    "name": "UPA PERUS DR LUIZ ANTONIO DE ABREU SAMPAIO DORIA",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA ESTEVAN RIBEIRO RESENDE",
+      "number": "S/N",
+      "district": "PERUS",
+      "postalCode": "05202140",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.40072671942731,
+      "longitude": -46.74714803695679
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-09-01"
+  },
+  {
+    "id": "6146341",
+    "name": "UPA PIRITUBA",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "AV MENOTTI LAUDISIO",
+      "number": "100",
+      "district": "PIRITUBA",
+      "postalCode": "02945000",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.4846347,
+      "longitude": -46.7302403
+    },
+    "serviceHours": "ATENDIMENTO NOS TURNOS DA MANHA, TARDE E NOITE",
+    "lastUpdatedAt": "2025-09-03"
+  },
+  {
+    "id": "6133622",
+    "name": "UPA SACOMA",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "ESTRADA DAS LAGRIMAS",
+      "number": "1403",
+      "district": "SACOMA",
+      "postalCode": "04232000",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.61349792093791,
+      "longitude": -46.59383833408356
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2025-09-11"
+  },
+  {
+    "id": "2752107",
+    "name": "UPA SANTO AMARO DR JOSE SYLVIO DE CAMARGO",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "AVENIDA ADOLFO PINHEIRO",
+      "number": "122",
+      "district": "SANTO AMARO",
+      "postalCode": "04734000",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.651261259856767,
+      "longitude": -46.70488004952333
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-09-15"
+  },
+  {
+    "id": "0873241",
+    "name": "UPA TATUAPE WALDEMAR ROSSI",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "AV CELSO GARCIA",
+      "number": "4974",
+      "district": "TATUAPE",
+      "postalCode": "03064000",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.533566417354958,
+      "longitude": -46.56473636627197
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-02-27"
+  },
+  {
+    "id": "9736700",
+    "name": "UPA TITO LOPES",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "AV PIRES DO RIO",
+      "number": "294",
+      "district": "VILA AMERICANA",
+      "postalCode": "08020000",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.4989951,
+      "longitude": -46.4482138
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-09-15"
+  },
+  {
+    "id": "9505946",
+    "name": "UPA VERA CRUZ",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "AVENIDA DOS FUNCIONARIOS PUBLICOS",
+      "number": "379",
+      "district": "JARDIM VERA CRUZ",
+      "postalCode": "04965140",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.5505199,
+      "longitude": -46.6333094
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-07-31"
+  },
+  {
+    "id": "0958433",
+    "name": "UPA VERGUEIRO",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA VERGUEIRO",
+      "number": "613",
+      "district": "LIBERDADE",
+      "postalCode": "01504000",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.56742767023839,
+      "longitude": -46.63965013088806
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2026-02-27"
+  },
+  {
+    "id": "9349898",
+    "name": "UPA VILA MARIANA",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA DIOGO DE FARIA",
+      "number": "609",
+      "district": "V CLEMENTINO",
+      "postalCode": "04037002",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.596005848765493,
+      "longitude": -46.64266258478165
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2025-09-11"
+  },
+  {
+    "id": "7638698",
+    "name": "UPA VILA SANTA CATARINA",
+    "unitType": "PRONTO ATENDIMENTO",
+    "address": {
+      "street": "RUA CIDADE DE BAGDA",
+      "number": "529",
+      "district": "JARDIM MIRA",
+      "postalCode": "04377036",
+      "city": "São Paulo",
+      "state": "SP"
+    },
+    "location": {
+      "latitude": -23.6542396,
+      "longitude": -46.6517249
+    },
+    "serviceHours": "ATENDIMENTO CONTINUO DE 24 HORAS/DIA (PLANTAO:INCLUI SABADOS, DOMINGOS E FERIADOS)",
+    "lastUpdatedAt": "2025-09-03"
+  }
+]

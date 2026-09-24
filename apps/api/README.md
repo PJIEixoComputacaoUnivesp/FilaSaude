@@ -12,8 +12,18 @@ pnpm install
 pnpm --filter @filasaude/api dev
 ```
 
-A API inicia em `http://localhost:3000`. O endpoint
-`GET http://localhost:3000/health` permite verificar seu estado.
+A API inicia em `http://localhost:3000`.
+
+| Endpoint      | Descrição                                                                |
+| ------------- | ------------------------------------------------------------------------ |
+| `GET /health` | Verifica o estado da API.                                                |
+| `GET /units`  | Lista unidades públicas de pronto atendimento do município de São Paulo. |
+
+O endpoint de unidades consulta o Cadastro Nacional de Estabelecimentos de
+Saúde (CNES) diretamente, mantém o resultado em memória por seis horas e usa
+um snapshot local somente quando a fonte oficial está indisponível. O campo
+`metadata.dataOrigin` indica `live` ou `fallback`, e `metadata.isStale` informa
+quando a cópia de segurança está sendo exibida.
 
 ## Verificações
 
