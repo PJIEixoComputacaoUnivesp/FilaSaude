@@ -7,6 +7,8 @@ const CNES_API_URL =
   'https://apidadosabertos.saude.gov.br/cnes/estabelecimentos';
 const PAGE_SIZE = 20;
 const MAX_PAGES = 100;
+const REQUEST_TIMEOUT_MS = 10_000;
+const FETCH_DEADLINE_MS = 30_000;
 const unitTypes = new Map<number, HealthUnit['unitType']>([
   [20, 'PRONTO SOCORRO GERAL'],
   [21, 'PRONTO SOCORRO ESPECIALIZADO'],
@@ -113,10 +115,11 @@ export class CnesClient {
   constructor(private readonly municipalitiesClient: MunicipalitiesClient) {}
 
   async fetchUnits(state: BrazilianState): Promise<HealthUnit[]> {
+    const deadline = AbortSignal.timeout(FETCH_DEADLINE_MS);
     const [recordsByType, municipalities] = await Promise.all([
       Promise.all(
         [...unitTypes.keys()].map((unitType) =>
-          this.fetchRecords(state, unitType),
+          this.fetchRecords(state, unitType, deadline),
         ),
       ),
       this.municipalitiesClient.fetchNames(state),
@@ -135,6 +138,7 @@ export class CnesClient {
   private async fetchRecords(
     state: BrazilianState,
     unitType: number,
+    deadline: AbortSignal,
   ): Promise<JsonRecord[]> {
     const records: JsonRecord[] = [];
 
@@ -150,7 +154,10 @@ export class CnesClient {
 
       const response = await fetch(url, {
         headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(10_000),
+        signal: AbortSignal.any([
+          deadline,
+          AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        ]),
       });
 
       if (!response.ok) {
