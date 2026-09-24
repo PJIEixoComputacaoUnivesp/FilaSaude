@@ -137,12 +137,39 @@ atualização, sem sugerir disponibilidade, adequação clínica ou recomendaç�
 ## Licença e referências
 
 O Portal de Dados Abertos do SUS declara seu conteúdo sob Creative Commons
-Atribuição-SemDerivações 3.0. O produto manterá a atribuição junto aos dados.
+Atribuição-SemDerivações 3.0 (CC BY-ND 3.0). A licença permite redistribuir o
+material, mas não distribuir adaptações.
+
+O FilaSaúde trata assim as operações aplicadas aos dados:
+
+- **Não alteram o conteúdo:** selecionar registros e campos, validar tipos,
+  converter formato (JSON para tabela e resposta da API) e trocar o código IBGE
+  do município pelo nome oficial fornecido pelo próprio IBGE. Os valores dos
+  campos exibidos são os da fonte.
+- **Não são feitas:** corrigir, completar ou inferir endereços, coordenadas,
+  horários ou nomes. Um valor inválido é descartado (exibido como ausente), não
+  substituído por outro.
+
+Qualquer transformação que altere o conteúdo de um campo da fonte só pode ser
+adotada depois de confirmar uma autorização compatível; até lá, esse dado não
+deve ser distribuído. Essa classificação é um entendimento do grupo, não um
+parecer jurídico, e deve ser revisada se o uso do produto sair do contexto
+acadêmico.
+
+A atribuição exibida junto aos dados inclui:
+
+- o nome "Cadastro Nacional de Estabelecimentos de Saúde (CNES)" e o
+  Ministério da Saúde como titular;
+- link para o conjunto no Portal de Dados Abertos do SUS;
+- nome e link da licença CC BY-ND 3.0;
+- a data de atualização do registro e o aviso de que os dados são informativos
+  e podem estar desatualizados.
 
 - [API de Dados Abertos do Ministério da Saúde](https://apidadosabertos.saude.gov.br/)
 - [Swagger da API](https://apidadosabertos.saude.gov.br/static/swagger.json)
 - [Conjunto CNES no Portal de Dados Abertos do SUS](https://dadosabertos.saude.gov.br/dataset/cnes-cadastro-nacional-de-estabelecimentos-de-saude)
 - [API de Localidades do IBGE](https://servicodados.ibge.gov.br/api/docs/localidades)
+- [Licença CC BY-ND 3.0](https://creativecommons.org/licenses/by-nd/3.0/deed.pt-br)
 
 ## Consequências
 
