@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { Logo } from './Logo';
+import { AboutPage } from './AboutPage';
 
 // Red pin setting to show the location on the map
 const filaSaudeIcon = L.divIcon({
@@ -29,7 +30,6 @@ function UnderConstruction({ titulo }: { titulo: string }) {
   );
 }
 const UnitsPage = () => <UnderConstruction titulo="Unidades de Saúde" />;
-const AboutPage = () => <UnderConstruction titulo="Sobre o FilaSaúde" />;
 
 function Header() {
   const location = useLocation();
