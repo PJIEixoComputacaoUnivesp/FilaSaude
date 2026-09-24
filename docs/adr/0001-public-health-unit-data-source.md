@@ -62,9 +62,20 @@ adequado ao fluxo informativo deste produto. Não será utilizada.
 Usar o endpoint oficial `GET /cnes/estabelecimentos` como fonte cadastral e
 coletar somente estabelecimentos:
 
-- ativos (`status=1`);
-- vinculados ao atendimento ambulatorial SUS;
-- dos tipos CNES `20`, `21` e `73`.
+- ativos (`status=1`, filtro da API);
+- dos tipos CNES `20`, `21` e `73` (`codigo_tipo_unidade`, filtro da API, com
+  uma consulta por tipo);
+- vinculados ao atendimento ambulatorial SUS. A API não oferece esse filtro, então
+  a regra é aplicada localmente: somente registros com
+  `estabelecimento_faz_atendimento_ambulatorial_sus` igual a `"SIM"` são
+  mantidos.
+
+A paginação envia sempre `limit=20` explicitamente. O Swagger declara `100` como
+padrão, mas também diz que o valor deve ser menor ou igual a 20. Em testes feitos
+em 2026-09-24, `offset` se comportou como índice do primeiro registro, e não como
+número da página descrito no Swagger: `offset=1` desloca a lista em um registro.
+Por isso, as páginas são requisitadas com `offset` igual a 0, 20, 40 e assim por
+diante, até que uma página retorne menos de 20 registros.
 
 Usar a API de Localidades do IBGE para associar o código municipal do CNES ao
 nome oficial do município e à sigla da UF.
