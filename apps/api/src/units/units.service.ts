@@ -79,6 +79,16 @@ export class UnitsService {
         `CNES request failed for ${state.abbreviation}: ${reason}`,
       );
 
+      if (cached) {
+        this.logger.warn(
+          `Using the last live CNES response for ${state.abbreviation}`,
+        );
+        return {
+          ...cached.response,
+          metadata: { ...cached.response.metadata, isStale: true },
+        };
+      }
+
       if (state.abbreviation !== 'SP') throw error;
 
       this.logger.warn('Using the CNES fallback snapshot for SP');

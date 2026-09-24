@@ -55,6 +55,32 @@ describe('UnitsService', () => {
     });
   });
 
+  it('returns the last live response as stale when CNES fails after the cache expires', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchUnits = vi
+        .fn()
+        .mockResolvedValueOnce([liveUnit])
+        .mockRejectedValueOnce(new Error('unavailable'));
+      const client = { fetchUnits } as unknown as CnesClient;
+      const service = new UnitsService(client);
+
+      const live = await service.findAll('RJ');
+      vi.advanceTimersByTime(7 * 60 * 60 * 1000);
+      const stale = await service.findAll('RJ');
+
+      expect(stale.data).toEqual([liveUnit]);
+      expect(stale.metadata).toMatchObject({
+        dataOrigin: 'live',
+        isStale: true,
+        retrievedAt: live.metadata.retrievedAt,
+      });
+      expect(fetchUnits).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('rejects an invalid state before calling CNES', async () => {
     const fetchUnits = vi.fn();
     const client = { fetchUnits } as unknown as CnesClient;
