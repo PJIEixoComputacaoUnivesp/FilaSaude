@@ -88,6 +88,28 @@ idempotente no PostgreSQL pelo código CNES. Uma falha em uma UF não apagará a
 O job será executado diariamente, após a janela esperada de atualização da
 fonte. Reexecuções manuais e a ingestão de uma única UF também serão suportadas.
 
+### Atualidade dos dados
+
+No portal, os metadados do recurso "API CNES" indicam atualização em
+2024-12-20, enquanto os arquivos do conjunto indicam 2026-09-02. Por isso, a
+atualidade foi verificada nos próprios registros: em 2026-09-24, as 456 unidades
+de SP retornadas pela API tinham `data_atualizacao` entre 2025-09-03 e
+2026-09-22. A API continua sendo atualizada e é mantida como fonte.
+
+A data exibida para cada unidade é o campo `data_atualizacao` do registro, e não
+a data dos metadados do portal. O job deve registrar a data mais recente
+recebida por UF e alertar quando ela deixar de avançar por mais de 30 dias. Esse
+sinal indica que a API pode ter sido descontinuada e que é preciso avaliar os
+arquivos do conjunto como alternativa.
+
+### Implementação transitória
+
+A primeira entrega (PR #36) ainda não tem PostgreSQL nem job. Nela, a API
+consulta o CNES durante a requisição, com cache em memória de seis horas por UF.
+Se a consulta falhar, ela usa a última resposta válida marcada como
+desatualizada e, para SP, um snapshot incorporado. Essa abordagem é temporária e
+será substituída pela ingestão descrita acima nas issues #22 e #23.
+
 ## Dados persistidos
 
 Para cada unidade serão mantidos, no mínimo:
