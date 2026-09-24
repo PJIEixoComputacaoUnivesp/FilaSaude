@@ -29,6 +29,15 @@ function optionalNumber(record: JsonRecord, key: string): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
+function optionalCoordinate(
+  record: JsonRecord,
+  key: string,
+  limit: number,
+): number | null {
+  const value = optionalNumber(record, key);
+  return value !== null && Math.abs(value) <= limit ? value : null;
+}
+
 function requiredString(record: JsonRecord, key: string): string {
   const value = optionalString(record, key);
   if (!value) throw new Error(`CNES returned an invalid ${key}`);
@@ -83,10 +92,15 @@ function normalizeUnit(
       state: state.abbreviation,
     },
     location: {
-      latitude: optionalNumber(record, 'latitude_estabelecimento_decimo_grau'),
-      longitude: optionalNumber(
+      latitude: optionalCoordinate(
+        record,
+        'latitude_estabelecimento_decimo_grau',
+        90,
+      ),
+      longitude: optionalCoordinate(
         record,
         'longitude_estabelecimento_decimo_grau',
+        180,
       ),
     },
     serviceHours: optionalString(record, 'descricao_turno_atendimento'),
