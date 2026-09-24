@@ -38,22 +38,3 @@
     outline-offset: 2px;
   }
 }
-
-.unit-map-marker span {
-  display: block;
-  width: 28px;
-  height: 28px;
-  border: 4px solid white;
-  border-radius: 50% 50% 50% 0;
-  background: var(--color-fila-blue);
-  box-shadow: 0 3px 8px rgb(15 23 42 / 35%);
-  transform: rotate(-45deg);
-}
-
-.unit-map-marker span::after {
-  content: "";
-  position: absolute;
-  inset: 8px;
-  border-radius: 999px;
-  background: white;
-}

@@ -1,21 +1,47 @@
-import L from "leaflet";
-import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import { useEffect } from "react";
+import {
+  CircleMarker,
+  MapContainer,
+  Popup,
+  TileLayer,
+  useMap,
+} from "react-leaflet";
 import type { HealthUnit } from "./units";
 import { formatAddress, formatSourceDate } from "./units";
 
-const saoPaulo: [number, number] = [-23.5505, -46.6333];
-
-const unitIcon = L.divIcon({
-  className: "unit-map-marker",
-  html: '<span aria-hidden="true"></span>',
-  iconSize: [28, 36],
-  iconAnchor: [14, 36],
-  popupAnchor: [0, -34],
-});
+const brazilCenter: [number, number] = [-14.2, -51.9];
 
 interface UnitsMapProps {
   units: HealthUnit[];
   className?: string;
+}
+
+function FitUnits({ units }: { units: HealthUnit[] }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const coordinates = units
+      .filter(
+        (unit) =>
+          unit.location.latitude !== null && unit.location.longitude !== null,
+      )
+      .map(
+        (unit) =>
+          [unit.location.latitude!, unit.location.longitude!] as [
+            number,
+            number,
+          ],
+      );
+
+    map.invalidateSize();
+    if (coordinates.length > 0) {
+      map.fitBounds(coordinates, { padding: [32, 32], maxZoom: 13 });
+    } else {
+      map.setView(brazilCenter, 4);
+    }
+  }, [map, units]);
+
+  return null;
 }
 
 export function UnitsMap({ units, className = "" }: UnitsMapProps) {
@@ -26,8 +52,8 @@ export function UnitsMap({ units, className = "" }: UnitsMapProps) {
 
   return (
     <MapContainer
-      center={saoPaulo}
-      zoom={11}
+      center={brazilCenter}
+      zoom={4}
       className={`h-full w-full ${className}`}
       scrollWheelZoom
     >
@@ -35,12 +61,19 @@ export function UnitsMap({ units, className = "" }: UnitsMapProps) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      <FitUnits units={unitsWithLocation} />
       {unitsWithLocation.map((unit) => (
-        <Marker
+        <CircleMarker
           key={unit.id}
-          position={[unit.location.latitude!, unit.location.longitude!]}
-          icon={unitIcon}
-          alt={unit.name}
+          center={[unit.location.latitude!, unit.location.longitude!]}
+          radius={6}
+          pathOptions={{
+            color: "white",
+            fillColor: "var(--color-fila-blue)",
+            fillOpacity: 0.8,
+            opacity: 1,
+            weight: 2,
+          }}
         >
           <Popup>
             <div className="min-w-52">
@@ -58,7 +91,7 @@ export function UnitsMap({ units, className = "" }: UnitsMapProps) {
               </p>
             </div>
           </Popup>
-        </Marker>
+        </CircleMarker>
       ))}
     </MapContainer>
   );

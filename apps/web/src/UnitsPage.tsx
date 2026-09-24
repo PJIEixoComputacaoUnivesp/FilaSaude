@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { BrazilianStateSelect } from "./BrazilianStateSelect";
+import { stateName } from "./brazilianStates";
 import {
   formatAddress,
   formatSourceDate,
@@ -33,7 +35,7 @@ function UnitCard({
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-fila-green">
-            Pronto atendimento público
+            {unit.unitType}
           </p>
           <h2 className="text-xl font-bold leading-snug text-slate-900">
             {unit.name}
@@ -80,7 +82,8 @@ function UnitCard({
 }
 
 export function UnitsPage() {
-  const { state, retry } = useUnits();
+  const [stateCode, setStateCode] = useState("SP");
+  const { state, retry } = useUnits(stateCode);
   const [query, setQuery] = useState("");
 
   const filteredUnits = useMemo(() => {
@@ -101,7 +104,7 @@ export function UnitsPage() {
     <main className="mx-auto w-full max-w-7xl px-6 py-12 md:py-16">
       <div className="mb-8 max-w-3xl">
         <p className="mb-2 text-sm font-bold uppercase tracking-widest text-fila-green">
-          São Paulo · SP
+          {stateName(stateCode)} · {stateCode}
         </p>
         <h1 className="text-4xl font-bold tracking-tight text-fila-blue md:text-5xl">
           Unidades de pronto atendimento
@@ -112,18 +115,21 @@ export function UnitsPage() {
         </p>
       </div>
 
-      <label className="mb-8 block max-w-2xl">
-        <span className="mb-2 block text-sm font-semibold text-slate-800">
-          Buscar por unidade ou bairro
-        </span>
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Ex.: Vila Mariana"
-          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-fila-blue focus:ring-2 focus:ring-blue-100"
-        />
-      </label>
+      <div className="mb-8 grid max-w-3xl gap-4 sm:grid-cols-[14rem_1fr]">
+        <BrazilianStateSelect value={stateCode} onChange={setStateCode} />
+        <label className="block">
+          <span className="mb-2 block text-sm font-semibold text-slate-800">
+            Buscar por unidade, cidade ou bairro
+          </span>
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Ex.: Osasco ou Vila Mariana"
+            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-fila-blue focus:ring-2 focus:ring-blue-100"
+          />
+        </label>
+      </div>
 
       {state.status === "loading" && (
         <div
@@ -161,7 +167,8 @@ export function UnitsPage() {
           </p>
           {filteredUnits.length === 0 ? (
             <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600">
-              Nenhuma unidade corresponde à busca. Tente outro nome ou bairro.
+              Nenhuma unidade corresponde à busca. Tente outro nome, cidade ou
+              bairro.
             </div>
           ) : (
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">

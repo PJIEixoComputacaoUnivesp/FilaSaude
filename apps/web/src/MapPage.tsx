@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
+import { BrazilianStateSelect } from "./BrazilianStateSelect";
 import { UnitsMap } from "./UnitsMap";
 import { formatAddress, formatSourceDate } from "./units";
 import { useUnits } from "./useUnits";
 
 export function MapPage() {
-  const { state, retry } = useUnits();
+  const [stateCode, setStateCode] = useState("SP");
+  const { state, retry } = useUnits(stateCode);
   const [query, setQuery] = useState("");
   const filteredUnits = useMemo(() => {
     if (state.status !== "success") return [];
@@ -33,15 +35,16 @@ export function MapPage() {
         className="absolute left-4 right-4 top-4 z-[500] rounded-2xl bg-white p-4 shadow-xl sm:left-6 sm:right-auto sm:w-96"
         aria-label="Busca no mapa"
       >
+        <BrazilianStateSelect value={stateCode} onChange={setStateCode} />
         <label className="block">
-          <span className="mb-2 block text-sm font-semibold text-slate-800">
+          <span className="mb-2 mt-3 block text-sm font-semibold text-slate-800">
             Buscar no mapa
           </span>
           <input
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Nome da unidade ou bairro"
+            placeholder="Unidade, cidade ou bairro"
             className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-fila-blue focus:ring-2 focus:ring-blue-100"
           />
         </label>

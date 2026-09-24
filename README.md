@@ -168,7 +168,7 @@ Os testes E2E com **Playwright** serão utilizados para validar os principais fl
 
 ## 📊 Dados
 
-O FilaSaúde utiliza dados do **Cadastro Nacional de Estabelecimentos de Saúde (CNES)** para exibir unidades públicas de pronto atendimento. A API consulta a fonte oficial diretamente e mantém uma cópia local apenas como contingência.
+O FilaSaúde utiliza dados do **Cadastro Nacional de Estabelecimentos de Saúde (CNES)** para exibir unidades públicas de pronto atendimento em qualquer estado brasileiro. A API consulta a fonte oficial diretamente, usa o IBGE para identificar os municípios e mantém uma cópia local de São Paulo apenas como contingência.
 
 Sempre que possível, a aplicação apresentará também informações sobre a origem dos dados, permitindo maior transparência e rastreabilidade.
 

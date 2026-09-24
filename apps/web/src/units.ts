@@ -10,7 +10,10 @@ export interface UnitAddress {
 export interface HealthUnit {
   id: string;
   name: string;
-  unitType: "PRONTO ATENDIMENTO";
+  unitType:
+    | "PRONTO ATENDIMENTO"
+    | "PRONTO SOCORRO GERAL"
+    | "PRONTO SOCORRO ESPECIALIZADO";
   address: UnitAddress;
   location: {
     latitude: number | null;
@@ -24,6 +27,7 @@ export interface UnitsResponse {
   data: HealthUnit[];
   metadata: {
     count: number;
+    state: string;
     dataOrigin: "live" | "fallback";
     isStale: boolean;
     retrievedAt: string;
@@ -51,7 +55,11 @@ function isUnit(value: unknown): value is HealthUnit {
   return (
     typeof value.id === "string" &&
     typeof value.name === "string" &&
-    value.unitType === "PRONTO ATENDIMENTO" &&
+    [
+      "PRONTO ATENDIMENTO",
+      "PRONTO SOCORRO GERAL",
+      "PRONTO SOCORRO ESPECIALIZADO",
+    ].includes(value.unitType as string) &&
     typeof value.address.city === "string" &&
     typeof value.address.state === "string" &&
     typeof value.lastUpdatedAt === "string"
@@ -66,6 +74,7 @@ function parseUnitsResponse(value: unknown): UnitsResponse {
     !isRecord(value.metadata) ||
     !isRecord(value.metadata.source) ||
     typeof value.metadata.count !== "number" ||
+    typeof value.metadata.state !== "string" ||
     (value.metadata.dataOrigin !== "live" &&
       value.metadata.dataOrigin !== "fallback") ||
     typeof value.metadata.isStale !== "boolean" ||
@@ -80,11 +89,17 @@ function parseUnitsResponse(value: unknown): UnitsResponse {
   return value as unknown as UnitsResponse;
 }
 
-export async function fetchUnits(signal?: AbortSignal): Promise<UnitsResponse> {
-  const response = await fetch("/api/units", {
-    headers: { Accept: "application/json" },
-    signal,
-  });
+export async function fetchUnits(
+  state: string,
+  signal?: AbortSignal,
+): Promise<UnitsResponse> {
+  const response = await fetch(
+    `/api/units?state=${encodeURIComponent(state)}`,
+    {
+      headers: { Accept: "application/json" },
+      signal,
+    },
+  );
 
   if (!response.ok) {
     throw new Error("Não foi possível consultar as unidades agora.");

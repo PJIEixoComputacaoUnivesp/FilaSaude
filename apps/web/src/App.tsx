@@ -99,8 +99,8 @@ function HomePage() {
             Consulte unidades públicas de pronto atendimento.
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-600">
-            Endereços, horários informados e localização das unidades de São
-            Paulo, com dados publicados pelo CNES.
+            Endereços, horários informados e localização de unidades em todo o
+            Brasil, com dados publicados pelo CNES.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
