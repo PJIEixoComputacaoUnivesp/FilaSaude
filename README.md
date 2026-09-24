@@ -166,6 +166,25 @@ Os testes E2E com **Playwright** serão utilizados para validar os principais fl
 
 ---
 
+## 🪝 Git hooks
+
+O `pnpm install` configura automaticamente os hooks locais com Husky:
+
+- `pre-commit` executa o Oxlint somente nos arquivos TypeScript staged;
+- `pre-push` executa lint, typecheck, testes e build de todo o monorepo.
+
+Também é possível executar a verificação completa manualmente:
+
+```bash
+pnpm check
+```
+
+Os hooks ajudam a detectar problemas antes do envio, mas não substituem as
+validações da CI. Use `--no-verify` apenas em situações excepcionais e corrija o
+problema antes de abrir ou atualizar uma pull request.
+
+---
+
 ## 📊 Dados
 
 O FilaSaúde utilizará informações provenientes de **fontes públicas**, priorizando dados disponibilizados por órgãos e instituições oficiais.
