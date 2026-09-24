@@ -7,19 +7,28 @@ export function AboutPage() {
         </h1>
         <p className="text-gray-600 text-lg leading-relaxed">
           O FilaSaúde é uma plataforma informativa sobre unidades públicas de
-          pronto atendimento. Reunimos dados públicos em um só lugar para
-          ajudar você a se orientar antes de sair de casa.
+          pronto atendimento. Reunimos informações cadastrais públicas em um só
+          lugar para facilitar a consulta.
         </p>
       </div>
 
-      <section className="flex flex-col gap-3" aria-labelledby="sobre-oferecemos">
+      <section
+        className="flex flex-col gap-3"
+        aria-labelledby="sobre-oferecemos"
+      >
         <h2 id="sobre-oferecemos" className="text-2xl font-bold text-gray-800">
           O que oferecemos
         </h2>
         <ul className="text-gray-600 text-lg leading-relaxed list-disc pl-5 flex flex-col gap-1">
-          <li>Localização das unidades de pronto atendimento em um mapa interativo.</li>
-          <li>Informações públicas sobre cada unidade, como endereço e especialidades.</li>
-          <li>Busca por cidade, unidade ou serviço.</li>
+          <li>
+            Localização das unidades de pronto atendimento em um mapa
+            interativo.
+          </li>
+          <li>
+            Informações públicas sobre cada unidade, como endereço e horário
+            informado.
+          </li>
+          <li>Busca por estado, cidade, nome da unidade ou bairro.</li>
         </ul>
       </section>
 
@@ -28,9 +37,9 @@ export function AboutPage() {
           Fontes dos dados
         </h2>
         <p className="text-gray-600 text-lg leading-relaxed">
-          As informações exibidas têm origem em dados públicos. Sempre que
-          uma unidade for exibida, indicamos a fonte pública e a data da
-          última atualização junto ao dado.
+          As informações exibidas têm origem no Cadastro Nacional de
+          Estabelecimentos de Saúde (CNES). Sempre que uma unidade for exibida,
+          indicamos a fonte pública e a data da última atualização.
         </p>
       </section>
 
