@@ -9,10 +9,20 @@
   },
   "packageManager": "pnpm@11.25.0",
   "scripts": {
-    "dev": "pnpm --parallel --filter './apps/*' dev",
     "build": "pnpm --recursive --if-present build",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "dev": "pnpm --parallel --filter './apps/*' dev",
     "lint": "pnpm --recursive --if-present lint",
+    "prepare": "husky",
     "test": "pnpm --recursive --if-present test",
     "typecheck": "pnpm --recursive --if-present typecheck"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.5.1"
+  },
+  "lint-staged": {
+    "apps/api/**/*.ts": "pnpm --filter @filasaude/api exec oxlint --",
+    "apps/web/**/*.{ts,tsx}": "pnpm --filter @filasaude/web exec oxlint --"
   }
 }
