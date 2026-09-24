@@ -2,7 +2,6 @@ locals {
   resource_name = "${var.project_name}-${var.environment}"
   tags          = [var.project_name, var.environment, "terraform"]
 }
-
 resource "digitalocean_project" "this" {
   name        = local.resource_name
   description = "Infraestrutura ${var.environment} do FilaSaúde"
@@ -116,4 +115,3 @@ resource "digitalocean_project_resources" "this" {
     digitalocean_reserved_ip.app.urn,
   ]
 }
-
