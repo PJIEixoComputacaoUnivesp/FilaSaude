@@ -45,4 +45,3 @@ if [ -n "$previous_tag" ]; then
 fi
 
 exit 1
-

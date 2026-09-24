@@ -3,7 +3,6 @@ variable "project_name" {
   type        = string
   default     = "fila-saude"
 }
-
 variable "environment" {
   description = "Deployment environment name."
   type        = string
@@ -62,4 +61,3 @@ variable "domain_record" {
   type        = string
   default     = "saude"
 }
-
