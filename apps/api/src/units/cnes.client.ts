@@ -1,10 +1,17 @@
 import { Injectable } from '@nestjs/common';
+import { MunicipalitiesClient } from './municipalities.client.js';
+import type { BrazilianState } from './states.js';
 import type { HealthUnit } from './units.types.js';
 
 const CNES_API_URL =
   'https://apidadosabertos.saude.gov.br/cnes/estabelecimentos';
 const PAGE_SIZE = 20;
-const MAX_PAGES = 20;
+const MAX_PAGES = 100;
+const unitTypes = new Map<number, HealthUnit['unitType']>([
+  [20, 'PRONTO SOCORRO GERAL'],
+  [21, 'PRONTO SOCORRO ESPECIALIZADO'],
+  [73, 'PRONTO ATENDIMENTO'],
+]);
 
 type JsonRecord = Record<string, unknown>;
 
@@ -24,18 +31,16 @@ function optionalNumber(record: JsonRecord, key: string): number | null {
 
 function requiredString(record: JsonRecord, key: string): string {
   const value = optionalString(record, key);
-  if (!value) {
-    throw new Error(`CNES returned an invalid ${key}`);
-  }
+  if (!value) throw new Error(`CNES returned an invalid ${key}`);
   return value;
 }
 
-function cnesId(record: JsonRecord): string {
-  const value = record.codigo_cnes;
+function numericId(record: JsonRecord, key: string): string {
+  const value = record[key];
   if (typeof value !== 'number' && typeof value !== 'string') {
-    throw new Error('CNES returned an invalid codigo_cnes');
+    throw new Error(`CNES returned an invalid ${key}`);
   }
-  return String(value).padStart(7, '0');
+  return String(value);
 }
 
 function parsePage(payload: unknown): JsonRecord[] {
@@ -48,22 +53,34 @@ function parsePage(payload: unknown): JsonRecord[] {
   return payload.estabelecimentos;
 }
 
-function normalizeUnit(record: JsonRecord): HealthUnit | null {
+function normalizeUnit(
+  record: JsonRecord,
+  municipalities: ReadonlyMap<string, string>,
+  state: BrazilianState,
+): HealthUnit | null {
   if (record.estabelecimento_faz_atendimento_ambulatorial_sus !== 'SIM') {
     return null;
   }
 
+  const unitType = unitTypes.get(
+    Number(numericId(record, 'codigo_tipo_unidade')),
+  );
+  if (!unitType) throw new Error('CNES returned an unknown unit type');
+
+  const city = municipalities.get(numericId(record, 'codigo_municipio'));
+  if (!city) throw new Error('CNES returned an unknown municipality');
+
   return {
-    id: cnesId(record),
+    id: numericId(record, 'codigo_cnes').padStart(7, '0'),
     name: requiredString(record, 'nome_fantasia'),
-    unitType: 'PRONTO ATENDIMENTO',
+    unitType,
     address: {
       street: optionalString(record, 'endereco_estabelecimento'),
       number: optionalString(record, 'numero_estabelecimento'),
       district: optionalString(record, 'bairro_estabelecimento'),
       postalCode: optionalString(record, 'codigo_cep_estabelecimento'),
-      city: 'São Paulo',
-      state: 'SP',
+      city,
+      state: state.abbreviation,
     },
     location: {
       latitude: optionalNumber(record, 'latitude_estabelecimento_decimo_grau'),
@@ -79,19 +96,42 @@ function normalizeUnit(record: JsonRecord): HealthUnit | null {
 
 @Injectable()
 export class CnesClient {
-  async fetchUnits(): Promise<HealthUnit[]> {
+  constructor(private readonly municipalitiesClient: MunicipalitiesClient) {}
+
+  async fetchUnits(state: BrazilianState): Promise<HealthUnit[]> {
+    const [recordsByType, municipalities] = await Promise.all([
+      Promise.all(
+        [...unitTypes.keys()].map((unitType) =>
+          this.fetchRecords(state, unitType),
+        ),
+      ),
+      this.municipalitiesClient.fetchNames(state),
+    ]);
+    const records = recordsByType.flat();
+
+    const units = records
+      .map((record) => normalizeUnit(record, municipalities, state))
+      .filter((unit): unit is HealthUnit => unit !== null);
+
+    return [...new Map(units.map((unit) => [unit.id, unit])).values()].sort(
+      (left, right) => left.name.localeCompare(right.name, 'pt-BR'),
+    );
+  }
+
+  private async fetchRecords(
+    state: BrazilianState,
+    unitType: number,
+  ): Promise<JsonRecord[]> {
     const records: JsonRecord[] = [];
 
     for (let page = 0; page < MAX_PAGES; page += 1) {
-      const offset = page * PAGE_SIZE;
       const url = new URL(CNES_API_URL);
       url.search = new URLSearchParams({
-        codigo_tipo_unidade: '73',
-        codigo_uf: '35',
-        codigo_municipio: '355030',
+        codigo_tipo_unidade: String(unitType),
+        codigo_uf: state.ibgeCode,
         status: '1',
         limit: String(PAGE_SIZE),
-        offset: String(offset),
+        offset: String(page * PAGE_SIZE),
       }).toString();
 
       const response = await fetch(url, {
@@ -105,22 +145,9 @@ export class CnesClient {
 
       const pageRecords = parsePage(await response.json());
       records.push(...pageRecords);
-
-      if (pageRecords.length < PAGE_SIZE) {
-        break;
-      }
-
-      if (page === MAX_PAGES - 1) {
-        throw new Error('CNES pagination exceeded the safety limit');
-      }
+      if (pageRecords.length < PAGE_SIZE) return records;
     }
 
-    const units = records
-      .map(normalizeUnit)
-      .filter((unit): unit is HealthUnit => unit !== null);
-
-    return [...new Map(units.map((unit) => [unit.id, unit])).values()].sort(
-      (left, right) => left.name.localeCompare(right.name, 'pt-BR'),
-    );
+    throw new Error('CNES pagination exceeded the safety limit');
   }
 }
