@@ -28,7 +28,7 @@ export function AboutPage() {
             Informações públicas sobre cada unidade, como endereço e horário
             informado.
           </li>
-          <li>Busca por nome da unidade ou bairro.</li>
+          <li>Busca por estado, cidade, nome da unidade ou bairro.</li>
         </ul>
       </section>
 
