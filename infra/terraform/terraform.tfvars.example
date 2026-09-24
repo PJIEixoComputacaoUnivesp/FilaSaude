@@ -1,0 +1,15 @@
+project_name      = "fila-saude"
+environment       = "production"
+region            = "nyc3"
+droplet_size      = "s-1vcpu-1gb"
+ssh_public_key    = "ssh-ed25519 AAAA... user@example.com"
+# GitHub-hosted runners do not have a stable outbound IP. Key-only SSH is still
+# enforced by cloud-init. Replace these ranges when using a fixed-IP runner.
+ssh_allowed_cidrs = ["0.0.0.0/0", "::/0"]
+
+# Enable only when the root domain is delegated to DigitalOcean DNS.
+# domain_name   = "example.com"
+# domain_record = "saude"
+
+# The application is stateless while it uses mock data.
+enable_backups = false
