@@ -25,12 +25,13 @@ describe('UnitsService', () => {
     const client = { fetchUnits } as unknown as CnesClient;
     const service = new UnitsService(client);
 
-    const first = await service.findAll();
-    const second = await service.findAll();
+    const first = await service.findAll('SP');
+    const second = await service.findAll('sp');
 
     expect(first.data).toEqual([liveUnit]);
     expect(first.metadata).toMatchObject({
       count: 1,
+      state: 'SP',
       dataOrigin: 'live',
       isStale: false,
       latestSourceUpdate: '2026-09-20',
@@ -45,12 +46,23 @@ describe('UnitsService', () => {
     } as unknown as CnesClient;
     const service = new UnitsService(client);
 
-    const response = await service.findAll();
+    const response = await service.findAll('SP');
 
     expect(response.data.length).toBeGreaterThan(0);
     expect(response.metadata).toMatchObject({
       dataOrigin: 'fallback',
       isStale: true,
     });
+  });
+
+  it('rejects an invalid state before calling CNES', async () => {
+    const fetchUnits = vi.fn();
+    const client = { fetchUnits } as unknown as CnesClient;
+    const service = new UnitsService(client);
+
+    await expect(service.findAll('XX')).rejects.toThrow(
+      'Invalid Brazilian state abbreviation',
+    );
+    expect(fetchUnits).not.toHaveBeenCalled();
   });
 });

@@ -51,9 +51,14 @@ describe('AppController (e2e)', () => {
       .expect(200)
       .expect(({ body }) => {
         expect(body.data).toEqual([testUnit]);
+        expect(body.metadata.state).toBe('SP');
         expect(body.metadata.dataOrigin).toBe('live');
         expect(body.metadata.source.name).toContain('CNES');
       });
+  });
+
+  it('/units rejects an invalid state (GET)', () => {
+    return request(app.getHttpServer()).get('/units?state=XX').expect(400);
   });
 
   afterEach(async () => {

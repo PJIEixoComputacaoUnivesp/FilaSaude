@@ -15,7 +15,10 @@ export interface UnitLocation {
 export interface HealthUnit {
   id: string;
   name: string;
-  unitType: 'PRONTO ATENDIMENTO';
+  unitType:
+    | 'PRONTO ATENDIMENTO'
+    | 'PRONTO SOCORRO GERAL'
+    | 'PRONTO SOCORRO ESPECIALIZADO';
   address: UnitAddress;
   location: UnitLocation;
   serviceHours: string | null;
@@ -24,6 +27,7 @@ export interface HealthUnit {
 
 export interface UnitsMetadata {
   count: number;
+  state: string;
   dataOrigin: 'live' | 'fallback';
   isStale: boolean;
   retrievedAt: string;

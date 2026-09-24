@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import snapshot from './units.snapshot.json' with { type: 'json' };
 import { CnesClient } from './cnes.client.js';
+import { parseState, type BrazilianState } from './states.js';
 import type { HealthUnit, UnitsResponse } from './units.types.js';
 
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
@@ -20,7 +21,7 @@ function fallbackUnits(): HealthUnit[] {
   return snapshot.map((unit) => ({
     id: unit.id,
     name: unit.name,
-    unitType: 'PRONTO ATENDIMENTO',
+    unitType: unit.unitType as HealthUnit['unitType'],
     address: {
       street: 'street' in unit.address ? (unit.address.street ?? null) : null,
       number: 'number' in unit.address ? (unit.address.number ?? null) : null,
@@ -43,33 +44,47 @@ function fallbackUnits(): HealthUnit[] {
 @Injectable()
 export class UnitsService {
   private readonly logger = new Logger(UnitsService.name);
-  private cache: { expiresAt: number; response: UnitsResponse } | null = null;
+  private readonly cache = new Map<
+    string,
+    { expiresAt: number; response: UnitsResponse }
+  >();
 
   constructor(private readonly cnesClient: CnesClient) {}
 
-  async findAll(): Promise<UnitsResponse> {
-    if (this.cache && this.cache.expiresAt > Date.now()) {
-      return this.cache.response;
-    }
+  async findAll(stateValue: string): Promise<UnitsResponse> {
+    const state = parseState(stateValue);
+    const cached = this.cache.get(state.abbreviation);
+    if (cached && cached.expiresAt > Date.now()) return cached.response;
 
     try {
-      const units = await this.cnesClient.fetchUnits();
+      const units = await this.cnesClient.fetchUnits(state);
       if (units.length === 0) {
         throw new Error('CNES returned no public urgent care units');
       }
 
       const response = this.buildResponse(
         units,
+        state,
         'live',
         new Date().toISOString(),
       );
-      this.cache = { expiresAt: Date.now() + CACHE_TTL_MS, response };
+      this.cache.set(state.abbreviation, {
+        expiresAt: Date.now() + CACHE_TTL_MS,
+        response,
+      });
       return response;
     } catch (error: unknown) {
       const reason = error instanceof Error ? error.message : 'unknown error';
-      this.logger.warn(`Using the CNES fallback snapshot: ${reason}`);
+      this.logger.warn(
+        `CNES request failed for ${state.abbreviation}: ${reason}`,
+      );
+
+      if (state.abbreviation !== 'SP') throw error;
+
+      this.logger.warn('Using the CNES fallback snapshot for SP');
       return this.buildResponse(
         fallbackUnits(),
+        state,
         'fallback',
         FALLBACK_RETRIEVED_AT,
       );
@@ -78,6 +93,7 @@ export class UnitsService {
 
   private buildResponse(
     units: HealthUnit[],
+    state: BrazilianState,
     dataOrigin: 'live' | 'fallback',
     retrievedAt: string,
   ): UnitsResponse {
@@ -85,6 +101,7 @@ export class UnitsService {
       data: units,
       metadata: {
         count: units.length,
+        state: state.abbreviation,
         dataOrigin,
         isStale: dataOrigin === 'fallback',
         retrievedAt,
