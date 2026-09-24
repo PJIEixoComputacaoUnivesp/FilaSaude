@@ -147,8 +147,23 @@ pnpm dev
 Com Docker:
 
 ```bash
-docker compose up
+docker compose up --build
 ```
+
+O frontend fica disponível em `http://localhost:8080` e a API em
+`http://localhost:3000`. Verifique a API em
+`http://localhost:3000/health` ou pelo gateway do frontend em
+`http://localhost:8080/api/health`.
+
+### Produção na DigitalOcean
+
+A infraestrutura de produção usa Terraform para provisionar um Droplet, IP
+reservado, firewall e DNS opcional. As imagens da API e do frontend são
+publicadas no GitHub Container Registry e executadas com Docker Compose atrás
+do Caddy, que fornece HTTPS.
+
+Consulte o [guia de deploy](docs/deployment.md) para provisionamento,
+configuração dos secrets do GitHub, publicação e rollback.
 
 ---
 
