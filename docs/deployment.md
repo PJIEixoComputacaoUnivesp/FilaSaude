@@ -86,9 +86,23 @@ Pull requests executam lint, typecheck, testes, build, validação do Terraform 
 build das imagens. Um push na `main`, depois dessas verificações, publica as
 imagens no GHCR e atualiza o Droplet.
 
-O script de deploy aguarda os health checks do Compose. Se uma atualização
-falhar e já existir uma versão anterior bem-sucedida, ele reaplica
-automaticamente a tag anterior. Cada tag tem o formato `sha-<commit>`.
+O deploy acontece em duas etapas. Primeiro, `deploy.sh deploy <tag>` sobe a
+nova versão e aguarda os health checks do Compose. Depois, a CI verifica
+`https://<APP_DOMAIN>/api/health` pela internet, o que também cobre DNS,
+firewall, emissão do certificado TLS e roteamento do Caddy. Somente quando essa
+verificação pública passa, `deploy.sh confirm <tag>` registra a tag como a
+última versão bem-sucedida em `/opt/filasaude/.last-successful-tag`.
+
+Se qualquer uma das verificações falhar e já existir uma versão anterior
+bem-sucedida, a tag anterior é reaplicada automaticamente. No primeiro deploy
+ainda não há versão anterior, então a falha apenas interrompe a publicação.
+Cada tag tem o formato `sha-<commit>`.
+
+Para reaplicar manualmente a última versão bem-sucedida:
+
+```bash
+/opt/filasaude/deploy.sh rollback
+```
 
 Para inspecionar a aplicação no servidor:
 

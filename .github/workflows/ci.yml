@@ -186,9 +186,28 @@ jobs:
           DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
         run: |
           ssh -i "$RUNNER_TEMP/deploy_key" "deploy@$DROPLET_HOST" \
-            "/opt/filasaude/deploy.sh 'sha-$GITHUB_SHA'"
+            "/opt/filasaude/deploy.sh deploy 'sha-$GITHUB_SHA'"
 
       - name: Check public health endpoint
+        id: health
         env:
           APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
-        run: curl --fail --show-error --silent --retry 10 --retry-delay 3 "https://$APP_DOMAIN/api/health"
+        run: |
+          curl --fail --show-error --silent \
+            --retry 20 --retry-delay 5 --retry-all-errors \
+            "https://$APP_DOMAIN/api/health"
+
+      - name: Confirm release
+        env:
+          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
+        run: |
+          ssh -i "$RUNNER_TEMP/deploy_key" "deploy@$DROPLET_HOST" \
+            "/opt/filasaude/deploy.sh confirm 'sha-$GITHUB_SHA'"
+
+      - name: Roll back after failed public check
+        if: failure() && steps.health.outcome == 'failure'
+        env:
+          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
+        run: |
+          ssh -i "$RUNNER_TEMP/deploy_key" "deploy@$DROPLET_HOST" \
+            "/opt/filasaude/deploy.sh rollback"
