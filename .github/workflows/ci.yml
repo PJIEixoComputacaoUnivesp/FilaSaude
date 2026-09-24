@@ -1,0 +1,213 @@
+name: CI e deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  GHCR_NAMESPACE: pjieixocomputacaounivesp
+
+jobs:
+  quality:
+    name: Qualidade do monorepo
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+
+      - name: Configure Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  terraform:
+    name: Validar Terraform
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: infra/terraform
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.16.4
+
+      - name: Check formatting
+        run: terraform fmt -check -recursive
+
+      - name: Initialize providers
+        run: terraform init -backend=false
+
+      - name: Validate configuration
+        run: terraform validate
+
+  images:
+    name: Imagem ${{ matrix.name }}
+    needs: [quality, terraform]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: API
+            image: filasaude-api
+            dockerfile: apps/api/Dockerfile
+          - name: Web
+            image: filasaude-web
+            dockerfile: apps/web/Dockerfile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Authenticate to GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: ${{ github.event_name == 'push' }}
+          tags: |
+            ghcr.io/${{ env.GHCR_NAMESPACE }}/${{ matrix.image }}:sha-${{ github.sha }}
+            ghcr.io/${{ env.GHCR_NAMESPACE }}/${{ matrix.image }}:latest
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  deploy:
+    name: Deploy em produção
+    if: github.event_name == 'push' && vars.DEPLOY_ENABLED == 'true'
+    needs: images
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Prepare SSH and environment files
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DROPLET_KNOWN_HOSTS: ${{ secrets.DROPLET_KNOWN_HOSTS }}
+          APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
+          ACME_EMAIL: ${{ secrets.ACME_EMAIL }}
+        run: |
+          set -eu
+          umask 077
+          mkdir -p "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$RUNNER_TEMP/deploy_key"
+          printf '%s\n' "$DROPLET_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          {
+            printf 'APP_DOMAIN=%s\n' "$APP_DOMAIN"
+            printf 'ACME_EMAIL=%s\n' "$ACME_EMAIL"
+            printf 'IMAGE_TAG=sha-%s\n' "$GITHUB_SHA"
+          } > "$RUNNER_TEMP/production.env"
+
+      - name: Copy deployment files
+        env:
+          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
+        run: |
+          scp -i "$RUNNER_TEMP/deploy_key" \
+            deploy/Caddyfile \
+            deploy/compose.prod.yaml \
+            deploy/deploy.sh \
+            "$RUNNER_TEMP/production.env" \
+            "deploy@$DROPLET_HOST:/opt/filasaude/"
+          ssh -i "$RUNNER_TEMP/deploy_key" "deploy@$DROPLET_HOST" \
+            'mv /opt/filasaude/production.env /opt/filasaude/.env && chmod 600 /opt/filasaude/.env && chmod 700 /opt/filasaude/deploy.sh'
+
+      - name: Authenticate server to GHCR
+        env:
+          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | ssh -i "$RUNNER_TEMP/deploy_key" "deploy@$DROPLET_HOST" \
+            "docker login ghcr.io --username '$GHCR_USER' --password-stdin"
+
+      - name: Deploy images
+        env:
+          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
+        run: |
+          ssh -i "$RUNNER_TEMP/deploy_key" "deploy@$DROPLET_HOST" \
+            "/opt/filasaude/deploy.sh deploy 'sha-$GITHUB_SHA'"
+
+      - name: Check public health endpoint
+        id: health
+        env:
+          APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
+        run: |
+          curl --fail --show-error --silent \
+            --retry 20 --retry-delay 5 --retry-all-errors \
+            "https://$APP_DOMAIN/api/health"
+
+      - name: Confirm release
+        env:
+          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
+        run: |
+          ssh -i "$RUNNER_TEMP/deploy_key" "deploy@$DROPLET_HOST" \
+            "/opt/filasaude/deploy.sh confirm 'sha-$GITHUB_SHA'"
+
+      - name: Roll back after failed public check
+        if: failure() && steps.health.outcome == 'failure'
+        env:
+          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
+        run: |
+          ssh -i "$RUNNER_TEMP/deploy_key" "deploy@$DROPLET_HOST" \
+            "/opt/filasaude/deploy.sh rollback"
