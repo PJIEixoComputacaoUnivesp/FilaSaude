@@ -18,21 +18,14 @@ export function MapPage() {
         .includes(normalized),
     );
   }, [query, state]);
+  const mapUnits = state.status === "success" ? filteredUnits : [];
 
   return (
     <main className="relative h-[calc(100vh-73px)] min-h-[34rem] w-full">
-      {state.status === "success" ? (
-        <UnitsMap units={filteredUnits} />
-      ) : (
-        <div className="flex h-full items-center justify-center bg-slate-100 px-6 text-center text-slate-600">
-          {state.status === "loading"
-            ? "Consultando a fonte oficial…"
-            : state.message}
-        </div>
-      )}
+      <UnitsMap units={mapUnits} />
 
       <section
-        className="absolute left-4 right-4 top-4 z-[500] rounded-2xl bg-white p-4 shadow-xl sm:left-6 sm:right-auto sm:w-96"
+        className="absolute left-4 right-4 top-4 z-[900] rounded-2xl border border-slate-200 bg-white p-4 sm:left-6 sm:right-auto sm:w-96"
         aria-label="Busca no mapa"
       >
         <BrazilianStateSelect value={stateCode} onChange={setStateCode} />
@@ -48,6 +41,15 @@ export function MapPage() {
             className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-fila-blue focus:ring-2 focus:ring-blue-100"
           />
         </label>
+        {state.status === "loading" && (
+          <p
+            className="mt-3 text-sm text-slate-600"
+            role="status"
+            aria-live="polite"
+          >
+            Consultando a fonte oficial…
+          </p>
+        )}
         {state.status === "success" && (
           <div
             className="mt-3 text-xs leading-relaxed text-slate-600"
@@ -72,13 +74,16 @@ export function MapPage() {
           </div>
         )}
         {state.status === "error" && (
-          <button
-            type="button"
-            onClick={retry}
-            className="mt-3 text-sm font-semibold text-fila-blue underline"
-          >
-            Tentar novamente
-          </button>
+          <div className="mt-3 text-sm text-red-900" role="alert">
+            <p>{state.message}</p>
+            <button
+              type="button"
+              onClick={retry}
+              className="mt-2 font-semibold text-fila-blue underline"
+            >
+              Tentar novamente
+            </button>
+          </div>
         )}
       </section>
     </main>

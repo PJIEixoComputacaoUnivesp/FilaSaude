@@ -1,10 +1,12 @@
 import { useEffect } from "react";
+import "leaflet/dist/leaflet.css";
 import {
   CircleMarker,
   MapContainer,
   Popup,
   TileLayer,
   useMap,
+  ZoomControl,
 } from "react-leaflet";
 import type { HealthUnit } from "./units";
 import { formatAddress, formatSourceDate } from "./units";
@@ -49,6 +51,7 @@ export function UnitsMap({ units, className = "" }: UnitsMapProps) {
     (unit) =>
       unit.location.latitude !== null && unit.location.longitude !== null,
   );
+  const markerRadius = unitsWithLocation.length > 100 ? 3 : 6;
 
   return (
     <MapContainer
@@ -56,17 +59,19 @@ export function UnitsMap({ units, className = "" }: UnitsMapProps) {
       zoom={4}
       className={`h-full w-full ${className}`}
       scrollWheelZoom
+      zoomControl={false}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      <ZoomControl position="bottomleft" />
       <FitUnits units={unitsWithLocation} />
       {unitsWithLocation.map((unit) => (
         <CircleMarker
           key={unit.id}
           center={[unit.location.latitude!, unit.location.longitude!]}
-          radius={6}
+          radius={markerRadius}
           pathOptions={{
             color: "white",
             fillColor: "var(--color-fila-blue)",
