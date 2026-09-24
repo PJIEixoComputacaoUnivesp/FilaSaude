@@ -45,10 +45,10 @@ function Header() {
       <Logo className="h-10 w-auto" />
 
       <nav className="hidden md:flex gap-8 font-medium">
-        <Link to="/" className={`${linkBase} ${isActive('/') ? linkActive : linkInactive}`}>Home</Link>
-        <Link to="/units" className={`${linkBase} ${isActive('/units') ? linkActive : linkInactive}`}>Units</Link>
-        <Link to="/map" className={`${linkBase} ${isActive('/map') ? linkActive : linkInactive}`}>Map</Link>
-        <Link to="/about" className={`${linkBase} ${isActive('/about') ? linkActive : linkInactive}`}>About</Link>
+        <Link to="/" className={`${linkBase} ${isActive('/') ? linkActive : linkInactive}`}>Início</Link>
+        <Link to="/units" className={`${linkBase} ${isActive('/units') ? linkActive : linkInactive}`}>Unidades</Link>
+        <Link to="/map" className={`${linkBase} ${isActive('/map') ? linkActive : linkInactive}`}>Mapa</Link>
+        <Link to="/about" className={`${linkBase} ${isActive('/about') ? linkActive : linkInactive}`}>Sobre</Link>
       </nav>
 
       <button className="md:hidden text-gray-600">
