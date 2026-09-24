@@ -24,11 +24,11 @@ A plataforma terá caráter **exclusivamente informativo**, utilizando dados pro
 
 ### Objetivos
 
-* 🏥 Facilitar a consulta de unidades de pronto atendimento
-* 📍 Permitir buscas por região ou localização
-* 🗺️ Apresentar unidades e suas localizações
-* 📋 Organizar informações públicas em uma única interface
-* 🔎 Facilitar o acesso à fonte original dos dados
+- 🏥 Facilitar a consulta de unidades de pronto atendimento
+- 📍 Permitir buscas por região ou localização
+- 🗺️ Apresentar unidades e suas localizações
+- 📋 Organizar informações públicas em uma única interface
+- 🔎 Facilitar o acesso à fonte original dos dados
 
 ---
 
@@ -38,13 +38,13 @@ O **FilaSaúde não é uma plataforma de orientação médica**.
 
 A aplicação:
 
-* não realiza diagnóstico;
-* não realiza triagem;
-* não avalia sintomas;
-* não fornece orientação médica;
-* não recomenda qual estabelecimento o usuário deve procurar;
-* não determina qual unidade é mais adequada para uma situação clínica;
-* não substitui os canais oficiais de saúde ou emergência.
+- não realiza diagnóstico;
+- não realiza triagem;
+- não avalia sintomas;
+- não fornece orientação médica;
+- não recomenda qual estabelecimento o usuário deve procurar;
+- não determina qual unidade é mais adequada para uma situação clínica;
+- não substitui os canais oficiais de saúde ou emergência.
 
 As informações exibidas dependem da disponibilidade e atualização das respectivas fontes públicas.
 
@@ -63,7 +63,7 @@ As informações exibidas dependem da disponibilidade e atualização das respec
 
 ### Possíveis evoluções
 
-🚧 Visualização das unidades em mapa
+✅ Visualização das unidades em mapa
 🚧 Busca por proximidade geográfica
 🚧 Filtros por características da unidade
 🚧 Integração com diferentes fontes públicas
@@ -168,7 +168,7 @@ Os testes E2E com **Playwright** serão utilizados para validar os principais fl
 
 ## 📊 Dados
 
-O FilaSaúde utilizará informações provenientes de **fontes públicas**, priorizando dados disponibilizados por órgãos e instituições oficiais.
+O FilaSaúde utiliza dados do **Cadastro Nacional de Estabelecimentos de Saúde (CNES)** para exibir unidades públicas de pronto atendimento. A API consulta a fonte oficial diretamente e mantém uma cópia local apenas como contingência.
 
 Sempre que possível, a aplicação apresentará também informações sobre a origem dos dados, permitindo maior transparência e rastreabilidade.
 
@@ -189,7 +189,5 @@ Interface Web
 ```
 
 ---
-
-
 
 **FilaSaúde 🏥 — facilitando o acesso a informações públicas sobre pronto atendimento pelo SUS.**
