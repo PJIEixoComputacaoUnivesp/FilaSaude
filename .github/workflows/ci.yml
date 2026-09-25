@@ -193,9 +193,13 @@ jobs:
         env:
           APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
         run: |
+          case "$APP_DOMAIN" in
+            http://* | https://*) app_url=$APP_DOMAIN ;;
+            *) app_url="https://$APP_DOMAIN" ;;
+          esac
           curl --fail --show-error --silent \
             --retry 20 --retry-delay 5 --retry-all-errors \
-            "https://$APP_DOMAIN/api/health"
+            "$app_url/api/health"
 
       - name: Confirm release
         env:
