@@ -9,6 +9,8 @@ import {
 } from "./units";
 import { useUnits } from "./useUnits";
 
+const PAGE_SIZE = 24;
+
 function DataNotice({ metadata }: { metadata: UnitsResponse["metadata"] }) {
   if (!metadata.isStale) return null;
 
@@ -31,13 +33,13 @@ function UnitCard({
   source: UnitsResponse["metadata"]["source"];
 }) {
   return (
-    <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
+    <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-x-3 gap-y-1 sm:mb-4">
+        <div className="min-w-0">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-fila-green">
             {unit.unitType}
           </p>
-          <h2 className="text-xl font-bold leading-snug text-slate-900">
+          <h2 className="break-words text-lg font-bold leading-snug text-slate-900 sm:text-xl">
             {unit.name}
           </h2>
         </div>
@@ -46,7 +48,7 @@ function UnitCard({
         </span>
       </div>
 
-      <dl className="flex flex-1 flex-col gap-3 text-sm text-slate-700">
+      <dl className="flex flex-1 flex-col gap-2 text-sm text-slate-700 sm:gap-3">
         <div>
           <dt className="font-semibold text-slate-900">Endereço</dt>
           <dd>{formatAddress(unit.address)}</dd>
@@ -65,7 +67,7 @@ function UnitCard({
         </div>
       </dl>
 
-      <p className="mt-5 border-t border-slate-100 pt-4 text-xs leading-relaxed text-slate-500">
+      <p className="mt-4 border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-500 sm:mt-5 sm:pt-4">
         Fonte:{" "}
         <a
           className="underline hover:text-fila-blue"
@@ -85,6 +87,16 @@ export function UnitsPage() {
   const [stateCode, setStateCode] = useState("SP");
   const { state, retry } = useUnits(stateCode);
   const [query, setQuery] = useState("");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  const changeState = (value: string) => {
+    setStateCode(value);
+    setVisibleCount(PAGE_SIZE);
+  };
+  const changeQuery = (value: string) => {
+    setQuery(value);
+    setVisibleCount(PAGE_SIZE);
+  };
 
   const filteredUnits = useMemo(() => {
     if (state.status !== "success") return [];
@@ -101,22 +113,22 @@ export function UnitsPage() {
   }, [query, state]);
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-6 py-12 md:py-16">
-      <div className="mb-8 max-w-3xl">
+    <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 md:py-16">
+      <div className="mb-6 max-w-3xl md:mb-8">
         <p className="mb-2 text-sm font-bold uppercase tracking-widest text-fila-green">
           {stateName(stateCode)} · {stateCode}
         </p>
-        <h1 className="text-4xl font-bold tracking-tight text-fila-blue md:text-5xl">
+        <h1 className="text-3xl font-bold tracking-tight text-fila-blue sm:text-4xl md:text-5xl">
           Unidades de pronto atendimento
         </h1>
-        <p className="mt-4 text-lg leading-relaxed text-slate-600">
+        <p className="mt-3 text-base leading-relaxed text-slate-600 sm:mt-4 sm:text-lg">
           Consulte endereços e horários publicados no Cadastro Nacional de
           Estabelecimentos de Saúde.
         </p>
       </div>
 
-      <div className="mb-8 grid max-w-3xl gap-4 sm:grid-cols-[14rem_1fr]">
-        <BrazilianStateSelect value={stateCode} onChange={setStateCode} />
+      <div className="mb-6 grid max-w-3xl gap-4 sm:grid-cols-[14rem_1fr] md:mb-8">
+        <BrazilianStateSelect value={stateCode} onChange={changeState} />
         <label className="block">
           <span className="mb-2 block text-sm font-semibold text-slate-800">
             Buscar por unidade, cidade ou bairro
@@ -124,7 +136,7 @@ export function UnitsPage() {
           <input
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => changeQuery(event.target.value)}
             placeholder="Ex.: Osasco ou Vila Mariana"
             className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-fila-blue focus:ring-2 focus:ring-blue-100"
           />
@@ -157,7 +169,7 @@ export function UnitsPage() {
       )}
 
       {state.status === "success" && (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4 sm:gap-6">
           <DataNotice metadata={state.response.metadata} />
           <p className="text-sm text-slate-600" aria-live="polite">
             {filteredUnits.length}{" "}
@@ -171,15 +183,34 @@ export function UnitsPage() {
               bairro.
             </div>
           ) : (
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {filteredUnits.map((unit) => (
-                <UnitCard
-                  key={unit.id}
-                  unit={unit}
-                  source={state.response.metadata.source}
-                />
-              ))}
-            </div>
+            <>
+              <div className="grid gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {filteredUnits.slice(0, visibleCount).map((unit) => (
+                  <UnitCard
+                    key={unit.id}
+                    unit={unit}
+                    source={state.response.metadata.source}
+                  />
+                ))}
+              </div>
+              {visibleCount < filteredUnits.length && (
+                <div className="flex flex-col items-center gap-2 text-sm text-slate-600">
+                  <p>
+                    Mostrando {visibleCount} de {filteredUnits.length}{" "}
+                    unidades
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setVisibleCount((count) => count + PAGE_SIZE)
+                    }
+                    className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-6 py-3 font-semibold text-slate-800 transition hover:border-fila-blue hover:text-fila-blue sm:w-auto"
+                  >
+                    Mostrar mais unidades
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
