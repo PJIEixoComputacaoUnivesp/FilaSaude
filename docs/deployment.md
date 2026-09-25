@@ -67,6 +67,7 @@ adicione os secrets:
 | `DROPLET_KNOWN_HOSTS` | Linha de host key confiável do servidor |
 | `APP_DOMAIN` | Domínio completo, sem protocolo, ou `http://IP` sem domínio |
 | `ACME_EMAIL` | E-mail usado na emissão dos certificados TLS |
+| `POSTGRES_PASSWORD` | Senha do PostgreSQL de produção (`openssl rand -hex 32`) |
 
 Crie também a variável de Actions `DEPLOY_ENABLED` com o valor `true` somente
 depois que o Droplet, o DNS e todos os secrets estiverem prontos. Enquanto ela
@@ -122,7 +123,60 @@ docker compose --env-file .env -f compose.prod.yaml logs --tail=200
 
 ## Dados e backups
 
-Enquanto os dados forem mockados, os containers são stateless e podem ser
-recriados a qualquer momento. O único volume persistente contém certificados e
-estado do Caddy. Antes de introduzir PostgreSQL ou uploads, defina migrations,
-retenção e restauração de backups e então habilite os backups adequados.
+### PostgreSQL
+
+O PostgreSQL roda no mesmo Droplet, como o serviço `postgres` do
+`compose.prod.yaml`, acessível somente pela rede interna do Compose. O volume
+`postgres_data` guarda os dados.
+
+O conjunto de dados é pequeno (poucos MB) e o projeto não deve crescer, então o
+serviço tem recursos limitados para caber em um Droplet de 1 GB:
+
+| Configuração | Valor |
+| --- | --- |
+| `mem_limit` / `cpus` | 192 MB / 0,5 |
+| `shared_buffers` | 32 MB |
+| `effective_cache_size` | 128 MB |
+| `work_mem` / `maintenance_work_mem` | 2 MB / 16 MB |
+| `max_connections` | 10 |
+
+Adicione o secret `POSTGRES_PASSWORD` ao environment `production` antes do
+próximo deploy. Gere a senha com `openssl rand -hex 32`. `POSTGRES_DB` e
+`POSTGRES_USER` usam `filasaude` por padrão.
+
+### Swap
+
+Droplets novos recebem 1 GB de swap pelo cloud-init. Em um Droplet já criado,
+configure uma única vez:
+
+```bash
+sudo fallocate -l 1G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
+### Backups
+
+`deploy/backup.sh` gera um `pg_dump` compactado em `/opt/filasaude/backups` e
+mantém os 7 arquivos mais recentes. Agende a execução diária no crontab do
+usuário `deploy` (`crontab -e`):
+
+```cron
+30 3 * * * /opt/filasaude/backup.sh >> /opt/filasaude/backups/backup.log 2>&1
+```
+
+Para restaurar um backup (o dump recria as tabelas existentes):
+
+```bash
+cd /opt/filasaude
+gunzip -c backups/filasaude-AAAAMMDDTHHMMSSZ.sql.gz |
+  docker compose --env-file .env -f compose.prod.yaml exec -T postgres \
+  sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" "$POSTGRES_DB"'
+```
+
+Como os dados de unidades vêm do CNES, eles também podem ser reconstruídos por
+uma nova ingestão. O backup evita depender da disponibilidade da fonte.
+
+O volume do Caddy guarda certificados e estado, e pode ser recriado.
