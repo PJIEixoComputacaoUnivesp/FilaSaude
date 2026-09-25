@@ -4,9 +4,10 @@ name: Deploy
 # or with `gh workflow run deploy.yml --ref main`. Leave image_tag empty to
 # deploy the latest main, or pass an older sha-<commit> to roll back to it.
 #
-# Images are published to GHCR here, not by CI, so the registry holds only
-# versions that were deployed. If the image of the chosen commit is missing
-# (never deployed, or deleted), it is built from that commit and pushed.
+# Images are built and published to GHCR only here (CI does not build them),
+# so the registry holds only versions that were deployed. If the image of the
+# chosen commit is missing (never deployed, or deleted), it is built from that
+# commit and pushed.
 on:
   workflow_dispatch:
     inputs:
@@ -141,6 +142,7 @@ jobs:
           push: true
           tags: ghcr.io/${{ env.GHCR_NAMESPACE }}/${{ matrix.image }}:${{ needs.prepare.outputs.tag }}
           cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
   deploy:
     name: Deploy em produção
