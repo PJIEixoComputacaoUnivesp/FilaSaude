@@ -47,6 +47,14 @@ para o output `reserved_ip`.
 O Caddy só consegue emitir o certificado depois que o DNS público resolve para
 o Droplet e as portas 80 e 443 estão acessíveis.
 
+### Sem domínio
+
+Enquanto não houver domínio, use `APP_DOMAIN=http://IP_RESERVADO`. Com o prefixo
+`http://`, o Caddy serve a aplicação somente por HTTP na porta 80 e não solicita
+certificado. Não há criptografia nesse modo, então use-o apenas temporariamente.
+Para ativar o HTTPS, crie o registro A, troque `APP_DOMAIN` pelo domínio sem
+protocolo e execute um novo deploy.
+
 ## 3. Configurar o ambiente do GitHub
 
 Crie um environment chamado `production` nas configurações do repositório e
@@ -57,7 +65,7 @@ adicione os secrets:
 | `DROPLET_HOST` | IP reservado retornado pelo Terraform |
 | `DEPLOY_SSH_KEY` | Chave SSH privada correspondente à chave pública do Terraform |
 | `DROPLET_KNOWN_HOSTS` | Linha de host key confiável do servidor |
-| `APP_DOMAIN` | Domínio completo, sem protocolo |
+| `APP_DOMAIN` | Domínio completo, sem protocolo, ou `http://IP` sem domínio |
 | `ACME_EMAIL` | E-mail usado na emissão dos certificados TLS |
 
 Crie também a variável de Actions `DEPLOY_ENABLED` com o valor `true` somente
