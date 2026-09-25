@@ -147,6 +147,7 @@ jobs:
           DROPLET_KNOWN_HOSTS: ${{ secrets.DROPLET_KNOWN_HOSTS }}
           APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
           ACME_EMAIL: ${{ secrets.ACME_EMAIL }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         run: |
           set -eu
           umask 077
@@ -156,6 +157,7 @@ jobs:
           {
             printf 'APP_DOMAIN=%s\n' "$APP_DOMAIN"
             printf 'ACME_EMAIL=%s\n' "$ACME_EMAIL"
+            printf 'POSTGRES_PASSWORD=%s\n' "$POSTGRES_PASSWORD"
             printf 'IMAGE_TAG=sha-%s\n' "$GITHUB_SHA"
           } > "$RUNNER_TEMP/production.env"
 
@@ -167,10 +169,11 @@ jobs:
             deploy/Caddyfile \
             deploy/compose.prod.yaml \
             deploy/deploy.sh \
+            deploy/backup.sh \
             "$RUNNER_TEMP/production.env" \
             "deploy@$DROPLET_HOST:/opt/filasaude/"
           ssh -i "$RUNNER_TEMP/deploy_key" "deploy@$DROPLET_HOST" \
-            'mv /opt/filasaude/production.env /opt/filasaude/.env && chmod 600 /opt/filasaude/.env && chmod 700 /opt/filasaude/deploy.sh'
+            'mv /opt/filasaude/production.env /opt/filasaude/.env && chmod 600 /opt/filasaude/.env && chmod 700 /opt/filasaude/deploy.sh /opt/filasaude/backup.sh'
 
       - name: Authenticate server to GHCR
         env:
