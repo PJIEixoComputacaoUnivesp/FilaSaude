@@ -51,6 +51,9 @@ typings/
 package-json.lock
 node_modules.bun
 
+# Local Git worktrees (see AGENTS.md)
+.worktrees/
+
 # Editors and operating systems
 .idea/
 .vscode/
