@@ -47,10 +47,15 @@ from the checkout you are reviewing in, exactly as written:
 ```bash
 checkout_root="$(git rev-parse --show-toplevel)" || exit 1
 echo "checkout_root=$checkout_root"
-echo "post_script=$checkout_root/.agents/skills/review-pull-request/scripts/post-review.mjs"
 common_dir="$(git rev-parse --path-format=absolute --git-common-dir)" || exit 1
 [ "$(basename "$common_dir")" = ".git" ] || { echo "MEMORY_UNAVAILABLE: unsupported git layout ($common_dir)"; exit 1; }
 main_root="$(dirname "$common_dir")"
+rel=".agents/skills/review-pull-request/scripts/post-review.mjs"
+post_script=""
+for dir in "$checkout_root" "$main_root" "$main_root"/.worktrees/*; do
+  [ -f "$dir/$rel" ] && { post_script="$dir/$rel"; break; }
+done
+echo "post_script=${post_script:-POST_SCRIPT_MISSING}"
 shared="$main_root/.agents/agent-memory"
 memory_dir="$shared/code-reviewer"
 mkdir -p "$memory_dir" && touch "$memory_dir/MEMORY.md" || { echo "MEMORY_UNAVAILABLE: cannot create $memory_dir"; exit 1; }
@@ -83,13 +88,14 @@ echo "memory_dir=$memory_dir"
 The block makes the worktree's `.agents/agent-memory` a symlink to the main
 checkout's. It merges an existing worktree copy first (index lines appended,
 identical files overwritten) and refuses to delete anything that differs.
-`.claude/agent-memory` is a tracked symlink to `../.agents/agent-memory`, so
-Claude Code's `memory: project` (`.claude/agent-memory/code-reviewer/`) points
+On branches that include it, `.claude/agent-memory` is a tracked symlink to
+`../.agents/agent-memory`, so Claude Code's `memory: project` (`.claude/agent-memory/code-reviewer/`) points
 to the same files.
 
 | Output | Action |
 |---|---|
 | `checkout_root=`, `post_script=`, `memory_dir=` only | Continue. |
+| `post_script=POST_SCRIPT_MISSING` | Continue. Section 8 validates JSON syntax only, and posting (section 10) is impossible; put `Script de publicação não encontrado; .last-review.json validado só como JSON.` in the **Resumo**. |
 | `MEMORY_LINK_CONFLICT` | Continue using `$memory_dir`. Add the listed files under **Memória** in the output (section 7). Do not resolve the conflict yourself. |
 | `MEMORY_UNAVAILABLE` or any error | Continue without memory: skip 1.2 and section 9, and write `Memória indisponível: <motivo>` under **Memória**. |
 
@@ -109,8 +115,12 @@ mean those literal paths. The marker files go in `checkout_root`.
 
 ### 1.3 Load project rules
 
-Read `AGENTS.md`. After section 4, if the diff touches `apps/web/`, also read
-`.agents/skills/fila-saude-frontend/SKILL.md`.
+The rules that apply are the ones at the reviewed commit, not the ones in the
+checkout running you. After section 2 (when `head` is known), read
+`git show <head>:AGENTS.md`. After section 4, if the diff touches `apps/web/`,
+also read `git show <head>:.agents/skills/fila-saude-frontend/SKILL.md`. If a
+file does not exist at `head`, read the checkout's copy and say so in the
+**Resumo**.
 
 ## 2. Resolve the target
 
@@ -123,7 +133,7 @@ Use the first row that matches the request:
 
 | # | Request contains | Head (`head`) | PR metadata |
 |---|---|---|---|
-| 1 | A PR number (`47`, `#47`, `PR 47`) or a URL `https://github.com/<owner>/<repo>/pull/<n>` | `gh` available: `gh pr view <n> --json number,title,body,url,baseRefName,headRefName,headRefOid`, then `git fetch --quiet origin pull/<n>/head`; `head` = `headRefOid`. `gh` unavailable: `git fetch --quiet origin pull/<n>/head`; `head` = `git rev-parse FETCH_HEAD`; branch name = `pull/<n>`. | From `gh`. Without `gh`: none; put `PR não consultado (gh sem autenticação).` in the **Resumo**. |
+| 1 | A PR number (`47`, `#47`, `PR 47`) or a URL `https://github.com/<owner>/<repo>/pull/<n>` | `gh` available: `gh pr view <n> --json number,title,body,url,state,mergedAt,mergeCommit,baseRefName,headRefName,headRefOid`, then `git fetch --quiet origin pull/<n>/head`; `head` = `headRefOid`. `gh` unavailable: `git fetch --quiet origin pull/<n>/head`; `head` = `git rev-parse FETCH_HEAD`; branch name = `pull/<n>`. | From `gh`. Without `gh`: none; put `PR não consultado (gh sem autenticação).` in the **Resumo**. |
 | 2 | A branch name | If it is the branch checked out here: `HEAD`. Else `origin/<b>` if it exists. Else local `<b>`. | If `gh` is available: `gh pr list --head <b> --state open --json number,title,body,url,baseRefName,headRefOid --limit 1`. |
 | 3 | Neither (current branch) | `HEAD` of the current checkout. | If `gh` is available: `gh pr view --json number,title,body,url,baseRefName,headRefOid` (fails silently when there is no PR). |
 
@@ -147,7 +157,17 @@ Then set:
 - `pr` = PR number, or empty.
 - `head` = `git rev-parse <resolved ref>`: always a full 40-character SHA
   from here on.
-- `mb` = `git merge-base <base> <head>`.
+- `mb` = `git merge-base <base> <head>`, except:
+  - PR `state` is `MERGED`: `mb` = `git merge-base <mergeCommit.oid>^1 <head>`
+    (the branch point, which works for merge, squash and rebase merges). Put
+    `PR já mergeado em <mergedAt, AAAA-MM-DD> (<mergeCommit7>); revisado o
+    intervalo do PR.` in the **Resumo**.
+  - PR `state` is `CLOSED`: **STOP** and ask whether to review a closed,
+    unmerged PR.
+  - No PR metadata and `git merge-base --is-ancestor <head> <base>` succeeds
+    (the branch is already contained in `base`, so the range would be
+    empty): **STOP** and ask for the PR number, since the original range
+    cannot be recovered without it.
 - If `head` is local `HEAD` and PR metadata exists with a different
   `headRefOid`, put in the **Resumo**: `Revisado o HEAD local (<sha7>), que
   difere do head do PR (<sha7>).`
@@ -184,8 +204,10 @@ Whenever `m.branch` = `branch`, re-check every `m.unresolved` item in any mode
 
 1. `git log --oneline <mb>..<head>` and `git diff --stat` for the range.
 2. If the range is empty and there are no `m.unresolved` items to re-check:
-   verdict `sem alterações`, output only the header and **Resumo**
-   (`Nenhuma alteração entre <base> e <head7>.`), then go to section 8.
+   verdict `sem alterações`. Output exactly four lines: the `## Revisão:`
+   title, **Modo**, **Resumo** (`Nenhuma alteração entre <base> e <head7>.`
+   plus any notes from sections 1–2) and **Veredito**. Skip sections 5–7
+   (including the "Verificações incompletas" note), then go to section 8.
 3. Read the full diff. For each changed file, read the whole file at `head`
    (`git show <head>:<path>` when `head` is not checked out). Read callers,
    types and tests of every changed exported symbol (`grep -rn <symbol>`).
@@ -421,7 +443,7 @@ step.
    {
      "version": 1,
      "pr": 47,
-     "repo": "<owner>/<name> (optional; defaults to the gh repo of the checkout)",
+     "repo": "<owner>/<name>",
      "commit": "<full 40-char head SHA>",
      "branch": "<branch>",
      "verdict": "<verdict>",
@@ -439,13 +461,16 @@ step.
    }
    ```
 
-   `line` and `start_line` are line numbers in the file at `head` (the right
+   `repo` is optional; when omitted, the script uses the `gh` repo of the
+   checkout. `line` and `start_line` are line numbers in the file at `head` (the right
    side of the diff). Omit `start_line` for single-line findings. List every
    finding; omit highlights, questions and `PRE-n` items (they stay only in
    `body`).
 
-3. Run `git check-ignore -q "$checkout_root/.last-review"`. If it exits
-   non-zero (an older branch without the ignore rule), add to **Resumo**:
+3. Check the branch's tracked ignore rules, not local excludes (which only
+   exist on this machine):
+   `git show <head>:.gitignore 2>/dev/null | grep -qxE '/?\.last-review(\.json)?|/?\.last-review\*'`.
+   If it exits non-zero, add to **Resumo**:
    `.last-review não está no .gitignore desta branch; não o commite.`
 
 ## 9. Persistent memory
