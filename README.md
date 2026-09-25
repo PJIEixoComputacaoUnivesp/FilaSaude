@@ -155,6 +155,15 @@ O frontend fica disponível em `http://localhost:8080` e a API em
 `http://localhost:3000/health` ou pelo gateway do frontend em
 `http://localhost:8080/api/health`.
 
+O Compose também sobe um PostgreSQL 17 com recursos limitados, acessível apenas
+em `127.0.0.1:5432` (banco, usuário e senha `filasaude`, configuráveis pelo
+`.env`, veja `.env.example`). Para subir somente o banco durante o
+desenvolvimento com `pnpm dev`:
+
+```bash
+docker compose up -d postgres
+```
+
 ### Produção na DigitalOcean
 
 A infraestrutura de produção usa Terraform para provisionar um Droplet, IP
