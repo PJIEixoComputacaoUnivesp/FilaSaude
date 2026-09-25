@@ -100,11 +100,12 @@ use um runner com IP fixo e atualize `ssh_allowed_cidrs`.
 
 ## 4. Publicação e rollback
 
-Pull requests e pushes na `main` executam lint, typecheck, testes, build,
-validação do Terraform e build das imagens (workflow `CI`). A CI só valida as
-imagens: não as publica no GHCR nem atualiza o Droplet. Assim, o registro
-guarda apenas versões que foram de fato para produção, o que mantém os pacotes
-privados dentro da cota gratuita de armazenamento.
+Pull requests e pushes na `main` executam lint, typecheck, testes, build e
+validação do Terraform (workflow `CI`). A CI não constrói as imagens Docker nem
+atualiza o Droplet: as imagens são construídas e publicadas só no deploy. Assim,
+o registro guarda apenas versões que foram de fato para produção, o que mantém
+os pacotes privados dentro da cota gratuita de armazenamento. Como
+consequência, um erro no `Dockerfile` só aparece no deploy.
 
 O deploy é manual, pelo workflow `Deploy`: na aba Actions, clique em "Run
 workflow" na branch `main`. Pela linha de comando:
@@ -123,7 +124,9 @@ O workflow segue três etapas:
    "Qualidade do monorepo" da CI.
 2. **Publicar imagens:** se a imagem `sha-<commit>` ainda não existe no GHCR
    (commit nunca publicado, ou versão já apagada), ela é construída a partir
-   desse commit e enviada. Se já existe, o build é ignorado.
+   desse commit e enviada. Se já existe, o build é ignorado. As camadas ficam
+   no cache do GitHub Actions (separado do GHCR), o que acelera os próximos
+   deploys.
 3. **Deploy:** os arquivos de `deploy/` também vêm desse commit, para que o
    compose e os scripts correspondam à imagem.
 
