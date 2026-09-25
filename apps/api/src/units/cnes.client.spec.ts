@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { CnesClient } from './cnes.client.js';
 import type { MunicipalitiesClient } from './municipalities.client.js';
 import { parseState } from './states.js';
@@ -88,6 +89,32 @@ describe('CnesClient', () => {
       expect.objectContaining({ city: 'Rio de Janeiro', state: 'RJ' }),
       expect.objectContaining({ city: 'São Paulo', state: 'SP' }),
     ]);
+  });
+
+  it('skips invalid records instead of failing the whole collection', async () => {
+    const warn = vi
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation(() => undefined);
+    mockCnes([
+      establishment(-23.55, -46.63),
+      establishment(-22.9, -43.2, { codigo_cnes: 2, codigo_uf: 99 }),
+      establishment(-22.9, -43.2, { codigo_cnes: 3, codigo_municipio: 1 }),
+    ]);
+
+    const units = await client.fetchUnits(null);
+
+    expect(units.map((unit) => unit.id)).toEqual(['1234567']);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('Skipped 2 of 3 CNES records'),
+    );
+  });
+
+  it('fails when every record is invalid', async () => {
+    mockCnes([establishment(-23.55, -46.63, { codigo_uf: 99 })]);
+
+    await expect(client.fetchUnits(null)).rejects.toThrow(
+      'CNES returned no valid establishment',
+    );
   });
 
   it('reads every page exactly once across concurrent batches', async () => {

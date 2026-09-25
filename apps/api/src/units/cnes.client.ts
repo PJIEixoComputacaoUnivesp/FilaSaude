@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { MunicipalitiesClient } from './municipalities.client.js';
 import { stateAbbreviation, type BrazilianState } from './states.js';
 import type { HealthUnit } from './units.types.js';
@@ -116,6 +116,8 @@ function normalizeUnit(
 
 @Injectable()
 export class CnesClient {
+  private readonly logger = new Logger(CnesClient.name);
+
   constructor(private readonly municipalitiesClient: MunicipalitiesClient) {}
 
   /** Fetches the units of one state, or of the whole country when state is null. */
@@ -133,13 +135,48 @@ export class CnesClient {
     ]);
     const records = recordsByType.flat();
 
-    const units = records
-      .map((record) => normalizeUnit(record, municipalities))
-      .filter((unit): unit is HealthUnit => unit !== null);
+    const units = this.normalizeAll(records, municipalities);
 
     return [...new Map(units.map((unit) => [unit.id, unit])).values()].sort(
       (left, right) => left.name.localeCompare(right.name, 'pt-BR'),
     );
+  }
+
+  /**
+   * Normalizes each record on its own, so one inconsistent CNES record is
+   * skipped instead of failing the whole collection. Fails only when every
+   * record is invalid, which points to a source problem rather than bad data.
+   */
+  private normalizeAll(
+    records: readonly JsonRecord[],
+    municipalities: ReadonlyMap<string, string>,
+  ): HealthUnit[] {
+    const units: HealthUnit[] = [];
+    const skipped = new Map<string, number>();
+
+    for (const record of records) {
+      try {
+        const unit = normalizeUnit(record, municipalities);
+        if (unit) units.push(unit);
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        skipped.set(reason, (skipped.get(reason) ?? 0) + 1);
+      }
+    }
+
+    const skippedCount = [...skipped.values()].reduce((a, b) => a + b, 0);
+    if (skippedCount === 0) return units;
+
+    const reasons = [...skipped]
+      .map(([reason, count]) => `${reason} (${count})`)
+      .join('; ');
+    if (skippedCount === records.length) {
+      throw new Error(`CNES returned no valid establishment: ${reasons}`);
+    }
+    this.logger.warn(
+      `Skipped ${skippedCount} of ${records.length} CNES records: ${reasons}`,
+    );
+    return units;
   }
 
   private async fetchRecords(
