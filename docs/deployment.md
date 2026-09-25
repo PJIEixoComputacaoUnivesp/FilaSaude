@@ -69,10 +69,19 @@ adicione os secrets:
 | `ACME_EMAIL` | E-mail usado na emissão dos certificados TLS |
 | `POSTGRES_PASSWORD` | Senha do PostgreSQL de produção (`openssl rand -hex 32`) |
 
-Crie também a variável de Actions `DEPLOY_ENABLED` com o valor `true` somente
-depois que o Droplet, o DNS e todos os secrets estiverem prontos. Enquanto ela
-não existir, a CI publica as imagens, mas não tenta acessar um servidor ainda
-inexistente.
+Crie também duas variáveis de Actions:
+
+- `DEPLOY_ENABLED` com o valor `true`, somente depois que o Droplet, o DNS e
+  todos os secrets estiverem prontos. Sem ela, o workflow de deploy não faz
+  nada.
+- `DEPLOYERS` com os logins do GitHub autorizados a publicar, separados por
+  vírgula e sem espaços (ex.: `edvardsanta`). Qualquer pessoa com escrita no
+  repositório vê o botão "Run workflow", mas para quem não está na lista o job
+  é pulado.
+
+No environment `production`, restrinja **Deployment branches and tags** à
+branch `main`. A checagem de `DEPLOYERS` fica no workflow; essa regra impede
+que um workflow alterado em outra branch acesse os secrets de produção.
 
 Confirme a fingerprint do host por um canal confiável antes de salvar
 `DROPLET_KNOWN_HOSTS`. Depois da confirmação, a linha pode ser coletada com:
@@ -92,8 +101,25 @@ use um runner com IP fixo e atualize `ssh_allowed_cidrs`.
 ## 4. Publicação e rollback
 
 Pull requests executam lint, typecheck, testes, build, validação do Terraform e
-build das imagens. Um push na `main`, depois dessas verificações, publica as
-imagens no GHCR e atualiza o Droplet.
+build das imagens (workflow `CI`). Um push na `main`, depois dessas
+verificações, publica as imagens no GHCR com a tag `sha-<commit>`, mas **não**
+atualiza o Droplet.
+
+O deploy é manual, pelo workflow `Deploy`: na aba Actions, clique em "Run
+workflow" na branch `main`. Pela linha de comando:
+
+```bash
+# último commit da main (espere a CI desse commit terminar)
+gh workflow run deploy.yml --ref main
+
+# uma imagem específica, por exemplo para voltar a uma versão anterior
+gh workflow run deploy.yml --ref main -f image_tag=sha-<commit completo>
+```
+
+Com `image_tag`, os arquivos de `deploy/` também vêm desse commit, para que o
+compose e os scripts correspondam à imagem. O workflow confere se as imagens
+existem no GHCR antes de acessar o servidor. As tags disponíveis são os
+commits da `main` cuja CI passou (`git log --format='sha-%H' origin/main`).
 
 O deploy acontece em duas etapas. Primeiro, `deploy.sh deploy <tag>` sobe a
 nova versão e aguarda os health checks do Compose. Depois, a CI verifica
@@ -107,7 +133,9 @@ bem-sucedida, a tag anterior é reaplicada automaticamente. No primeiro deploy
 ainda não há versão anterior, então a falha apenas interrompe a publicação.
 Cada tag tem o formato `sha-<commit>`.
 
-Para reaplicar manualmente a última versão bem-sucedida:
+Para voltar a uma versão específica, rode o workflow `Deploy` com o
+`image_tag` desejado, como acima. Para reaplicar direto no servidor a última
+versão bem-sucedida:
 
 ```bash
 /opt/filasaude/deploy.sh rollback
