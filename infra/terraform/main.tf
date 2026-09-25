@@ -3,6 +3,8 @@ locals {
   tags          = [var.project_name, var.environment, "terraform"]
 }
 resource "digitalocean_project" "this" {
+  count = var.project_id == null ? 1 : 0
+
   name        = local.resource_name
   description = "Infraestrutura ${var.environment} do FilaSaúde"
   purpose     = "Web Application"
@@ -109,7 +111,7 @@ resource "digitalocean_record" "app" {
 }
 
 resource "digitalocean_project_resources" "this" {
-  project = digitalocean_project.this.id
+  project = var.project_id != null ? var.project_id : digitalocean_project.this[0].id
   resources = [
     digitalocean_droplet.app.urn,
     digitalocean_reserved_ip.app.urn,
