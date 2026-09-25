@@ -81,6 +81,35 @@ describe('UnitsService', () => {
     }
   });
 
+  it('returns national data without a state', async () => {
+    const fetchUnits = vi.fn().mockResolvedValue([liveUnit]);
+    const client = { fetchUnits } as unknown as CnesClient;
+    const service = new UnitsService(client);
+
+    const response = await service.findAll();
+
+    expect(fetchUnits).toHaveBeenCalledWith(null);
+    expect(response.metadata).toMatchObject({ state: 'BR', count: 1 });
+  });
+
+  it('shares a single CNES fetch between concurrent requests', async () => {
+    let resolveFetch: (units: HealthUnit[]) => void = () => undefined;
+    const fetchUnits = vi.fn().mockReturnValue(
+      new Promise<HealthUnit[]>((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+    const client = { fetchUnits } as unknown as CnesClient;
+    const service = new UnitsService(client);
+
+    const first = service.findAll();
+    const second = service.findAll();
+    resolveFetch([liveUnit]);
+
+    expect(await second).toBe(await first);
+    expect(fetchUnits).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects an invalid state before calling CNES', async () => {
     const fetchUnits = vi.fn();
     const client = { fetchUnits } as unknown as CnesClient;
