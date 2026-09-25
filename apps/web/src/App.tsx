@@ -28,8 +28,11 @@ function Header() {
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       setIsMenuOpen(false);
-      // The menu is hidden on close, so focus inside it would fall to <body>.
-      menuButtonRef.current?.focus();
+      // On small screens the menu is hidden on close, so focus inside it would
+      // fall to <body>. From md up the button is hidden and the navigation
+      // stays visible, so the current focus is still valid and is kept.
+      const button = menuButtonRef.current;
+      if (button && button.getClientRects().length > 0) button.focus();
     };
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
