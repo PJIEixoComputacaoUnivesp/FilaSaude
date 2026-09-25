@@ -5,6 +5,7 @@ import { parseState, type BrazilianState } from './states.js';
 import type { HealthUnit, UnitsResponse } from './units.types.js';
 
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const NATIONAL_KEY = 'BR';
 const FALLBACK_RETRIEVED_AT = '2026-09-24T00:00:00-03:00';
 export const CNES_SOURCE_URL =
   'https://apidadosabertos.saude.gov.br/cnes/estabelecimentos';
@@ -48,14 +49,33 @@ export class UnitsService {
     string,
     { expiresAt: number; response: UnitsResponse }
   >();
+  private readonly pending = new Map<string, Promise<UnitsResponse>>();
 
   constructor(private readonly cnesClient: CnesClient) {}
 
-  async findAll(stateValue: string): Promise<UnitsResponse> {
-    const state = parseState(stateValue);
-    const cached = this.cache.get(state.abbreviation);
+  /** Lists the units of one state, or of the whole country without a state. */
+  async findAll(stateValue?: string): Promise<UnitsResponse> {
+    const state = stateValue === undefined ? null : parseState(stateValue);
+    const key = state?.abbreviation ?? NATIONAL_KEY;
+    const cached = this.cache.get(key);
     if (cached && cached.expiresAt > Date.now()) return cached.response;
 
+    // Concurrent requests for the same key share a single CNES fetch.
+    let request = this.pending.get(key);
+    if (!request) {
+      request = this.load(key, state, cached?.response).finally(() =>
+        this.pending.delete(key),
+      );
+      this.pending.set(key, request);
+    }
+    return request;
+  }
+
+  private async load(
+    key: string,
+    state: BrazilianState | null,
+    previous: UnitsResponse | undefined,
+  ): Promise<UnitsResponse> {
     try {
       const units = await this.cnesClient.fetchUnits(state);
       if (units.length === 0) {
@@ -64,37 +84,33 @@ export class UnitsService {
 
       const response = this.buildResponse(
         units,
-        state,
+        key,
         'live',
         new Date().toISOString(),
       );
-      this.cache.set(state.abbreviation, {
+      this.cache.set(key, {
         expiresAt: Date.now() + CACHE_TTL_MS,
         response,
       });
       return response;
     } catch (error: unknown) {
       const reason = error instanceof Error ? error.message : 'unknown error';
-      this.logger.warn(
-        `CNES request failed for ${state.abbreviation}: ${reason}`,
-      );
+      this.logger.warn(`CNES request failed for ${key}: ${reason}`);
 
-      if (cached) {
-        this.logger.warn(
-          `Using the last live CNES response for ${state.abbreviation}`,
-        );
+      if (previous) {
+        this.logger.warn(`Using the last live CNES response for ${key}`);
         return {
-          ...cached.response,
-          metadata: { ...cached.response.metadata, isStale: true },
+          ...previous,
+          metadata: { ...previous.metadata, isStale: true },
         };
       }
 
-      if (state.abbreviation !== 'SP') throw error;
+      if (key !== 'SP') throw error;
 
       this.logger.warn('Using the CNES fallback snapshot for SP');
       return this.buildResponse(
         fallbackUnits(),
-        state,
+        key,
         'fallback',
         FALLBACK_RETRIEVED_AT,
       );
@@ -103,7 +119,7 @@ export class UnitsService {
 
   private buildResponse(
     units: HealthUnit[],
-    state: BrazilianState,
+    key: string,
     dataOrigin: 'live' | 'fallback',
     retrievedAt: string,
   ): UnitsResponse {
@@ -111,7 +127,7 @@ export class UnitsService {
       data: units,
       metadata: {
         count: units.length,
-        state: state.abbreviation,
+        state: key,
         dataOrigin,
         isStale: dataOrigin === 'fallback',
         retrievedAt,
