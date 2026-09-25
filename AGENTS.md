@@ -13,6 +13,12 @@ orientação médica ou recomendação de estabelecimentos.
 - `packages/*`: bibliotecas compartilhadas, quando necessárias.
 - `e2e`: testes de ponta a ponta, quando adicionados.
 - `docs`: documentação técnica e decisões de arquitetura.
+- `.agents/skills`: skills do projeto, válidas para qualquer agente.
+- `.agents/agents`: agentes do projeto, também independentes de provider
+  (`.claude/agents` aponta para essa pasta). Ex.: `code-reviewer`, usado pela
+  skill `review-pull-request`.
+- `.agents/agent-memory/<agente>`: memória persistente de cada agente, local
+  a cada pessoa e ignorada pelo Git.
 
 ## Ambiente e comandos
 
