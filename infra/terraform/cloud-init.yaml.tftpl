@@ -32,6 +32,11 @@ write_files:
       PermitRootLogin no
       PubkeyAuthentication yes
 
+swap:
+  filename: /swapfile
+  size: 1G
+  maxsize: 1G
+
 runcmd:
   - systemctl enable --now docker
   - systemctl enable --now fail2ban
