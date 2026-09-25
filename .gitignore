@@ -74,5 +74,5 @@ skills-lock.json
 *.bak-[0-9]*
 
 # code-reviewer agent: per-developer memory and last-review marker.
-.agents/agent-memory/
+.agents/agent-memory
 .last-review
