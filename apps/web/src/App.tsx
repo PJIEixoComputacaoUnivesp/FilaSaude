@@ -163,7 +163,7 @@ function HomePage() {
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="flex min-h-screen flex-col bg-fila-bg font-sans">
+      <div className="flex min-h-dvh flex-col bg-fila-bg font-sans">
         <Header />
         <Routes>
           <Route path="/" element={<HomePage />} />
