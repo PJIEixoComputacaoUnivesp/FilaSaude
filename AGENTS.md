@@ -56,6 +56,34 @@ orientação médica ou recomendação de estabelecimentos.
 - Descreva no PR o objetivo, como validar e eventuais riscos ou pendências,
   também em português do Brasil e sem atribuição de IA.
 
+### Worktrees
+
+Use uma worktree quando precisar trabalhar em outra branch sem mexer no
+checkout atual, por exemplo:
+
+- desenvolver duas tarefas em paralelo ou revisar e testar o PR de outra
+  pessoa enquanto sua branch tem mudanças pela metade;
+- rodar agentes de IA em paralelo, cada um na sua worktree, para que um não
+  altere os arquivos do outro;
+- fazer um hotfix ou deploy a partir da `main` sem `git stash`;
+- deixar build, testes ou `pnpm dev` de uma branch rodando enquanto trabalha
+  em outra.
+
+Para uma mudança rápida na branch atual, ou quando `git switch` resolve sem
+perder nada, não crie worktree.
+
+Regras:
+
+- Crie worktrees sempre em `.worktrees/<nome>` dentro do repositório, nunca
+  em pastas irmãs nem em `/tmp`. A pasta `.worktrees/` é ignorada pelo Git.
+- Use como nome a branch sem o prefixo, por exemplo
+  `git worktree add .worktrees/units-cnes -b feat/units-cnes origin/main`.
+- Cada worktree tem seu próprio `node_modules`: rode `pnpm install` nela.
+  Arquivos ignorados, como `.env`, não são copiados e precisam ser criados de
+  novo se forem necessários.
+- Depois do merge, remova a worktree com `git worktree remove .worktrees/<nome>`
+  e limpe referências antigas com `git worktree prune`.
+
 <!-- ai-memory:start -->
 ## Long-term memory (ai-memory)
 
