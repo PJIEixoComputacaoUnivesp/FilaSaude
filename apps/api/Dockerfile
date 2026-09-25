@@ -40,7 +40,7 @@ COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm install --prod --frozen-lockfile --filter @filasaude/api
+    pnpm install --prod --frozen-lockfile --ignore-scripts --filter @filasaude/api
 
 FROM docker.io/library/node:24-bookworm-slim AS runtime
 
