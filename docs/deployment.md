@@ -7,8 +7,9 @@ A produção do FilaSaúde usa um único Droplet e três containers:
 - o frontend é servido por Nginx em uma rede interna do Compose;
 - a API NestJS fica disponível externamente pelo prefixo `/api`.
 
-As imagens são publicadas no GitHub Container Registry (GHCR). O servidor não
-compila o projeto: ele apenas baixa imagens identificadas pelo SHA do commit.
+As imagens são publicadas no GitHub Container Registry (GHCR) somente no
+deploy, identificadas pelo SHA do commit. O servidor não compila o projeto:
+ele apenas baixa essas imagens.
 
 ## 1. Provisionar a infraestrutura
 
@@ -99,10 +100,11 @@ use um runner com IP fixo e atualize `ssh_allowed_cidrs`.
 
 ## 4. Publicação e rollback
 
-Pull requests executam lint, typecheck, testes, build, validação do Terraform e
-build das imagens (workflow `CI`). Um push na `main`, depois dessas
-verificações, publica as imagens no GHCR com a tag `sha-<commit>`, mas **não**
-atualiza o Droplet.
+Pull requests e pushes na `main` executam lint, typecheck, testes, build,
+validação do Terraform e build das imagens (workflow `CI`). A CI só valida as
+imagens: não as publica no GHCR nem atualiza o Droplet. Assim, o registro
+guarda apenas versões que foram de fato para produção, o que mantém os pacotes
+privados dentro da cota gratuita de armazenamento.
 
 O deploy é manual, pelo workflow `Deploy`: na aba Actions, clique em "Run
 workflow" na branch `main`. Pela linha de comando:
@@ -115,10 +117,18 @@ gh workflow run deploy.yml --ref main
 gh workflow run deploy.yml --ref main -f image_tag=sha-<commit completo>
 ```
 
-Com `image_tag`, os arquivos de `deploy/` também vêm desse commit, para que o
-compose e os scripts correspondam à imagem. O workflow confere se as imagens
-existem no GHCR antes de acessar o servidor. As tags disponíveis são os
-commits da `main` cuja CI passou (`git log --format='sha-%H' origin/main`).
+O workflow segue três etapas:
+
+1. **Validar commit:** o commit precisa estar na `main` e ter passado no check
+   "Qualidade do monorepo" da CI.
+2. **Publicar imagens:** se a imagem `sha-<commit>` ainda não existe no GHCR
+   (commit nunca publicado, ou versão já apagada), ela é construída a partir
+   desse commit e enviada. Se já existe, o build é ignorado.
+3. **Deploy:** os arquivos de `deploy/` também vêm desse commit, para que o
+   compose e os scripts correspondam à imagem.
+
+Qualquer commit da `main` com CI aprovada pode ser publicado ou usado num
+rollback (`git log --format='sha-%H' origin/main`).
 
 O deploy acontece em duas etapas. Primeiro, `deploy.sh deploy <tag>` sobe a
 nova versão e aguarda os health checks do Compose. Depois, a CI verifica
