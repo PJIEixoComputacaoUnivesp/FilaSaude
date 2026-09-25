@@ -174,6 +174,13 @@ do Caddy, que fornece HTTPS.
 Consulte o [guia de deploy](docs/deployment.md) para provisionamento,
 configuração dos secrets do GitHub, publicação e rollback.
 
+### Documentação e propostas
+
+- [Fonte pública de unidades de urgência](docs/adr/0001-public-health-unit-data-source.md)
+  — decisão arquitetural aceita sobre CNES e IBGE.
+- [Simulação de ocupação operacional](docs/proposals/0001-operational-occupancy-simulation.md)
+  — proposta em discussão para avaliação e refinamento pelo grupo.
+
 ---
 
 ## 🧪 Testes
