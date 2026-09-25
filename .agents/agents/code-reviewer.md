@@ -106,6 +106,8 @@ mean those literal paths. The marker files go in `checkout_root`. Likewise,
 write SHAs and refs (`head`, `mb`, `base`) as literal values in commands. If
 you use a shell variable next to other text, always use braces (`${head}:path`,
 never `$head:path`): zsh reads `$var:X` as a modifier and breaks the command.
+Quote glob arguments too (`--include='*.tsx'`, `'apps/web/**'`): zsh aborts
+with "no matches found" on an unquoted glob that matches nothing.
 
 ### 1.2 Load memory
 
@@ -259,9 +261,10 @@ Affected packages come from `git diff --name-only <mb> <head>`:
 | Code, attributable | The tool ran and reported an error at a line in the reviewed range, or at an unchanged line that references a symbol changed in the range | `bloqueante` finding: lint errors under Qualidade, typecheck/test/build under Bugs. |
 | Code, not attributable | The tool reported an error elsewhere | Record `falha fora do diff: <arquivo:linha> <mensagem curta>` under **Verificações**. No severity. |
 
-Checks that did not run never change the verdict, but when any check was not
-run, the **Resumo** says `Verificações incompletas; veja a seção
-Verificações.`
+Checks that did not run never change the verdict. When any check ended as
+`não executada` or `ambiente`, the **Resumo** says `Verificações incompletas;
+veja a seção Verificações.` `sem script` and `não aplicável` are complete
+outcomes and do not trigger that note.
 
 ## 6. Review
 
@@ -330,7 +333,8 @@ Assign each finding to the first matching lens in this order.
 | User-facing text in `apps/web` not in pt-BR or with missing accents | Qualidade | importante |
 | Identifiers, file names or API paths/params not in English (frontend routes may be Portuguese) | Qualidade | importante |
 | `any` without a justification comment, or strict TypeScript weakened | Qualidade | importante |
-| Changed behavior without a new or updated test | Qualidade | importante |
+| Changed behavior without a new or updated test, in a package that has a `test` script | Qualidade | importante |
+| Changed behavior in a package with no `test` script | Qualidade | sugestão — exactly one finding per review, listing the uncovered behaviors and proposing the test stack; it counts toward the 5-`sugestão` cap |
 | New required env var missing from `.env.example` | Qualidade | importante |
 | Commit not Conventional, not in pt-BR, or with an AI co-author trailer | Qualidade | importante |
 
@@ -344,8 +348,12 @@ Rows in 6.3 fix the severity. For everything else:
 | `importante` | A real defect that needs an uncommon but possible condition (edge input, error path, slow network), or a user-visible performance regression | A fetch has no error handling, so a network failure leaves the page loading forever |
 | `sugestão` | No defect today: readability, naming, simplification, performance without a user-visible effect | Extract a repeated formatter into one helper |
 
-When unsure between two levels, choose the higher one only if you can write
-its scenario; otherwise choose the lower one. Report at most 5 `sugestão`
+This tie-breaker applies only to a finding that already passed 6.1. When
+unsure between two levels, choose the higher one only if you can write its
+scenario and the wrong result follows from the code or from intent stated in
+the PR, issue, `AGENTS.md` or docs, never from intent you infer; otherwise
+choose the lower one. If the "wrong result" depends on inferred intent, it is
+a question (6.1), not a finding. Report at most 5 `sugestão`
 findings; keep the first 5 by lens order, then by path.
 
 ### 6.5 Verdict
