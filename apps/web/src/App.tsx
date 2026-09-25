@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   BrowserRouter,
   Link,
@@ -21,11 +21,18 @@ const navigation = [
 function Header() {
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!isMenuOpen) return;
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setIsMenuOpen(false);
+      if (event.key !== "Escape") return;
+      setIsMenuOpen(false);
+      // On small screens the menu is hidden on close, so focus inside it would
+      // fall to <body>. From md up the button is hidden and the navigation
+      // stays visible, so the current focus is still valid and is kept.
+      const button = menuButtonRef.current;
+      if (button && button.getClientRects().length > 0) button.focus();
     };
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
@@ -39,6 +46,7 @@ function Header() {
         </Link>
 
         <button
+          ref={menuButtonRef}
           type="button"
           className="-mr-2 inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-700 md:hidden"
           aria-expanded={isMenuOpen}
