@@ -66,7 +66,6 @@ adicione os secrets:
 | `DEPLOY_SSH_KEY` | Chave SSH privada correspondente à chave pública do Terraform |
 | `DROPLET_KNOWN_HOSTS` | Linha de host key confiável do servidor |
 | `APP_DOMAIN` | Domínio completo, sem protocolo, ou `http://IP` sem domínio |
-| `ACME_EMAIL` | E-mail usado na emissão dos certificados TLS |
 | `POSTGRES_PASSWORD` | Senha do PostgreSQL de produção (`openssl rand -hex 32`) |
 
 Crie também duas variáveis de Actions:
