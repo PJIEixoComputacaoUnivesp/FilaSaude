@@ -11,14 +11,15 @@ function isRecord(value: unknown): value is JsonRecord {
 
 @Injectable()
 export class MunicipalitiesClient {
-  async fetchNames(state: BrazilianState): Promise<Map<string, string>> {
-    const response = await fetch(
-      `${IBGE_API_URL}/estados/${state.abbreviation}/municipios`,
-      {
-        headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(10_000),
-      },
-    );
+  /** Fetches municipality names of one state, or of the whole country when state is null. */
+  async fetchNames(state: BrazilianState | null): Promise<Map<string, string>> {
+    const path = state
+      ? `/estados/${state.abbreviation}/municipios`
+      : '/municipios';
+    const response = await fetch(`${IBGE_API_URL}${path}`, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(10_000),
+    });
 
     if (!response.ok) {
       throw new Error(`IBGE request failed with status ${response.status}`);

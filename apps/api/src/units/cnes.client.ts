@@ -1,14 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { MunicipalitiesClient } from './municipalities.client.js';
-import type { BrazilianState } from './states.js';
+import { stateAbbreviation, type BrazilianState } from './states.js';
 import type { HealthUnit } from './units.types.js';
 
 const CNES_API_URL =
   'https://apidadosabertos.saude.gov.br/cnes/estabelecimentos';
 const PAGE_SIZE = 20;
-const MAX_PAGES = 100;
+const MAX_PAGES = 300;
+const PAGE_BATCH_SIZE = 5;
 const REQUEST_TIMEOUT_MS = 10_000;
-const FETCH_DEADLINE_MS = 30_000;
+const STATE_FETCH_DEADLINE_MS = 30_000;
+const NATIONAL_FETCH_DEADLINE_MS = 45_000;
 const unitTypes = new Map<number, HealthUnit['unitType']>([
   [20, 'PRONTO SOCORRO GERAL'],
   [21, 'PRONTO SOCORRO ESPECIALIZADO'],
@@ -67,7 +69,6 @@ function parsePage(payload: unknown): JsonRecord[] {
 function normalizeUnit(
   record: JsonRecord,
   municipalities: ReadonlyMap<string, string>,
-  state: BrazilianState,
 ): HealthUnit | null {
   if (record.estabelecimento_faz_atendimento_ambulatorial_sus !== 'SIM') {
     return null;
@@ -81,6 +82,9 @@ function normalizeUnit(
   const city = municipalities.get(numericId(record, 'codigo_municipio'));
   if (!city) throw new Error('CNES returned an unknown municipality');
 
+  const state = stateAbbreviation(numericId(record, 'codigo_uf'));
+  if (!state) throw new Error('CNES returned an unknown state');
+
   return {
     id: numericId(record, 'codigo_cnes').padStart(7, '0'),
     name: requiredString(record, 'nome_fantasia'),
@@ -91,7 +95,7 @@ function normalizeUnit(
       district: optionalString(record, 'bairro_estabelecimento'),
       postalCode: optionalString(record, 'codigo_cep_estabelecimento'),
       city,
-      state: state.abbreviation,
+      state,
     },
     location: {
       latitude: optionalCoordinate(
@@ -114,8 +118,11 @@ function normalizeUnit(
 export class CnesClient {
   constructor(private readonly municipalitiesClient: MunicipalitiesClient) {}
 
-  async fetchUnits(state: BrazilianState): Promise<HealthUnit[]> {
-    const deadline = AbortSignal.timeout(FETCH_DEADLINE_MS);
+  /** Fetches the units of one state, or of the whole country when state is null. */
+  async fetchUnits(state: BrazilianState | null): Promise<HealthUnit[]> {
+    const deadline = AbortSignal.timeout(
+      state ? STATE_FETCH_DEADLINE_MS : NATIONAL_FETCH_DEADLINE_MS,
+    );
     const [recordsByType, municipalities] = await Promise.all([
       Promise.all(
         [...unitTypes.keys()].map((unitType) =>
@@ -127,7 +134,7 @@ export class CnesClient {
     const records = recordsByType.flat();
 
     const units = records
-      .map((record) => normalizeUnit(record, municipalities, state))
+      .map((record) => normalizeUnit(record, municipalities))
       .filter((unit): unit is HealthUnit => unit !== null);
 
     return [...new Map(units.map((unit) => [unit.id, unit])).values()].sort(
@@ -136,39 +143,57 @@ export class CnesClient {
   }
 
   private async fetchRecords(
-    state: BrazilianState,
+    state: BrazilianState | null,
     unitType: number,
     deadline: AbortSignal,
   ): Promise<JsonRecord[]> {
     const records: JsonRecord[] = [];
 
-    for (let page = 0; page < MAX_PAGES; page += 1) {
-      const url = new URL(CNES_API_URL);
-      url.search = new URLSearchParams({
-        codigo_tipo_unidade: String(unitType),
-        codigo_uf: state.ibgeCode,
-        status: '1',
-        limit: String(PAGE_SIZE),
-        offset: String(page * PAGE_SIZE),
-      }).toString();
+    // CNES treats offset as a record index, so a batch of pages can be
+    // requested concurrently; the first short page marks the end.
+    for (let page = 0; page < MAX_PAGES; page += PAGE_BATCH_SIZE) {
+      const batch = await Promise.all(
+        Array.from({ length: PAGE_BATCH_SIZE }, (_, index) =>
+          this.fetchPage(state, unitType, page + index, deadline),
+        ),
+      );
 
-      const response = await fetch(url, {
-        headers: { Accept: 'application/json' },
-        signal: AbortSignal.any([
-          deadline,
-          AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-        ]),
-      });
-
-      if (!response.ok) {
-        throw new Error(`CNES request failed with status ${response.status}`);
+      for (const pageRecords of batch) {
+        records.push(...pageRecords);
+        if (pageRecords.length < PAGE_SIZE) return records;
       }
-
-      const pageRecords = parsePage(await response.json());
-      records.push(...pageRecords);
-      if (pageRecords.length < PAGE_SIZE) return records;
     }
 
     throw new Error('CNES pagination exceeded the safety limit');
+  }
+
+  private async fetchPage(
+    state: BrazilianState | null,
+    unitType: number,
+    page: number,
+    deadline: AbortSignal,
+  ): Promise<JsonRecord[]> {
+    const url = new URL(CNES_API_URL);
+    url.search = new URLSearchParams({
+      codigo_tipo_unidade: String(unitType),
+      ...(state && { codigo_uf: state.ibgeCode }),
+      status: '1',
+      limit: String(PAGE_SIZE),
+      offset: String(page * PAGE_SIZE),
+    }).toString();
+
+    const response = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.any([
+        deadline,
+        AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      ]),
+    });
+
+    if (!response.ok) {
+      throw new Error(`CNES request failed with status ${response.status}`);
+    }
+
+    return parsePage(await response.json());
   }
 }

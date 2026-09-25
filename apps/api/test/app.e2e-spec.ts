@@ -45,9 +45,20 @@ describe('AppController (e2e)', () => {
       .expect({ service: 'fila-saude-api', status: 'ok' });
   });
 
-  it('/units (GET)', () => {
+  it('/units returns national data (GET)', () => {
     return request(app.getHttpServer())
       .get('/units')
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.data).toEqual([testUnit]);
+        expect(body.metadata.state).toBe('BR');
+        expect(body.metadata.dataOrigin).toBe('live');
+      });
+  });
+
+  it('/units?state=SP (GET)', () => {
+    return request(app.getHttpServer())
+      .get('/units?state=SP')
       .expect(200)
       .expect(({ body }) => {
         expect(body.data).toEqual([testUnit]);

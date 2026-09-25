@@ -6,7 +6,7 @@ export class UnitsController {
   constructor(private readonly unitsService: UnitsService) {}
 
   @Get()
-  getUnits(@Query('state') state = 'SP') {
+  getUnits(@Query('state') state?: string) {
     return this.unitsService.findAll(state);
   }
 }
