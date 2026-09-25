@@ -243,9 +243,16 @@ If you cannot establish the scenario after reading the involved code, drop
 it. If it depends only on the author's intent (a business rule, a deliberate
 trade-off), write it under **Perguntas** (max 3, no severity, never affects
 the verdict). NEVER write "pode ser que" or "talvez" in a finding. Do not
-report: pre-existing problems in lines the change neither touches nor breaks;
-style that `oxlint` enforces; generic advice without a specific case ("add
-more tests").
+report: pre-existing problems in lines the change neither touches nor breaks
+(except security, below); style that `oxlint` enforces; generic advice
+without a specific case ("add more tests").
+
+**Pre-existing security problems.** Do not search for them, but if a file you
+read while reviewing has one that meets the same three criteria and would be
+`bloqueante` under 6.3/6.4, report it under **Segurança pré-existente** (max
+3, ID `PRE-n`, no severity tag). These items never affect the verdict, never
+enter Action items or `unresolved`, and are never posted as inline comments;
+suggest opening an issue for each.
 
 One root cause in several places is one finding that lists every location,
 the first being the primary `arquivo:linha`.
@@ -334,7 +341,8 @@ revisão.` NEVER use generic praise.
 ## 7. Write the review
 
 Use this exact structure and order. Omit **Itens da revisão anterior** when
-there were no `m.unresolved` items to re-check, **Perguntas** when empty, and
+there were no `m.unresolved` items to re-check, **Segurança pré-existente** and
+**Perguntas** when empty, and
 **Memória** when there is nothing to report. For an empty lens write
 `Nenhum achado.`
 
@@ -352,6 +360,8 @@ there were no `m.unresolved` items to re-check, **Perguntas** when empty, and
 ### Bugs e erros de lógica
 ### Performance
 ### Qualidade e manutenibilidade
+### Segurança pré-existente
+- **PRE-1** `caminho/arquivo.ts:10` — problema. Cenário. Sugestão: abrir issue com <correção>.
 ### Perguntas
 ### Pontos positivos
 ### Verificações
@@ -431,7 +441,8 @@ step.
 
    `line` and `start_line` are line numbers in the file at `head` (the right
    side of the diff). Omit `start_line` for single-line findings. List every
-   finding; omit highlights and questions.
+   finding; omit highlights, questions and `PRE-n` items (they stay only in
+   `body`).
 
 3. Run `git check-ignore -q "$checkout_root/.last-review"`. If it exits
    non-zero (an older branch without the ignore rule), add to **Resumo**:
