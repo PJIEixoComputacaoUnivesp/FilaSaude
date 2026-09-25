@@ -19,6 +19,17 @@
   aliases declared in `apps/web/src/index.css`.
 - Never rely on color alone for status or meaning.
 
+## Mobile
+
+- Mobile-first: 16px side gutters (`px-4`) on narrow screens, 24px from `sm`.
+- Touch targets are at least 44px (`min-h-11`, `h-11 w-11` for icon buttons).
+- Full-screen views (the map) use `dvh`-based flex layouts, never
+  `100vh` minus a hard-coded header height.
+- Long result lists load progressively (24 at a time, "Mostrar mais") with a
+  visible "Mostrando X de Y" count, instead of rendering every record at once.
+- Map overlays stay compact on narrow screens, and map fitting must keep points
+  out from under them.
+
 ## Initial patterns
 
 - Product status: compact bordered pill with explicit text.
