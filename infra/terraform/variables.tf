@@ -9,6 +9,13 @@ variable "environment" {
   default     = "production"
 }
 
+variable "project_id" {
+  description = "Existing DigitalOcean project ID. Leave null to create a project."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
 variable "region" {
   description = "DigitalOcean region slug."
   type        = string

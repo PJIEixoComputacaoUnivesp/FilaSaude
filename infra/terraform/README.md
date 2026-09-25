@@ -16,6 +16,10 @@ O `terraform.tfvars` e os arquivos de estado são locais e não devem ser
 versionados. Guarde uma cópia segura do estado: sem ele, o Terraform não
 consegue relacionar a configuração aos recursos já criados.
 
+Para usar um projeto já existente na DigitalOcean, informe `project_id` com o
+ID retornado por `doctl projects list`. Sem essa variável, o módulo cria o
+projeto `<project_name>-<environment>`.
+
 Os runners hospedados do GitHub não possuem um único endereço de saída. O
 exemplo libera a porta SSH para a internet para permitir o deploy, mas o
 cloud-init aceita somente chave, bloqueia senha e desabilita login de root. Se
