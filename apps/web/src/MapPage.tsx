@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { BrazilianStateSelect } from "./BrazilianStateSelect";
 import { UnitsMap } from "./UnitsMap";
 import { formatAddress, formatSourceDate } from "./units";
@@ -19,31 +20,43 @@ export function MapPage() {
     );
   }, [query, state]);
   const mapUnits = state.status === "success" ? filteredUnits : [];
+  const panelRef = useRef<HTMLElement>(null);
 
   return (
-    <main className="relative h-[calc(100vh-73px)] min-h-[34rem] w-full">
-      <UnitsMap units={mapUnits} />
+    <main className="relative min-h-[28rem] w-full flex-1">
+      <UnitsMap
+        units={mapUnits}
+        overlayRef={panelRef}
+        className="absolute inset-0"
+      />
 
       <section
-        className="absolute left-4 right-4 top-4 z-[900] rounded-2xl border border-slate-200 bg-white p-4 sm:left-6 sm:right-auto sm:w-96"
+        ref={panelRef}
+        className="absolute left-3 right-3 top-3 z-[900] rounded-2xl border border-slate-200 bg-white p-3 sm:left-6 sm:right-auto sm:top-4 sm:w-96 sm:p-4"
         aria-label="Busca no mapa"
       >
-        <BrazilianStateSelect value={stateCode} onChange={setStateCode} />
-        <label className="block">
-          <span className="mb-2 mt-3 block text-sm font-semibold text-slate-800">
-            Buscar no mapa
-          </span>
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Unidade, cidade ou bairro"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-fila-blue focus:ring-2 focus:ring-blue-100"
+        <div className="grid grid-cols-[minmax(0,7rem)_1fr] gap-2 sm:grid-cols-1 sm:gap-3">
+          <BrazilianStateSelect
+            value={stateCode}
+            onChange={setStateCode}
+            compact
           />
-        </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold text-slate-800 sm:mb-2 sm:text-sm">
+              Buscar no mapa
+            </span>
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Unidade, cidade ou bairro"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-fila-blue focus:ring-2 focus:ring-blue-100"
+            />
+          </label>
+        </div>
         {state.status === "loading" && (
           <p
-            className="mt-3 text-sm text-slate-600"
+            className="mt-2 text-sm text-slate-600 sm:mt-3"
             role="status"
             aria-live="polite"
           >
@@ -52,7 +65,7 @@ export function MapPage() {
         )}
         {state.status === "success" && (
           <div
-            className="mt-3 text-xs leading-relaxed text-slate-600"
+            className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 text-xs leading-relaxed text-slate-600 sm:mt-3"
             aria-live="polite"
           >
             <p>
@@ -65,8 +78,14 @@ export function MapPage() {
               }{" "}
               unidades no mapa.
             </p>
+            <Link
+              to="/units"
+              className="font-semibold text-fila-blue underline underline-offset-2"
+            >
+              Ver em lista
+            </Link>
             {state.response.metadata.isStale && (
-              <p className="mt-1 font-semibold text-amber-800">
+              <p className="mt-1 w-full font-semibold text-amber-800">
                 Cópia de segurança até{" "}
                 {formatSourceDate(state.response.metadata.latestSourceUpdate)}.
               </p>
@@ -74,12 +93,12 @@ export function MapPage() {
           </div>
         )}
         {state.status === "error" && (
-          <div className="mt-3 text-sm text-red-900" role="alert">
+          <div className="mt-2 text-sm text-red-900 sm:mt-3" role="alert">
             <p>{state.message}</p>
             <button
               type="button"
               onClick={retry}
-              className="mt-2 font-semibold text-fila-blue underline"
+              className="mt-1 min-h-11 font-semibold text-fila-blue underline"
             >
               Tentar novamente
             </button>
