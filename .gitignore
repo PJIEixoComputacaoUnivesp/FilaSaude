@@ -73,6 +73,7 @@ pnpm-debug.log*
 skills-lock.json
 *.bak-[0-9]*
 
-# code-reviewer agent: per-developer memory and last-review marker.
+# code-reviewer agent: per-developer memory and last-review markers.
 .agents/agent-memory
 .last-review
+.last-review.json
