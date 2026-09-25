@@ -1,6 +1,8 @@
 project_name      = "fila-saude"
 environment       = "production"
 region            = "nyc3"
+# Existing DigitalOcean project (doctl projects list). Omit to create one.
+# project_id      = "00000000-0000-0000-0000-000000000000"
 droplet_size      = "s-1vcpu-1gb"
 ssh_public_key    = "ssh-ed25519 AAAA... user@example.com"
 # GitHub-hosted runners do not have a stable outbound IP. Key-only SSH is still
