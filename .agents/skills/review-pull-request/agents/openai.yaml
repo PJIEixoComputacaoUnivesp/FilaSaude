@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Pull Request"
+  short_description: "Revisa PRs com o agente code-reviewer e memória persistente"
+  default_prompt: "Use $review-pull-request para revisar o PR desta branch."
