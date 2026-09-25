@@ -62,7 +62,7 @@ mkdir -p "$memory_dir" && touch "$memory_dir/MEMORY.md" || { echo "MEMORY_UNAVAI
 link="$checkout_root/.agents/agent-memory"
 if [ "$checkout_root" != "$main_root" ]; then
   if [ -L "$link" ]; then
-    [ "$(readlink -f "$link")" = "$(readlink -f "$shared")" ] || { rm "$link" && ln -s "$shared" "$link"; }
+    [ "$(readlink -f "$link")" = "$(readlink -f "$shared")" ] || { rm "${link:?}" && ln -s "$shared" "$link"; }
   elif [ -d "$link" ]; then
     conflicts="$(cd "$link" && find . -type f ! -name MEMORY.md | while IFS= read -r f; do
       if [ -e "$shared/$f" ] && ! cmp -s "$f" "$shared/$f"; then printf '%s\n' "$f"; fi; done)"
@@ -72,9 +72,9 @@ if [ "$checkout_root" != "$main_root" ]; then
       (cd "$link" && find . -type f -name MEMORY.md) | while IFS= read -r idx; do
         mkdir -p "$shared/$(dirname "$idx")" && touch "$shared/$idx"
         grep -vxF -f "$shared/$idx" "$link/$idx" >> "$shared/$idx"
-        rm "$link/$idx"
+        rm "${link:?}/${idx:?}"
       done
-      cp -R "$link/." "$shared/" && rm -rf "$link" && ln -s "$shared" "$link"
+      cp -R "$link/." "$shared/" && rm -rf "${link:?}" && ln -s "$shared" "$link"
     fi
   elif [ -e "$link" ]; then
     echo "MEMORY_LINK_CONFLICT: $link is a regular file (not linked)"
@@ -102,7 +102,10 @@ to the same files.
 Shell variables do not persist between tool calls. In every later command,
 substitute the absolute values printed for `checkout_root`, `post_script`
 and `memory_dir`; `$checkout_root`, `$post_script` and `$memory_dir` below
-mean those literal paths. The marker files go in `checkout_root`.
+mean those literal paths. The marker files go in `checkout_root`. Likewise,
+write SHAs and refs (`head`, `mb`, `base`) as literal values in commands. If
+you use a shell variable next to other text, always use braces (`${head}:path`,
+never `$head:path`): zsh reads `$var:X` as a modifier and breaks the command.
 
 ### 1.2 Load memory
 
@@ -160,8 +163,9 @@ Then set:
 - `mb` = `git merge-base <base> <head>`, except:
   - PR `state` is `MERGED`: `mb` = `git merge-base <mergeCommit.oid>^1 <head>`
     (the branch point, which works for merge, squash and rebase merges). Put
-    `PR já mergeado em <mergedAt, AAAA-MM-DD> (<mergeCommit7>); revisado o
-    intervalo do PR.` in the **Resumo**.
+    `PR já mergeado em <mergedAt, AAAA-MM-DD> (<mergeCommit7>).` in the
+    **Resumo**; when the mode (section 3) is not `recheck`, append
+    `Revisado o intervalo do PR.`
   - PR `state` is `CLOSED`: **STOP** and ask whether to review a closed,
     unmerged PR.
   - No PR metadata and `git merge-base --is-ancestor <head> <base>` succeeds
@@ -187,14 +191,19 @@ Read `$checkout_root/.last-review` if it exists. Treat it as absent if its
 `branch` line is missing. If its `head` line is missing or
 `git cat-file -e <its head>^{commit}` fails (for example, rewritten by a
 force-push), keep `m.branch` and `m.unresolved` but force mode `full`.
-Call its fields `m.branch`, `m.base`, `m.head`, `m.unresolved`.
+Also force mode `full` (keeping `m.unresolved`) when its `mb` line is missing
+(a marker from an older version of this file) or when its `verdict` is
+`sem alterações` or `revisão incompleta`: those runs did not review the code,
+so they cannot seed a recheck or an incremental review.
+Call its fields `m.branch`, `m.base`, `m.mb`, `m.head`, `m.date`,
+`m.verdict`, `m.unresolved`.
 
 Use the first row whose conditions all hold:
 
 | Condition | Mode | Range reviewed |
 |---|---|---|
-| `m.branch` = `branch`, `m.base` = `base`, `m.head` = `head`, `uncommitted=no` | `recheck` | none; only re-check `m.unresolved` |
-| `m.branch` = `branch`, `m.base` = `base`, `git merge-base --is-ancestor <m.head> <head>` succeeds, `git rev-list --merges <m.head>..<head>` is empty, `uncommitted=no`, user did not ask for a full review ("completa", "do zero", "full") | `incremental` | `git diff <m.head> <head>` |
+| `m.branch` = `branch`, `m.base` = `base`, `m.mb` = `mb`, `m.head` = `head`, `uncommitted=no` | `recheck` | none; only re-check `m.unresolved` |
+| `m.branch` = `branch`, `m.base` = `base`, `m.mb` = `mb`, `git merge-base --is-ancestor <m.head> <head>` succeeds, `git rev-list --merges <m.head>..<head>` is empty, `uncommitted=no`, user did not ask for a full review ("completa", "do zero", "full") | `incremental` | `git diff <m.head> <head>` |
 | anything else (no marker, other branch, rebase or force-push, merge from base, uncommitted, full review requested) | `full` | `git diff <mb> <head>`, or `git diff <mb>` when `uncommitted=yes` |
 
 Whenever `m.branch` = `branch`, re-check every `m.unresolved` item in any mode
@@ -203,11 +212,16 @@ Whenever `m.branch` = `branch`, re-check every `m.unresolved` item in any mode
 ## 4. Collect the changeset
 
 1. `git log --oneline <mb>..<head>` and `git diff --stat` for the range.
-2. If the range is empty and there are no `m.unresolved` items to re-check:
-   verdict `sem alterações`. Output exactly four lines: the `## Revisão:`
-   title, **Modo**, **Resumo** (`Nenhuma alteração entre <base> e <head7>.`
-   plus any notes from sections 1–2) and **Veredito**. Skip sections 5–7
-   (including the "Verificações incompletas" note), then go to section 8.
+2. If there is nothing to review and nothing to re-check, output exactly four
+   lines: the `## Revisão:` title, **Modo**, **Resumo** and **Veredito**. Skip
+   sections 5–7 (including the "Verificações incompletas" note), then go to
+   section 8.
+   - Mode `full` and `git log <mb>..<head>` is empty: verdict
+     `sem alterações`; **Resumo** `Nenhuma alteração entre <mb7> e <head7>.`
+   - Mode `recheck` and no `m.unresolved` items: verdict = `m.verdict`;
+     **Resumo** `Nenhuma alteração desde a última revisão (<m.head7>, em
+     <m.date>); veredito mantido.`
+   Append the notes from sections 1–2 to the **Resumo** in both cases.
 3. Read the full diff. For each changed file, read the whole file at `head`
    (`git show <head>:<path>` when `head` is not checked out). Read callers,
    types and tests of every changed exported symbol (`grep -rn <symbol>`).
@@ -344,7 +358,8 @@ Derive it mechanically from all findings, including still-pending items from
 | Any `bloqueante` | `precisa de mudanças` |
 | Else any `importante` | `merge após ajustes` |
 | Else | `pronto para merge` |
-| Empty range and nothing to re-check (section 4) | `sem alterações` |
+| Mode `full` with an empty range (section 4.2) | `sem alterações` |
+| Mode `recheck` with nothing to re-check (section 4.2) | `m.verdict`, unchanged |
 | A step after section 2 failed and the review could not finish | `revisão incompleta` |
 
 ### 6.6 Re-check previous items
@@ -418,6 +433,7 @@ step.
    ```text
    branch=<branch>
    base=<base>
+   mb=<full 40-char mb SHA>
    head=<full 40-char head SHA>
    pr=<number or empty>
    date=<output of: date +%Y-%m-%dT%H:%M:%S%z>
