@@ -1,8 +1,8 @@
 export function AboutPage() {
   return (
-    <main className="max-w-3xl mx-auto px-6 py-16 md:py-24 flex flex-col gap-10">
+    <main className="max-w-3xl mx-auto px-4 py-10 sm:px-6 md:py-24 flex flex-col gap-8 md:gap-10">
       <div className="flex flex-col gap-4">
-        <h1 className="text-4xl md:text-5xl font-bold text-fila-blue leading-tight">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-fila-blue leading-tight">
           Sobre o FilaSaúde
         </h1>
         <p className="text-gray-600 text-lg leading-relaxed">
