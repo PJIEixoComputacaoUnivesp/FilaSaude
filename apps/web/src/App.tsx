@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   BrowserRouter,
   Link,
@@ -21,11 +21,15 @@ const navigation = [
 function Header() {
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!isMenuOpen) return;
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setIsMenuOpen(false);
+      if (event.key !== "Escape") return;
+      setIsMenuOpen(false);
+      // The menu is hidden on close, so focus inside it would fall to <body>.
+      menuButtonRef.current?.focus();
     };
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
@@ -39,6 +43,7 @@ function Header() {
         </Link>
 
         <button
+          ref={menuButtonRef}
           type="button"
           className="-mr-2 inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-700 md:hidden"
           aria-expanded={isMenuOpen}
