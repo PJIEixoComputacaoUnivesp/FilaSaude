@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type Ref } from "react";
 import { BrazilianStateSelect } from "./BrazilianStateSelect";
 import { stateName } from "./brazilianStates";
 import {
@@ -28,9 +28,11 @@ function DataNotice({ metadata }: { metadata: UnitsResponse["metadata"] }) {
 function UnitCard({
   unit,
   source,
+  headingRef,
 }: {
   unit: HealthUnit;
   source: UnitsResponse["metadata"]["source"];
+  headingRef?: Ref<HTMLHeadingElement>;
 }) {
   return (
     <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
@@ -39,7 +41,11 @@ function UnitCard({
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-fila-green">
             {unit.unitType}
           </p>
-          <h2 className="break-words text-lg font-bold leading-snug text-slate-900 sm:text-xl">
+          <h2
+            ref={headingRef}
+            tabIndex={headingRef ? -1 : undefined}
+            className="break-words text-lg font-bold leading-snug text-slate-900 sm:text-xl"
+          >
             {unit.name}
           </h2>
         </div>
@@ -88,14 +94,24 @@ export function UnitsPage() {
   const { state, retry } = useUnits(stateCode);
   const [query, setQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  // Index of the first card added by "Mostrar mais", which receives focus so
+  // keyboard and screen reader users land on the new results.
+  const [focusIndex, setFocusIndex] = useState<number | null>(null);
+  const focusHeadingRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    if (focusIndex !== null) focusHeadingRef.current?.focus();
+  }, [focusIndex]);
 
   const changeState = (value: string) => {
     setStateCode(value);
     setVisibleCount(PAGE_SIZE);
+    setFocusIndex(null);
   };
   const changeQuery = (value: string) => {
     setQuery(value);
     setVisibleCount(PAGE_SIZE);
+    setFocusIndex(null);
   };
 
   const filteredUnits = useMemo(() => {
@@ -185,11 +201,14 @@ export function UnitsPage() {
           ) : (
             <>
               <div className="grid gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
-                {filteredUnits.slice(0, visibleCount).map((unit) => (
+                {filteredUnits.slice(0, visibleCount).map((unit, index) => (
                   <UnitCard
                     key={unit.id}
                     unit={unit}
                     source={state.response.metadata.source}
+                    headingRef={
+                      index === focusIndex ? focusHeadingRef : undefined
+                    }
                   />
                 ))}
               </div>
@@ -201,9 +220,10 @@ export function UnitsPage() {
                   </p>
                   <button
                     type="button"
-                    onClick={() =>
-                      setVisibleCount((count) => count + PAGE_SIZE)
-                    }
+                    onClick={() => {
+                      setFocusIndex(visibleCount);
+                      setVisibleCount(visibleCount + PAGE_SIZE);
+                    }}
                     className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-6 py-3 font-semibold text-slate-800 transition hover:border-fila-blue hover:text-fila-blue sm:w-auto"
                   >
                     Mostrar mais unidades
