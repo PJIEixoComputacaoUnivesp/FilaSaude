@@ -42,6 +42,14 @@ claim a check passed unless it ran successfully. Distinguish code failures from
 environment restrictions, and retry with appropriate authorization only when the
 task permits it.
 
+Before pushing, invoke the `code-review` skill on the current diff (base vs.
+HEAD) at a sensible effort level (medium by default; high for larger or riskier
+changes). Report the findings to the user. Apply straightforward, low-risk fixes
+directly and re-run the review if you changed code. For findings that are
+uncertain, stylistic, or would require a design decision, surface them to the
+user instead of deciding unilaterally. Do not open the PR while unresolved
+correctness findings remain unless the user explicitly says to proceed anyway.
+
 Push the exact head only when opening the PR is authorized:
 
 ```bash
