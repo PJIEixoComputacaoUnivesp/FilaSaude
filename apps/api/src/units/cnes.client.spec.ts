@@ -56,7 +56,12 @@ describe('CnesClient', () => {
 
     const [unit] = await client.fetchUnits(parseState('SP'));
 
-    expect(unit.location).toEqual({ latitude: -23.55, longitude: -46.63 });
+    expect(unit.location).toEqual({
+      latitude: -23.55,
+      longitude: -46.63,
+      precision: 'source',
+      original: null,
+    });
   });
 
   it('discards coordinates outside the valid range', async () => {
@@ -64,7 +69,12 @@ describe('CnesClient', () => {
 
     const [unit] = await client.fetchUnits(parseState('SP'));
 
-    expect(unit.location).toEqual({ latitude: null, longitude: null });
+    expect(unit.location).toEqual({
+      latitude: null,
+      longitude: null,
+      precision: 'source',
+      original: null,
+    });
   });
 
   it('fetches the whole country without a state filter', async () => {

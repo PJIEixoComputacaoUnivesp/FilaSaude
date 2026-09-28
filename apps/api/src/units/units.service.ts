@@ -1,10 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import snapshot from './units.snapshot.json' with { type: 'json' };
 import { CnesClient } from './cnes.client.js';
+import { UnitLocationsService } from './unit-locations.service.js';
 import { parseState, type BrazilianState } from './states.js';
 import type { HealthUnit, UnitsResponse } from './units.types.js';
 
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+// Units whose coordinates could not be validated are checked again soon.
+const UNVALIDATED_CACHE_TTL_MS = 5 * 60 * 1000;
 const NATIONAL_KEY = 'BR';
 const FALLBACK_RETRIEVED_AT = '2026-09-24T00:00:00-03:00';
 export const CNES_SOURCE_URL =
@@ -30,12 +33,15 @@ function fallbackUnits(): HealthUnit[] {
         'district' in unit.address ? (unit.address.district ?? null) : null,
       postalCode:
         'postalCode' in unit.address ? (unit.address.postalCode ?? null) : null,
+      municipalityCode: unit.address.municipalityCode,
       city: unit.address.city,
       state: unit.address.state,
     },
     location: {
       latitude: unit.location.latitude ?? null,
       longitude: unit.location.longitude ?? null,
+      precision: 'source',
+      original: null,
     },
     serviceHours: unit.serviceHours ?? null,
     lastUpdatedAt: unit.lastUpdatedAt,
@@ -51,7 +57,10 @@ export class UnitsService {
   >();
   private readonly pending = new Map<string, Promise<UnitsResponse>>();
 
-  constructor(private readonly cnesClient: CnesClient) {}
+  constructor(
+    private readonly cnesClient: CnesClient,
+    private readonly locations: UnitLocationsService,
+  ) {}
 
   /** Lists the units of one state, or of the whole country without a state. */
   async findAll(stateValue?: string): Promise<UnitsResponse> {
@@ -82,14 +91,17 @@ export class UnitsService {
         throw new Error('CNES returned no public urgent care units');
       }
 
+      const located = await this.locations.apply(units);
       const response = this.buildResponse(
-        units,
+        located.units,
         key,
         'live',
         new Date().toISOString(),
       );
       this.cache.set(key, {
-        expiresAt: Date.now() + CACHE_TTL_MS,
+        expiresAt:
+          Date.now() +
+          (located.validated ? CACHE_TTL_MS : UNVALIDATED_CACHE_TTL_MS),
         response,
       });
       return response;
@@ -109,7 +121,7 @@ export class UnitsService {
 
       this.logger.warn('Using the CNES fallback snapshot for SP');
       return this.buildResponse(
-        fallbackUnits(),
+        (await this.locations.apply(fallbackUnits())).units,
         key,
         'fallback',
         FALLBACK_RETRIEVED_AT,

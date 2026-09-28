@@ -1,5 +1,6 @@
 import { CnesClient } from './cnes.client.js';
 import { UnitsService } from './units.service.js';
+import type { UnitLocationsService } from './unit-locations.service.js';
 import type { HealthUnit } from './units.types.js';
 
 const liveUnit: HealthUnit = {
@@ -11,19 +12,31 @@ const liveUnit: HealthUnit = {
     number: '10',
     district: 'Centro',
     postalCode: '01001000',
+    municipalityCode: '355030',
     city: 'São Paulo',
     state: 'SP',
   },
-  location: { latitude: -23.55, longitude: -46.63 },
+  location: {
+    latitude: -23.55,
+    longitude: -46.63,
+    precision: 'source',
+    original: null,
+  },
   serviceHours: 'ATENDIMENTO CONTINUO DE 24 HORAS/DIA',
   lastUpdatedAt: '2026-09-20',
 };
+
+const passthrough = {
+  apply: vi.fn((units: HealthUnit[]) =>
+    Promise.resolve({ units, validated: true }),
+  ),
+} as unknown as UnitLocationsService;
 
 describe('UnitsService', () => {
   it('returns and caches live CNES data', async () => {
     const fetchUnits = vi.fn().mockResolvedValue([liveUnit]);
     const client = { fetchUnits } as unknown as CnesClient;
-    const service = new UnitsService(client);
+    const service = new UnitsService(client, passthrough);
 
     const first = await service.findAll('SP');
     const second = await service.findAll('sp');
@@ -44,7 +57,7 @@ describe('UnitsService', () => {
     const client = {
       fetchUnits: vi.fn().mockRejectedValue(new Error('unavailable')),
     } as unknown as CnesClient;
-    const service = new UnitsService(client);
+    const service = new UnitsService(client, passthrough);
 
     const response = await service.findAll('SP');
 
@@ -63,7 +76,7 @@ describe('UnitsService', () => {
         .mockResolvedValueOnce([liveUnit])
         .mockRejectedValueOnce(new Error('unavailable'));
       const client = { fetchUnits } as unknown as CnesClient;
-      const service = new UnitsService(client);
+      const service = new UnitsService(client, passthrough);
 
       const live = await service.findAll('RJ');
       vi.advanceTimersByTime(7 * 60 * 60 * 1000);
@@ -84,7 +97,7 @@ describe('UnitsService', () => {
   it('returns national data without a state', async () => {
     const fetchUnits = vi.fn().mockResolvedValue([liveUnit]);
     const client = { fetchUnits } as unknown as CnesClient;
-    const service = new UnitsService(client);
+    const service = new UnitsService(client, passthrough);
 
     const response = await service.findAll();
 
@@ -100,7 +113,7 @@ describe('UnitsService', () => {
       }),
     );
     const client = { fetchUnits } as unknown as CnesClient;
-    const service = new UnitsService(client);
+    const service = new UnitsService(client, passthrough);
 
     const first = service.findAll();
     const second = service.findAll();
@@ -113,7 +126,7 @@ describe('UnitsService', () => {
   it('rejects an invalid state before calling CNES', async () => {
     const fetchUnits = vi.fn();
     const client = { fetchUnits } as unknown as CnesClient;
-    const service = new UnitsService(client);
+    const service = new UnitsService(client, passthrough);
 
     await expect(service.findAll('XX')).rejects.toThrow(
       'Invalid Brazilian state abbreviation',

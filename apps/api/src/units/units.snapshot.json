@@ -9,7 +9,8 @@
       "district": "VILA ALICE",
       "postalCode": "13820074",
       "city": "Monte Alegre do Sul",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353120"
     },
     "location": {
       "latitude": -22.685855238434236,
@@ -28,7 +29,8 @@
       "district": "JD PERI PERI",
       "postalCode": "05535100",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.586,
@@ -47,7 +49,8 @@
       "district": "JARDIM SAO LUIZ",
       "postalCode": "05846380",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.66082810789832,
@@ -66,7 +69,8 @@
       "district": "PENHA",
       "postalCode": "03604030",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.526643420633416,
@@ -85,7 +89,8 @@
       "district": "COHAB JUSCELINO",
       "postalCode": "08465000",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.5651366,
@@ -104,7 +109,8 @@
       "district": "ENGENHEIRO GOULART",
       "postalCode": "03726100",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.5003425,
@@ -123,7 +129,8 @@
       "district": "JARDIM COIMBRA",
       "postalCode": "03693050",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.56784207958939,
@@ -142,7 +149,8 @@
       "district": "ITAQUERA",
       "postalCode": "08250650",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.54081,
@@ -161,7 +169,8 @@
       "district": "PQ FIGUEIRA GRANDE",
       "postalCode": "04915170",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.678783,
@@ -180,7 +189,8 @@
       "district": "PARQUE NOVO SANTO AM",
       "postalCode": "05874130",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.7001797,
@@ -199,7 +209,8 @@
       "district": "JARDIM SAPOPEMBA",
       "postalCode": "03976020",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.61157604540152,
@@ -218,7 +229,8 @@
       "district": "VILA ROMANA",
       "postalCode": "05049000",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.524227,
@@ -237,7 +249,8 @@
       "district": "BARRA FUNDA",
       "postalCode": "01137020",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.5248024,
@@ -256,7 +269,8 @@
       "district": "CAPAO REDONDO",
       "postalCode": "05866000",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.6420677,
@@ -275,7 +289,8 @@
       "district": "BOM RETIRO",
       "postalCode": "01121000",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.5343625,
@@ -294,7 +309,8 @@
       "district": "JARDIM MARTINICA",
       "postalCode": "05760140",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.631559200010212,
@@ -313,7 +329,8 @@
       "district": "JARDIM MORUMBI",
       "postalCode": "05656010",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.61638059180085,
@@ -332,7 +349,8 @@
       "district": "SE",
       "postalCode": "01020030",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.5508397,
@@ -351,7 +369,8 @@
       "district": "CENTRO",
       "postalCode": "14610029",
       "city": "Ipuã",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352130"
     },
     "location": {
       "latitude": -20.437476346727948,
@@ -370,7 +389,8 @@
       "district": "VILA MONTEIRO",
       "postalCode": "13418533",
       "city": "Piracicaba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353870"
     },
     "location": {
       "latitude": -22.733288089436066,
@@ -389,7 +409,8 @@
       "district": "VILA ZESUINA",
       "postalCode": "08570690",
       "city": "Itaquaquecetuba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352310"
     },
     "location": {
       "latitude": -23.481196425234565,
@@ -408,7 +429,8 @@
       "district": "CENTRO",
       "postalCode": "12990009",
       "city": "Pedra Bela",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353680"
     },
     "location": {
       "latitude": -22.796192051270744,
@@ -427,7 +449,8 @@
       "district": "CENTRO",
       "postalCode": "18260003",
       "city": "Porangaba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354050"
     },
     "location": {
       "latitude": -23.1765176,
@@ -446,7 +469,8 @@
       "district": "CENTRO",
       "postalCode": "08570220",
       "city": "Itaquaquecetuba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352310"
     },
     "location": {
       "latitude": -23.474189880989414,
@@ -465,7 +489,8 @@
       "district": "CENTRO",
       "postalCode": "14240000",
       "city": "Cajuru",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350940"
     },
     "location": {
       "latitude": -21.2743866,
@@ -484,7 +509,8 @@
       "district": "CENTRO",
       "postalCode": "12250000",
       "city": "Monteiro Lobato",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353170"
     },
     "location": {
       "latitude": -22.95535055579046,
@@ -503,7 +529,8 @@
       "district": "CENTRO",
       "postalCode": "13510003",
       "city": "Santa Gertrudes",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354670"
     },
     "location": {
       "latitude": -22.4476748,
@@ -522,7 +549,8 @@
       "district": "CENTRO",
       "postalCode": "15420037",
       "city": "Guaraci",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351790"
     },
     "location": {
       "latitude": -20.502421278971813,
@@ -541,7 +569,8 @@
       "district": "CENTRO",
       "postalCode": "14670029",
       "city": "Nuporanga",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353360"
     },
     "location": {
       "latitude": -20.730007039366665,
@@ -560,7 +589,8 @@
       "district": "JARDIM NOVO OSASCO",
       "postalCode": "06045220",
       "city": "Osasco",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353440"
     },
     "location": {
       "latitude": -23.571509806053417,
@@ -579,7 +609,8 @@
       "district": "CENTRO",
       "postalCode": "13201832",
       "city": "Jundiaí",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352590"
     },
     "location": {
       "latitude": -23.18281500293561,
@@ -598,7 +629,8 @@
       "district": "IBITIUVA",
       "postalCode": "14760020",
       "city": "Pitangueiras",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353950"
     },
     "location": {
       "latitude": -20.9996200569654,
@@ -617,7 +649,8 @@
       "district": "ELDORADO",
       "postalCode": "09972260",
       "city": "Diadema",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351380"
     },
     "location": {
       "latitude": -23.7174657,
@@ -636,7 +669,8 @@
       "district": "JD MARIA ANTONIA",
       "postalCode": "13178373",
       "city": "Sumaré",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355240"
     },
     "location": {
       "latitude": -22.80555831225074,
@@ -655,7 +689,8 @@
       "district": "CIDADE TIRADENTES",
       "postalCode": "08471004",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.60348,
@@ -674,7 +709,8 @@
       "district": "JARDIM MACEDONIA",
       "postalCode": "05894350",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.652994573375413,
@@ -693,7 +729,8 @@
       "district": "CIDADE SAO MATEUS",
       "postalCode": "03963090",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.61050849485667,
@@ -712,7 +749,8 @@
       "district": "MUNHOZ JUNIOR",
       "postalCode": "06246060",
       "city": "Osasco",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353440"
     },
     "location": {
       "latitude": -23.533654945637945,
@@ -731,7 +769,8 @@
       "district": "JD SAO FRANCISCO",
       "postalCode": "13177040",
       "city": "Sumaré",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355240"
     },
     "location": {
       "latitude": -22.809632978805197,
@@ -750,7 +789,8 @@
       "district": "VILA REIS",
       "postalCode": "17570092",
       "city": "Oriente",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353410"
     },
     "location": {
       "latitude": -22.155094,
@@ -769,7 +809,8 @@
       "district": "CENTRO",
       "postalCode": "13445232",
       "city": "Engenheiro Coelho",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351515"
     },
     "location": {
       "latitude": -22.4898085,
@@ -788,7 +829,8 @@
       "district": "CENTRO",
       "postalCode": "13690000",
       "city": "Descalvado",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351370"
     },
     "location": {
       "latitude": -21.906259688620242,
@@ -807,7 +849,8 @@
       "district": "PARQUE RODRIGO BARRE",
       "postalCode": "07417195",
       "city": "Arujá",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350390"
     },
     "location": {
       "latitude": -23.3808738,
@@ -826,7 +869,8 @@
       "district": "VILA MARTINS",
       "postalCode": "13308200",
       "city": "Itu",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352390"
     },
     "location": {
       "latitude": -23.387726391688172,
@@ -845,7 +889,8 @@
       "district": "CENTRO",
       "postalCode": "14250009",
       "city": "Santa Cruz da Esperança",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354625"
     },
     "location": {
       "latitude": -21.29188,
@@ -864,7 +909,8 @@
       "district": "JULIANIA",
       "postalCode": "17660006",
       "city": "Herculândia",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351900"
     },
     "location": {
       "latitude": -22.007596806483637,
@@ -883,7 +929,8 @@
       "district": "VL HORTOLANDIA",
       "postalCode": "13214290",
       "city": "Jundiaí",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352590"
     },
     "location": {
       "latitude": -23.16908567138105,
@@ -902,7 +949,8 @@
       "district": "CENTRO",
       "postalCode": "13825007",
       "city": "Holambra",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351905"
     },
     "location": {
       "latitude": -22.6247067379741,
@@ -921,7 +969,8 @@
       "district": "JARDIM SAO CARLOS",
       "postalCode": "13650254",
       "city": "Santa Cruz das Palmeiras",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354630"
     },
     "location": {
       "latitude": -21.82082737540366,
@@ -940,7 +989,8 @@
       "district": "VILA SANTANA",
       "postalCode": "13884210",
       "city": "Vargem Grande do Sul",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355640"
     },
     "location": {
       "latitude": -21.839033322120795,
@@ -959,7 +1009,8 @@
       "district": "CENTRO",
       "postalCode": "13857128",
       "city": "Estiva Gerbi",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355730"
     },
     "location": {
       "latitude": -22.275793340569514,
@@ -978,7 +1029,8 @@
       "district": "MOGILAR",
       "postalCode": "08773130",
       "city": "Mogi das Cruzes",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353060"
     },
     "location": {
       "latitude": -23.509100819747808,
@@ -997,7 +1049,8 @@
       "district": "PONTE DE SAO JOAO",
       "postalCode": "13218104",
       "city": "Jundiaí",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352590"
     },
     "location": {
       "latitude": -23.1823684,
@@ -1016,7 +1069,8 @@
       "district": "CENTRO",
       "postalCode": "17930049",
       "city": "Tupi Paulista",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355510"
     },
     "location": {
       "latitude": -21.3820568,
@@ -1035,7 +1089,8 @@
       "district": "CENTRO",
       "postalCode": "18180047",
       "city": "Tapiraí",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355350"
     },
     "location": {
       "latitude": -23.963725,
@@ -1054,7 +1109,8 @@
       "district": "CENTRO",
       "postalCode": "18250083",
       "city": "Guareí",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351850"
     },
     "location": {
       "latitude": -23.371331,
@@ -1073,7 +1129,8 @@
       "district": "CENTRO",
       "postalCode": "15115000",
       "city": "Bady Bassitt",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350460"
     },
     "location": {
       "latitude": -20.9173111,
@@ -1092,7 +1149,8 @@
       "district": "PALMEIRAS",
       "postalCode": "08620030",
       "city": "Suzano",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355250"
     },
     "location": {
       "latitude": -23.588815,
@@ -1111,7 +1169,8 @@
       "district": "CENTRO",
       "postalCode": "12570000",
       "city": "Aparecida",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350250"
     },
     "location": {
       "latitude": -22.8428404,
@@ -1130,7 +1189,8 @@
       "district": "VILA NOVA",
       "postalCode": "06550000",
       "city": "Pirapora do Bom Jesus",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353910"
     },
     "location": {
       "latitude": -23.395884720898994,
@@ -1149,7 +1209,8 @@
       "district": "CENTRO",
       "postalCode": "18590049",
       "city": "Bofete",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350690"
     },
     "location": {
       "latitude": -23.102519,
@@ -1168,7 +1229,8 @@
       "district": "BONSUCESSO",
       "postalCode": "07175500",
       "city": "Guarulhos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351880"
     },
     "location": {
       "latitude": -23.420419,
@@ -1187,7 +1249,8 @@
       "district": "VILA GOMES",
       "postalCode": "18246000",
       "city": "Campina do Monte Alegre",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350945"
     },
     "location": {
       "latitude": -23.584342351758895,
@@ -1206,7 +1269,8 @@
       "district": "CAUCAIA DO ALTO",
       "postalCode": "06727185",
       "city": "Cotia",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351300"
     },
     "location": {
       "latitude": -23.68591387809246,
@@ -1225,7 +1289,8 @@
       "district": "CENTRO",
       "postalCode": "14115000",
       "city": "Guatapará",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351885"
     },
     "location": {
       "latitude": -21.4959992,
@@ -1244,7 +1309,8 @@
       "district": "JARDIM SAO PAULO",
       "postalCode": "19066000",
       "city": "Presidente Prudente",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354140"
     },
     "location": {
       "latitude": -22.113175406274408,
@@ -1263,7 +1329,8 @@
       "district": "CENTRO",
       "postalCode": "13528021",
       "city": "Águas de São Pedro",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350060"
     },
     "location": {
       "latitude": -22.5959746,
@@ -1282,7 +1349,8 @@
       "district": "CENTRO",
       "postalCode": "18630007",
       "city": "Anhembi",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350230"
     },
     "location": {
       "latitude": -22.78997059932065,
@@ -1301,7 +1369,8 @@
       "district": "CENTRO",
       "postalCode": "18147007",
       "city": "Araçariguama",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350275"
     },
     "location": {
       "latitude": -23.438258938927056,
@@ -1320,7 +1389,8 @@
       "district": "CENTRO",
       "postalCode": "16480019",
       "city": "Guaimbê",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351730"
     },
     "location": {
       "latitude": -21.9119431,
@@ -1339,7 +1409,8 @@
       "district": "CENTRO",
       "postalCode": "16570072",
       "city": "Guarantã",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351810"
     },
     "location": {
       "latitude": -21.900665,
@@ -1358,7 +1429,8 @@
       "district": "CENTRO",
       "postalCode": "17880069",
       "city": "Irapuru",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352160"
     },
     "location": {
       "latitude": -21.567367865536497,
@@ -1377,7 +1449,8 @@
       "district": "LARANJEIRAS",
       "postalCode": "07740510",
       "city": "Caieiras",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350900"
     },
     "location": {
       "latitude": -23.3926967,
@@ -1396,7 +1469,8 @@
       "district": "CENTRO",
       "postalCode": "11850000",
       "city": "Miracatu",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352990"
     },
     "location": {
       "latitude": -24.283877893094157,
@@ -1415,7 +1489,8 @@
       "district": "CENTRO",
       "postalCode": "16800007",
       "city": "Mirandópolis",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353010"
     },
     "location": {
       "latitude": -21.1254107,
@@ -1434,7 +1509,8 @@
       "district": "PARANAPIACABA",
       "postalCode": "09150060",
       "city": "Santo André",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354780"
     },
     "location": {
       "latitude": -23.7765346,
@@ -1453,7 +1529,8 @@
       "district": "CENTRO",
       "postalCode": "18580030",
       "city": "Pereiras",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353750"
     },
     "location": {
       "latitude": -23.072852,
@@ -1472,7 +1549,8 @@
       "district": "PIRATININGA",
       "postalCode": "17490090",
       "city": "Piratininga",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353940"
     },
     "location": {
       "latitude": -22.41295,
@@ -1491,7 +1569,8 @@
       "district": "CENTRO",
       "postalCode": "12580003",
       "city": "Roseira",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354430"
     },
     "location": {
       "latitude": -22.899032,
@@ -1510,7 +1589,8 @@
       "district": "CENTRO",
       "postalCode": "18425210",
       "city": "Taquarivaí",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355385"
     },
     "location": {
       "latitude": -23.926836810525728,
@@ -1529,7 +1609,8 @@
       "district": "JARDIM DAS ARVORES",
       "postalCode": "19822130",
       "city": "Tarumã",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355395"
     },
     "location": {
       "latitude": -22.752250064183517,
@@ -1548,7 +1629,8 @@
       "district": "CENTRO",
       "postalCode": "15850015",
       "city": "Urupês",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355600"
     },
     "location": {
       "latitude": -21.202143,
@@ -1567,7 +1649,8 @@
       "district": "DISTRITO DE POTUNDUV",
       "postalCode": "17220150",
       "city": "Jaú",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352530"
     },
     "location": {
       "latitude": -22.36664351892507,
@@ -1586,7 +1669,8 @@
       "district": "JARDIM ALVORADA",
       "postalCode": "13382410",
       "city": "Nova Odessa",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353340"
     },
     "location": {
       "latitude": -22.8025456,
@@ -1605,7 +1689,8 @@
       "district": "VL NOVA ESPERIA",
       "postalCode": "13211000",
       "city": "Jundiaí",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352590"
     },
     "location": {
       "latitude": -23.181632,
@@ -1624,7 +1709,8 @@
       "district": "JARDIM MEDINA",
       "postalCode": "08556230",
       "city": "Poá",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353980"
     },
     "location": {
       "latitude": -23.515284494486245,
@@ -1643,7 +1729,8 @@
       "district": "CENTRO",
       "postalCode": "14820045",
       "city": "Américo Brasiliense",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350170"
     },
     "location": {
       "latitude": -21.7259262,
@@ -1662,7 +1749,8 @@
       "district": "CENTRO",
       "postalCode": "15110000",
       "city": "Guapiaçu",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351750"
     },
     "location": {
       "latitude": -20.797141255629953,
@@ -1681,7 +1769,8 @@
       "district": "PARQUE CLAYTON MALAM",
       "postalCode": "13635240",
       "city": "Pirassununga",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353930"
     },
     "location": {
       "latitude": -21.969554107586895,
@@ -1700,7 +1789,8 @@
       "district": "CAPELA",
       "postalCode": "13285514",
       "city": "Vinhedo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355670"
     },
     "location": {
       "latitude": -23.0437683,
@@ -1719,7 +1809,8 @@
       "district": "CENTRO",
       "postalCode": "06401120",
       "city": "Barueri",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350570"
     },
     "location": {
       "latitude": -23.50803827824797,
@@ -1738,7 +1829,8 @@
       "district": "CENTRO",
       "postalCode": "19830089",
       "city": "Echaporã",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351470"
     },
     "location": {
       "latitude": -22.26513,
@@ -1757,7 +1849,8 @@
       "district": "JARDIM CENTENARIO",
       "postalCode": "07270000",
       "city": "Guarulhos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351880"
     },
     "location": {
       "latitude": -23.457898,
@@ -1776,7 +1869,8 @@
       "district": "JARDIM MESQUITA",
       "postalCode": "18213560",
       "city": "Itapetininga",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352230"
     },
     "location": {
       "latitude": -23.573575823102548,
@@ -1795,7 +1889,8 @@
       "district": "JARDIM SANTANA",
       "postalCode": "19045700",
       "city": "Presidente Prudente",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354140"
     },
     "location": {
       "latitude": -22.146727654571123,
@@ -1814,7 +1909,8 @@
       "district": "CENTRO",
       "postalCode": "06890000",
       "city": "São Lourenço da Serra",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354995"
     },
     "location": {
       "latitude": -23.8521911,
@@ -1833,7 +1929,8 @@
       "district": "CENTRO",
       "postalCode": "17560003",
       "city": "Vera Cruz",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355660"
     },
     "location": {
       "latitude": -22.21545694783976,
@@ -1852,7 +1949,8 @@
       "district": "CENTRO",
       "postalCode": "18330045",
       "city": "Iporanga",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352120"
     },
     "location": {
       "latitude": -24.5861729,
@@ -1871,7 +1969,8 @@
       "district": "CENTRO",
       "postalCode": "06730726",
       "city": "Vargem Grande Paulista",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355645"
     },
     "location": {
       "latitude": -23.609531256857075,
@@ -1890,7 +1989,8 @@
       "district": "ZANAGA I",
       "postalCode": "13474620",
       "city": "Americana",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350160"
     },
     "location": {
       "latitude": -22.702073033055445,
@@ -1909,7 +2009,8 @@
       "district": "VILA MENINO JESUS",
       "postalCode": "12289006",
       "city": "Caçapava",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350850"
     },
     "location": {
       "latitude": -23.074367254756122,
@@ -1928,7 +2029,8 @@
       "district": "JD MONTE ALEGRE",
       "postalCode": "13145819",
       "city": "Paulínia",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353650"
     },
     "location": {
       "latitude": -22.77639913432772,
@@ -1947,7 +2049,8 @@
       "district": "CJ HAB BANDEIRANTE",
       "postalCode": "15910444",
       "city": "Monte Alto",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353130"
     },
     "location": {
       "latitude": -21.278057673014548,
@@ -1966,7 +2069,8 @@
       "district": "SAMBURA",
       "postalCode": "11925000",
       "city": "Ilha Comprida",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352042"
     },
     "location": {
       "latitude": -24.847827,
@@ -1985,7 +2089,8 @@
       "district": "SAO CRISTOVAO",
       "postalCode": "17910244",
       "city": "Dracena",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351440"
     },
     "location": {
       "latitude": -21.47816,
@@ -2004,7 +2109,8 @@
       "district": "CENTRO",
       "postalCode": "15825025",
       "city": "Paraíso",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353570"
     },
     "location": {
       "latitude": -21.01573173581119,
@@ -2023,7 +2129,8 @@
       "district": "CENTRO",
       "postalCode": "12630000",
       "city": "Cachoeira Paulista",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350860"
     },
     "location": {
       "latitude": -22.66592754,
@@ -2042,7 +2149,8 @@
       "district": "CENTRO",
       "postalCode": "14745049",
       "city": "Terra Roxa",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355440"
     },
     "location": {
       "latitude": -20.7875748,
@@ -2061,7 +2169,8 @@
       "district": "CENTRO",
       "postalCode": "18195032",
       "city": "Capela do Alto",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351030"
     },
     "location": {
       "latitude": -23.4675062,
@@ -2080,7 +2189,8 @@
       "district": "CENTRO",
       "postalCode": "11920000",
       "city": "Iguape",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352030"
     },
     "location": {
       "latitude": -24.7109697998126,
@@ -2099,7 +2209,8 @@
       "district": "CENTRO",
       "postalCode": "17680037",
       "city": "Iacri",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351920"
     },
     "location": {
       "latitude": -21.85832,
@@ -2118,7 +2229,8 @@
       "district": "CENTRO",
       "postalCode": "14770013",
       "city": "Colina",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351200"
     },
     "location": {
       "latitude": -20.715757750820313,
@@ -2137,7 +2249,8 @@
       "district": "CENTRO",
       "postalCode": "14440013",
       "city": "São José da Bela Vista",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354950"
     },
     "location": {
       "latitude": -20.59031748,
@@ -2156,7 +2269,8 @@
       "district": "CENTRO",
       "postalCode": "12380000",
       "city": "Santa Branca",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354600"
     },
     "location": {
       "latitude": -23.3993699,
@@ -2175,7 +2289,8 @@
       "district": "JARDIM OLIDEL",
       "postalCode": "18125090",
       "city": "Alumínio",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350115"
     },
     "location": {
       "latitude": -23.5170742,
@@ -2194,7 +2309,8 @@
       "district": "CENTRO",
       "postalCode": "17270019",
       "city": "Boracéia",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350730"
     },
     "location": {
       "latitude": -22.195094010113586,
@@ -2213,7 +2329,8 @@
       "district": "CENTRO",
       "postalCode": "11960000",
       "city": "Eldorado",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351480"
     },
     "location": {
       "latitude": -24.523581871308043,
@@ -2232,7 +2349,8 @@
       "district": "CENTRO",
       "postalCode": "11940000",
       "city": "Jacupiranga",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352460"
     },
     "location": {
       "latitude": -24.697048759147282,
@@ -2251,7 +2369,8 @@
       "district": "CANGUERINHA",
       "postalCode": "18123030",
       "city": "Mairinque",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352840"
     },
     "location": {
       "latitude": -23.547081,
@@ -2270,7 +2389,8 @@
       "district": "CENTRO",
       "postalCode": "17320037",
       "city": "Mineiros do Tietê",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352980"
     },
     "location": {
       "latitude": -22.41210963556146,
@@ -2289,7 +2409,8 @@
       "district": "CENTRO",
       "postalCode": "19260103",
       "city": "Mirante do Paranapanema",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353020"
     },
     "location": {
       "latitude": -22.285408954170776,
@@ -2308,7 +2429,8 @@
       "district": "CENTRO",
       "postalCode": "15440007",
       "city": "Nova Granada",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353300"
     },
     "location": {
       "latitude": -20.538051239707475,
@@ -2327,7 +2449,8 @@
       "district": "HOSPITAL",
       "postalCode": "17984006",
       "city": "Panorama",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353540"
     },
     "location": {
       "latitude": -21.360183,
@@ -2346,7 +2469,8 @@
       "district": "CENTRO",
       "postalCode": "12260093",
       "city": "Paraibuna",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353560"
     },
     "location": {
       "latitude": -23.38768454043789,
@@ -2365,7 +2489,8 @@
       "district": "CENTRO",
       "postalCode": "19200057",
       "city": "Pirapozinho",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353920"
     },
     "location": {
       "latitude": -22.2763096030265,
@@ -2384,7 +2509,8 @@
       "district": "CENTRO",
       "postalCode": "14660000",
       "city": "Sales Oliveira",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354490"
     },
     "location": {
       "latitude": -20.77133,
@@ -2403,7 +2529,8 @@
       "district": "CENTRO",
       "postalCode": "11910000",
       "city": "Sete Barras",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355180"
     },
     "location": {
       "latitude": -24.387948133921643,
@@ -2422,7 +2549,8 @@
       "district": "POZZOBON",
       "postalCode": "15503050",
       "city": "Votuporanga",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355710"
     },
     "location": {
       "latitude": -20.4002085,
@@ -2441,7 +2569,8 @@
       "district": "CENTRO",
       "postalCode": "18290071",
       "city": "Buri",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350800"
     },
     "location": {
       "latitude": -23.798617468490285,
@@ -2460,7 +2589,8 @@
       "district": "GEORGE OETTERER",
       "postalCode": "18565081",
       "city": "Iperó",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352100"
     },
     "location": {
       "latitude": -23.353865,
@@ -2479,7 +2609,8 @@
       "district": "JD ALVORADA",
       "postalCode": "13611300",
       "city": "Leme",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352670"
     },
     "location": {
       "latitude": -22.19753,
@@ -2498,7 +2629,8 @@
       "district": "CENTRO",
       "postalCode": "12125010",
       "city": "Tremembé",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355480"
     },
     "location": {
       "latitude": -22.96310045,
@@ -2517,7 +2649,8 @@
       "district": "CENTRO",
       "postalCode": "17201490",
       "city": "Jaú",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352530"
     },
     "location": {
       "latitude": -22.29503275702971,
@@ -2536,7 +2669,8 @@
       "district": "VILA ROSSINI",
       "postalCode": "14910608",
       "city": "Tabatinga",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355270"
     },
     "location": {
       "latitude": -21.738016621096826,
@@ -2555,7 +2689,8 @@
       "district": "CENTRO",
       "postalCode": "14850021",
       "city": "Pradópolis",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354090"
     },
     "location": {
       "latitude": -21.365324519074417,
@@ -2574,7 +2709,8 @@
       "district": "CENTRO",
       "postalCode": "15828035",
       "city": "Palmares Paulista",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353510"
     },
     "location": {
       "latitude": -21.08249796002683,
@@ -2593,7 +2729,8 @@
       "district": "JD PARAVENTI",
       "postalCode": "07121280",
       "city": "Guarulhos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351880"
     },
     "location": {
       "latitude": -23.449922,
@@ -2612,7 +2749,8 @@
       "district": "JARDIM MARIA DIRCE",
       "postalCode": "07241270",
       "city": "Guarulhos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351880"
     },
     "location": {
       "latitude": -23.438094,
@@ -2631,7 +2769,8 @@
       "district": "PRQ DAS BANDEIRAS",
       "postalCode": "11346000",
       "city": "São Vicente",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355100"
     },
     "location": {
       "latitude": -23.985042006864866,
@@ -2650,7 +2789,8 @@
       "district": "PRQ SAO GEORGE",
       "postalCode": "06708230",
       "city": "Cotia",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351300"
     },
     "location": {
       "latitude": -23.5986449,
@@ -2669,7 +2809,8 @@
       "district": "CENTRO",
       "postalCode": "13830142",
       "city": "Santo Antônio de Posse",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354800"
     },
     "location": {
       "latitude": -22.6067314,
@@ -2688,7 +2829,8 @@
       "district": "JARDIM SAO DIMAS",
       "postalCode": "13905694",
       "city": "Amparo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350190"
     },
     "location": {
       "latitude": -22.70591612573592,
@@ -2707,7 +2849,8 @@
       "district": "JOAO ARANHA",
       "postalCode": "13145819",
       "city": "Paulínia",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353650"
     },
     "location": {
       "latitude": -22.72166434998371,
@@ -2726,7 +2869,8 @@
       "district": "INDUSTRIAL",
       "postalCode": "18560070",
       "city": "Iperó",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352100"
     },
     "location": {
       "latitude": -23.398632,
@@ -2745,7 +2889,8 @@
       "district": "VILA RIO BRANCO",
       "postalCode": "18209110",
       "city": "Itapetininga",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352230"
     },
     "location": {
       "latitude": -23.589854899144072,
@@ -2764,7 +2909,8 @@
       "district": "VILA VIRGINIA",
       "postalCode": "14030470",
       "city": "Ribeirão Preto",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354340"
     },
     "location": {
       "latitude": -21.2014319,
@@ -2783,7 +2929,8 @@
       "district": "CENTRO",
       "postalCode": "06855500",
       "city": "Itapecerica da Serra",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352220"
     },
     "location": {
       "latitude": -23.716898420357488,
@@ -2802,7 +2949,8 @@
       "district": "ALTOS DA CIDADE",
       "postalCode": "17015110",
       "city": "Bauru",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350600"
     },
     "location": {
       "latitude": -22.33517087130267,
@@ -2821,7 +2969,8 @@
       "district": "VERA CRUZ",
       "postalCode": "11730472",
       "city": "Mongaguá",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353110"
     },
     "location": {
       "latitude": -24.10123039288157,
@@ -2840,7 +2989,8 @@
       "district": "VILA SANTA ROSA",
       "postalCode": "11520000",
       "city": "Cubatão",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351350"
     },
     "location": {
       "latitude": -23.89290067459054,
@@ -2859,7 +3009,8 @@
       "district": "PARQUE BITARU",
       "postalCode": "11330800",
       "city": "São Vicente",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355100"
     },
     "location": {
       "latitude": -23.96203857853092,
@@ -2878,7 +3029,8 @@
       "district": "COHAB II",
       "postalCode": "06326040",
       "city": "Carapicuíba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351060"
     },
     "location": {
       "latitude": -23.530467889921425,
@@ -2897,7 +3049,8 @@
       "district": "JD STO ANTONIO",
       "postalCode": "06132002",
       "city": "Osasco",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353440"
     },
     "location": {
       "latitude": -23.554722982325107,
@@ -2916,7 +3069,8 @@
       "district": "VILA MARIA",
       "postalCode": "14948352",
       "city": "Ibitinga",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351960"
     },
     "location": {
       "latitude": -21.7464856526522,
@@ -2935,7 +3089,8 @@
       "district": "CENTRO",
       "postalCode": "15960033",
       "city": "Ariranha",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350370"
     },
     "location": {
       "latitude": -21.189293538320744,
@@ -2954,7 +3109,8 @@
       "district": "BOA ESPERANCA",
       "postalCode": "11955000",
       "city": "Barra do Turvo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350540"
     },
     "location": {
       "latitude": -24.75944,
@@ -2973,7 +3129,8 @@
       "district": "JARDIM TANGARA",
       "postalCode": "15820280",
       "city": "Pirangi",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353900"
     },
     "location": {
       "latitude": -21.096902637309,
@@ -2992,7 +3149,8 @@
       "district": "CENTRO",
       "postalCode": "18380025",
       "city": "Ribeira",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354280"
     },
     "location": {
       "latitude": -24.6584647542604,
@@ -3011,7 +3169,8 @@
       "district": "PAE CARA",
       "postalCode": "11410070",
       "city": "Guarujá",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351870"
     },
     "location": {
       "latitude": -23.9504229,
@@ -3030,7 +3189,8 @@
       "district": "VILA PINDORAMA",
       "postalCode": "06415000",
       "city": "Barueri",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350570"
     },
     "location": {
       "latitude": -23.50561801283569,
@@ -3049,7 +3209,8 @@
       "district": "CENTRO",
       "postalCode": "15910081",
       "city": "Monte Alto",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353130"
     },
     "location": {
       "latitude": -21.26441067266487,
@@ -3068,7 +3229,8 @@
       "district": "VILA IMPERADOR",
       "postalCode": "14409241",
       "city": "Franca",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351620"
     },
     "location": {
       "latitude": -20.5086226,
@@ -3087,7 +3249,8 @@
       "district": "ROCHDALE",
       "postalCode": "06223200",
       "city": "Osasco",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353440"
     },
     "location": {
       "latitude": -23.51256385847313,
@@ -3106,7 +3269,8 @@
       "district": "ESTACAO",
       "postalCode": "11800000",
       "city": "Juquiá",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352610"
     },
     "location": {
       "latitude": -24.324104537699213,
@@ -3125,7 +3289,8 @@
       "district": "CENTRO",
       "postalCode": "13790019",
       "city": "São Sebastião da Grama",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355080"
     },
     "location": {
       "latitude": -21.71008780792099,
@@ -3144,7 +3309,8 @@
       "district": "HELENA MARIA",
       "postalCode": "06260100",
       "city": "Osasco",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353440"
     },
     "location": {
       "latitude": -23.4989338,
@@ -3163,7 +3329,8 @@
       "district": "CENTRO",
       "postalCode": "11760000",
       "city": "Itariri",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352330"
     },
     "location": {
       "latitude": -24.2924165,
@@ -3182,7 +3349,8 @@
       "district": "VILA NOVA",
       "postalCode": "13300025",
       "city": "Itu",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352390"
     },
     "location": {
       "latitude": -23.26969900838568,
@@ -3201,7 +3369,8 @@
       "district": "SANTA EUGENIA",
       "postalCode": "14409043",
       "city": "Franca",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351620"
     },
     "location": {
       "latitude": -20.539055926890956,
@@ -3220,7 +3389,8 @@
       "district": "VILA NOVA",
       "postalCode": "11530010",
       "city": "Cubatão",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351350"
     },
     "location": {
       "latitude": -23.891144776615103,
@@ -3239,7 +3409,8 @@
       "district": "CIDADE DA SAUDE",
       "postalCode": "06693005",
       "city": "Itapevi",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352250"
     },
     "location": {
       "latitude": -23.540948487854415,
@@ -3258,7 +3429,8 @@
       "district": "PQ SAO LOURENCO",
       "postalCode": "06864340",
       "city": "Itapecerica da Serra",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352220"
     },
     "location": {
       "latitude": -23.71530712975972,
@@ -3277,7 +3449,8 @@
       "district": "CENTRO",
       "postalCode": "14730101",
       "city": "Monte Azul Paulista",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353150"
     },
     "location": {
       "latitude": -20.9066325,
@@ -3296,7 +3469,8 @@
       "district": "CIDADE DA SAUDE",
       "postalCode": "06693005",
       "city": "Itapevi",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352250"
     },
     "location": {
       "latitude": -23.54039495,
@@ -3315,7 +3489,8 @@
       "district": "CENTRO",
       "postalCode": "19780003",
       "city": "Quatá",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354170"
     },
     "location": {
       "latitude": -22.25141,
@@ -3334,7 +3509,8 @@
       "district": "CENTRO",
       "postalCode": "17694340",
       "city": "Bastos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350580"
     },
     "location": {
       "latitude": -21.92172762242752,
@@ -3353,7 +3529,8 @@
       "district": "JARDIM SILVEIRA",
       "postalCode": "06434200",
       "city": "Barueri",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350570"
     },
     "location": {
       "latitude": -23.532376197988274,
@@ -3372,7 +3549,8 @@
       "district": "CENTRO",
       "postalCode": "13710087",
       "city": "Tambaú",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355330"
     },
     "location": {
       "latitude": -21.70436367779456,
@@ -3391,7 +3569,8 @@
       "district": "JAD PRIMAVERA",
       "postalCode": "14955100",
       "city": "Borborema",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350740"
     },
     "location": {
       "latitude": -21.61680687287949,
@@ -3410,7 +3589,8 @@
       "district": "JARDIM SANTA URSULA",
       "postalCode": "13863062",
       "city": "Aguaí",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350030"
     },
     "location": {
       "latitude": -22.058954166808505,
@@ -3429,7 +3609,8 @@
       "district": "SAO JOAQUIM",
       "postalCode": "16050395",
       "city": "Araçatuba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350280"
     },
     "location": {
       "latitude": -21.2009584,
@@ -3448,7 +3629,8 @@
       "district": "JAD SAO PAULO",
       "postalCode": "18700630",
       "city": "Avaré",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350450"
     },
     "location": {
       "latitude": -23.10082,
@@ -3467,7 +3649,8 @@
       "district": "CENTRO",
       "postalCode": "14140085",
       "city": "Cravinhos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351310"
     },
     "location": {
       "latitude": -21.336664,
@@ -3486,7 +3669,8 @@
       "district": "CENTRO",
       "postalCode": "17230023",
       "city": "Itapuí",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352290"
     },
     "location": {
       "latitude": -22.2350025878208,
@@ -3505,7 +3689,8 @@
       "district": "CENTRO",
       "postalCode": "17890017",
       "city": "Junqueirópolis",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352600"
     },
     "location": {
       "latitude": -21.515085447425207,
@@ -3524,7 +3709,8 @@
       "district": "JARDIM MARAJA",
       "postalCode": "17860266",
       "city": "Pacaembu",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353490"
     },
     "location": {
       "latitude": -21.563719521985604,
@@ -3543,7 +3729,8 @@
       "district": "CENTRO",
       "postalCode": "16300027",
       "city": "Penápolis",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353730"
     },
     "location": {
       "latitude": -21.422869309948602,
@@ -3562,7 +3749,8 @@
       "district": "CENTRO",
       "postalCode": "12410050",
       "city": "Pindamonhangaba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353800"
     },
     "location": {
       "latitude": -22.930637259110476,
@@ -3581,7 +3769,8 @@
       "district": "JARDIM SANTA TEREZIN",
       "postalCode": "18545232",
       "city": "Porto Feliz",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354060"
     },
     "location": {
       "latitude": -23.1725243,
@@ -3600,7 +3789,8 @@
       "district": "JARDIM SANTA MARIA",
       "postalCode": "14735058",
       "city": "Severínia",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355190"
     },
     "location": {
       "latitude": -20.81453189401599,
@@ -3619,7 +3809,8 @@
       "district": "JARDIM DAS NACOES",
       "postalCode": "12030190",
       "city": "Taubaté",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355410"
     },
     "location": {
       "latitude": -23.030267392173375,
@@ -3638,7 +3829,8 @@
       "district": "CENTRO",
       "postalCode": "13590154",
       "city": "Dourado",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351430"
     },
     "location": {
       "latitude": -22.118264412840695,
@@ -3657,7 +3849,8 @@
       "district": "CENTRO",
       "postalCode": "15840031",
       "city": "Itajobi",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352190"
     },
     "location": {
       "latitude": -21.3175207,
@@ -3676,7 +3869,8 @@
       "district": "PATRIMONIO SILVARES",
       "postalCode": "16201004",
       "city": "Birigui",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350650"
     },
     "location": {
       "latitude": -21.28088902461701,
@@ -3695,7 +3889,8 @@
       "district": "JARDIM DOS PASSAROS",
       "postalCode": "14813088",
       "city": "Gavião Peixoto",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351685"
     },
     "location": {
       "latitude": -21.8371795,
@@ -3714,7 +3909,8 @@
       "district": "CENTRO",
       "postalCode": "14740154",
       "city": "Viradouro",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355680"
     },
     "location": {
       "latitude": -20.872277,
@@ -3733,7 +3929,8 @@
       "district": "PARQUE IMPERIAL",
       "postalCode": "06462230",
       "city": "Barueri",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350570"
     },
     "location": {
       "latitude": -23.484501,
@@ -3752,7 +3949,8 @@
       "district": "JARDIM PRIMAVERA",
       "postalCode": "13580073",
       "city": "Ribeirão Bonito",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354290"
     },
     "location": {
       "latitude": -22.077925,
@@ -3771,7 +3969,8 @@
       "district": "CENTRO",
       "postalCode": "14830041",
       "city": "Rincão",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354370"
     },
     "location": {
       "latitude": -21.587271944706266,
@@ -3790,7 +3989,8 @@
       "district": "CENTRO",
       "postalCode": "14825011",
       "city": "Santa Lúcia",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354690"
     },
     "location": {
       "latitude": -21.6855822,
@@ -3809,7 +4009,8 @@
       "district": "CENTRO",
       "postalCode": "13930037",
       "city": "Serra Negra",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355160"
     },
     "location": {
       "latitude": -22.612762969429603,
@@ -3828,7 +4029,8 @@
       "district": "CENTRO",
       "postalCode": "14920017",
       "city": "Nova Europa",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353290"
     },
     "location": {
       "latitude": -21.779327489163997,
@@ -3847,7 +4049,8 @@
       "district": "PEREQUE",
       "postalCode": "11450000",
       "city": "Guarujá",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351870"
     },
     "location": {
       "latitude": -23.937388543237432,
@@ -3866,7 +4069,8 @@
       "district": "VILA PESTANA",
       "postalCode": "06122160",
       "city": "Osasco",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353440"
     },
     "location": {
       "latitude": -23.5329273,
@@ -3885,7 +4089,8 @@
       "district": "SANTO ANTONIO",
       "postalCode": "11410070",
       "city": "Guarujá",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351870"
     },
     "location": {
       "latitude": -23.983375530960355,
@@ -3904,7 +4109,8 @@
       "district": "JARDIM RIO BRANCO",
       "postalCode": "11347000",
       "city": "São Vicente",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355100"
     },
     "location": {
       "latitude": -23.9799557,
@@ -3923,7 +4129,8 @@
       "district": "JARDIM MUTINGA",
       "postalCode": "06463260",
       "city": "Barueri",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350570"
     },
     "location": {
       "latitude": -23.4976035,
@@ -3942,7 +4149,8 @@
       "district": "CENTRO",
       "postalCode": "15300031",
       "city": "General Salgado",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351690"
     },
     "location": {
       "latitude": -20.6484468856961,
@@ -3961,7 +4169,8 @@
       "district": "JD ANTONIO JOAQUIM F",
       "postalCode": "13497044",
       "city": "Iracemápolis",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352140"
     },
     "location": {
       "latitude": -22.587544941571323,
@@ -3980,7 +4189,8 @@
       "district": "SANTA CRUZ DOS NAVEG",
       "postalCode": "11450000",
       "city": "Guarujá",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351870"
     },
     "location": {
       "latitude": -23.9971918,
@@ -3999,7 +4209,8 @@
       "district": "CENTRO",
       "postalCode": "13720025",
       "city": "São José do Rio Pardo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354970"
     },
     "location": {
       "latitude": -21.60299540087658,
@@ -4018,7 +4229,8 @@
       "district": "VILA DOUTOR CARDOSO",
       "postalCode": "06654340",
       "city": "Itapevi",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352250"
     },
     "location": {
       "latitude": -23.536617543686578,
@@ -4037,7 +4249,8 @@
       "district": "AMADOR BUENO",
       "postalCode": "06680420",
       "city": "Itapevi",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352250"
     },
     "location": {
       "latitude": -23.53575501577122,
@@ -4056,7 +4269,8 @@
       "district": "CENTRO",
       "postalCode": "06401120",
       "city": "Barueri",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350570"
     },
     "location": {
       "latitude": -23.511220957958226,
@@ -4075,7 +4289,8 @@
       "district": "VILA AYROSA",
       "postalCode": "06283110",
       "city": "Osasco",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353440"
     },
     "location": {
       "latitude": -23.5129648,
@@ -4094,7 +4309,8 @@
       "district": "JARDIM ADALGISA",
       "postalCode": "06030410",
       "city": "Osasco",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353440"
     },
     "location": {
       "latitude": -23.559109273052158,
@@ -4113,7 +4329,8 @@
       "district": "BALNEARIO SAO JOSE",
       "postalCode": "04864050",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.7703675,
@@ -4132,7 +4349,8 @@
       "district": "BARRA FUNDA",
       "postalCode": "01153000",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.5311626,
@@ -4151,7 +4369,8 @@
       "district": "SANTANA",
       "postalCode": "02011100",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.5119428,
@@ -4170,7 +4389,8 @@
       "district": "PARQUE BAHIA",
       "postalCode": "06700157",
       "city": "Cotia",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351300"
     },
     "location": {
       "latitude": -23.604664,
@@ -4189,7 +4409,8 @@
       "district": "VILA MAFALDA",
       "postalCode": "06783360",
       "city": "Taboão da Serra",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355280"
     },
     "location": {
       "latitude": -23.631954249635257,
@@ -4208,7 +4429,8 @@
       "district": "CENTRO",
       "postalCode": "17670005",
       "city": "Quintana",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354200"
     },
     "location": {
       "latitude": -22.07073695,
@@ -4227,7 +4449,8 @@
       "district": "CENTRO",
       "postalCode": "13700031",
       "city": "Casa Branca",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351080"
     },
     "location": {
       "latitude": -21.77,
@@ -4246,7 +4469,8 @@
       "district": "JARDIM SOTERO COSTA",
       "postalCode": "18770350",
       "city": "Águas de Santa Bárbara",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350055"
     },
     "location": {
       "latitude": -22.88789827596861,
@@ -4265,7 +4489,8 @@
       "district": "JARDIM SANTA ROSA",
       "postalCode": "13280001",
       "city": "Vinhedo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355670"
     },
     "location": {
       "latitude": -23.03503251484256,
@@ -4284,7 +4509,8 @@
       "district": "JD INDEPENDENCIA",
       "postalCode": "13505130",
       "city": "Rio Claro",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354390"
     },
     "location": {
       "latitude": -22.3862094,
@@ -4303,7 +4529,8 @@
       "district": "JARDIM NILCE",
       "postalCode": "17132308",
       "city": "Agudos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350070"
     },
     "location": {
       "latitude": -22.472390730117077,
@@ -4322,7 +4549,8 @@
       "district": "PQ RES ESPLANADA",
       "postalCode": "18557644",
       "city": "Boituva",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350700"
     },
     "location": {
       "latitude": -23.272822,
@@ -4341,7 +4569,8 @@
       "district": "CIPO",
       "postalCode": "06900700",
       "city": "Embu-Guaçu",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351510"
     },
     "location": {
       "latitude": -23.879990834634825,
@@ -4360,7 +4589,8 @@
       "district": "VILA PE ANCHIETA",
       "postalCode": "13068219",
       "city": "Campinas",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350950"
     },
     "location": {
       "latitude": -22.86381,
@@ -4379,7 +4609,8 @@
       "district": "JD CARLOS LOURENCO",
       "postalCode": "13100678",
       "city": "Campinas",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350950"
     },
     "location": {
       "latitude": -22.9239,
@@ -4398,7 +4629,8 @@
       "district": "CENTRO",
       "postalCode": "18110025",
       "city": "Votorantim",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355700"
     },
     "location": {
       "latitude": -23.544669,
@@ -4417,7 +4649,8 @@
       "district": "JARDIM PRIMAVERA",
       "postalCode": "11660690",
       "city": "Caraguatatuba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351050"
     },
     "location": {
       "latitude": -23.626654,
@@ -4436,7 +4669,8 @@
       "district": "CIDADE ARACY 2",
       "postalCode": "13573228",
       "city": "São Carlos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354890"
     },
     "location": {
       "latitude": -22.02868302724925,
@@ -4455,7 +4689,8 @@
       "district": "ESTUARIO",
       "postalCode": "11025190",
       "city": "Santos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354850"
     },
     "location": {
       "latitude": -23.97151,
@@ -4474,7 +4709,8 @@
       "district": "AREIA BRANCA",
       "postalCode": "11089001",
       "city": "Santos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354850"
     },
     "location": {
       "latitude": -23.93746,
@@ -4493,7 +4729,8 @@
       "district": "AGENOR DE CAMPOS",
       "postalCode": "11735402",
       "city": "Mongaguá",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353110"
     },
     "location": {
       "latitude": -24.126075294394344,
@@ -4512,7 +4749,8 @@
       "district": "CENTRO",
       "postalCode": "18190023",
       "city": "Araçoiaba da Serra",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350290"
     },
     "location": {
       "latitude": -23.5009775,
@@ -4531,7 +4769,8 @@
       "district": "SAO JOSE",
       "postalCode": "14940622",
       "city": "Ibitinga",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351960"
     },
     "location": {
       "latitude": -21.74580801138418,
@@ -4550,7 +4789,8 @@
       "district": "BELAS ARTES",
       "postalCode": "11746778",
       "city": "Itanhaém",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352210"
     },
     "location": {
       "latitude": -24.183615,
@@ -4569,7 +4809,8 @@
       "district": "JD SAMAMBAIA",
       "postalCode": "15700202",
       "city": "Jales",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352480"
     },
     "location": {
       "latitude": -20.2670456,
@@ -4588,7 +4829,8 @@
       "district": "CENTRO",
       "postalCode": "18682042",
       "city": "Lençóis Paulista",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352680"
     },
     "location": {
       "latitude": -22.60010500822563,
@@ -4607,7 +4849,8 @@
       "district": "SAO JOAO BATISTA",
       "postalCode": "15400021",
       "city": "Olímpia",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353390"
     },
     "location": {
       "latitude": -20.740656,
@@ -4626,7 +4869,8 @@
       "district": "PARQUE DAVILLE",
       "postalCode": "11771470",
       "city": "Peruíbe",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353760"
     },
     "location": {
       "latitude": -24.3131,
@@ -4645,7 +4889,8 @@
       "district": "JARDIM SATELITE",
       "postalCode": "13224240",
       "city": "Várzea Paulista",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355650"
     },
     "location": {
       "latitude": -23.21234996678155,
@@ -4664,7 +4909,8 @@
       "district": "PARQUE JATAI",
       "postalCode": "18117233",
       "city": "Votorantim",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355700"
     },
     "location": {
       "latitude": -23.573831,
@@ -4683,7 +4929,8 @@
       "district": "JARDIM PEROLA",
       "postalCode": "13454029",
       "city": "Santa Bárbara d'Oeste",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354580"
     },
     "location": {
       "latitude": -22.7471006,
@@ -4702,7 +4949,8 @@
       "district": "CENTRO",
       "postalCode": "14870570",
       "city": "Jaboticabal",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352430"
     },
     "location": {
       "latitude": -21.256771553739664,
@@ -4721,7 +4969,8 @@
       "district": "CENTRO",
       "postalCode": "14600027",
       "city": "São Joaquim da Barra",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354940"
     },
     "location": {
       "latitude": -20.583024614108332,
@@ -4740,7 +4989,8 @@
       "district": "VILA MARIA",
       "postalCode": "13450270",
       "city": "Santa Bárbara d'Oeste",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354580"
     },
     "location": {
       "latitude": -22.7798,
@@ -4759,7 +5009,8 @@
       "district": "CAMPO GRANDE",
       "postalCode": "13058002",
       "city": "Campinas",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350950"
     },
     "location": {
       "latitude": -22.951062910931988,
@@ -4778,7 +5029,8 @@
       "district": "JD DOM JOSE",
       "postalCode": "06823310",
       "city": "Embu das Artes",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351500"
     },
     "location": {
       "latitude": -23.6718737,
@@ -4797,7 +5049,8 @@
       "district": "CDHU",
       "postalCode": "17354102",
       "city": "Igaraçu do Tietê",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352000"
     },
     "location": {
       "latitude": -22.520565013672616,
@@ -4816,7 +5069,8 @@
       "district": "JARDIM MACARENKO",
       "postalCode": "13171817",
       "city": "Sumaré",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355240"
     },
     "location": {
       "latitude": -22.83111197285515,
@@ -4835,7 +5089,8 @@
       "district": "MARIA DIRCE",
       "postalCode": "07173380",
       "city": "Guarulhos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351880"
     },
     "location": {
       "latitude": -23.434175,
@@ -4854,7 +5109,8 @@
       "district": "MASSAGUACU",
       "postalCode": "11677450",
       "city": "Caraguatatuba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351050"
     },
     "location": {
       "latitude": -23.580289,
@@ -4873,7 +5129,8 @@
       "district": "TERRA PRETA",
       "postalCode": "07661725",
       "city": "Mairiporã",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352850"
     },
     "location": {
       "latitude": -23.2566344,
@@ -4892,7 +5149,8 @@
       "district": "VILA SANTANA",
       "postalCode": "13270005",
       "city": "Valinhos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355620"
     },
     "location": {
       "latitude": -22.9666729,
@@ -4911,7 +5169,8 @@
       "district": "CIDADE NOVA",
       "postalCode": "14682198",
       "city": "Jardinópolis",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352510"
     },
     "location": {
       "latitude": -21.0207645,
@@ -4930,7 +5189,8 @@
       "district": "CENTRO",
       "postalCode": "13490009",
       "city": "Cordeirópolis",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351240"
     },
     "location": {
       "latitude": -22.4798063003318,
@@ -4949,7 +5209,8 @@
       "district": "JARDIM PAMELA",
       "postalCode": "08940000",
       "city": "Biritiba Mirim",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350660"
     },
     "location": {
       "latitude": -23.58029,
@@ -4968,7 +5229,8 @@
       "district": "CENTRO",
       "postalCode": "12620013",
       "city": "Piquete",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353850"
     },
     "location": {
       "latitude": -22.61135658680095,
@@ -4987,7 +5249,8 @@
       "district": "JARDIM CENTRAL",
       "postalCode": "11950000",
       "city": "Cajati",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350925"
     },
     "location": {
       "latitude": -24.72204,
@@ -5006,7 +5269,8 @@
       "district": "JARDIM DENADAI",
       "postalCode": "13181460",
       "city": "Sumaré",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355240"
     },
     "location": {
       "latitude": -22.842,
@@ -5025,7 +5289,8 @@
       "district": "JD BANDEIRA 2",
       "postalCode": "13051160",
       "city": "Campinas",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350950"
     },
     "location": {
       "latitude": -22.953354,
@@ -5044,7 +5309,8 @@
       "district": "VILA PRADO",
       "postalCode": "13574140",
       "city": "São Carlos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354890"
     },
     "location": {
       "latitude": -22.035386196450347,
@@ -5063,7 +5329,8 @@
       "district": "LENHEIRO",
       "postalCode": "13270005",
       "city": "Valinhos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355620"
     },
     "location": {
       "latitude": -22.967685,
@@ -5082,7 +5349,8 @@
       "district": "JD PLANALTO",
       "postalCode": "13912510",
       "city": "Jaguariúna",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352470"
     },
     "location": {
       "latitude": -22.68876,
@@ -5101,7 +5369,8 @@
       "district": "JAGUARI",
       "postalCode": "07500000",
       "city": "Santa Isabel",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354680"
     },
     "location": {
       "latitude": -23.31587296499875,
@@ -5120,7 +5389,8 @@
       "district": "CENTRO",
       "postalCode": "18400020",
       "city": "Itapeva",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352240"
     },
     "location": {
       "latitude": -23.987272037732012,
@@ -5139,7 +5409,8 @@
       "district": "JD QUIETUDE",
       "postalCode": "11717260",
       "city": "Praia Grande",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354100"
     },
     "location": {
       "latitude": -24.019789339782005,
@@ -5158,7 +5429,8 @@
       "district": "PARQUE DAS NACOES",
       "postalCode": "17512530",
       "city": "Marília",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352900"
     },
     "location": {
       "latitude": -22.1464357,
@@ -5177,7 +5449,8 @@
       "district": "JARDIM SANTA MARTA",
       "postalCode": "13846575",
       "city": "Mogi Guaçu",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353070"
     },
     "location": {
       "latitude": -22.33687777552137,
@@ -5196,7 +5469,8 @@
       "district": "PEREQUE MIRIM",
       "postalCode": "11669470",
       "city": "Caraguatatuba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351050"
     },
     "location": {
       "latitude": -23.706256,
@@ -5215,7 +5489,8 @@
       "district": "VILA INDEPENDENCIA",
       "postalCode": "17605400",
       "city": "Tupã",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355500"
     },
     "location": {
       "latitude": -21.939383299767545,
@@ -5234,7 +5509,8 @@
       "district": "JARDIM NOVO II",
       "postalCode": "13848114",
       "city": "Mogi Guaçu",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353070"
     },
     "location": {
       "latitude": -22.3439858,
@@ -5253,7 +5529,8 @@
       "district": "CENTRO",
       "postalCode": "15140009",
       "city": "Bálsamo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350480"
     },
     "location": {
       "latitude": -20.73645891698105,
@@ -5272,7 +5549,8 @@
       "district": "CENTRO",
       "postalCode": "18325083",
       "city": "Barra do Chapéu",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350535"
     },
     "location": {
       "latitude": -24.470697,
@@ -5291,7 +5569,8 @@
       "district": "CIDADE NOVA",
       "postalCode": "12414060",
       "city": "Pindamonhangaba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353800"
     },
     "location": {
       "latitude": -22.9451305,
@@ -5310,7 +5589,8 @@
       "district": "CENTRO",
       "postalCode": "14765007",
       "city": "Taquaral",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355365"
     },
     "location": {
       "latitude": -21.0731,
@@ -5329,7 +5609,8 @@
       "district": "CENTRO",
       "postalCode": "14720036",
       "city": "Taiúva",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355320"
     },
     "location": {
       "latitude": -21.122593946243843,
@@ -5348,7 +5629,8 @@
       "district": "JD SAO MANOEL",
       "postalCode": "14341044",
       "city": "Brodowski",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350780"
     },
     "location": {
       "latitude": -21.000127276623395,
@@ -5367,7 +5649,8 @@
       "district": "CENTRO",
       "postalCode": "12450000",
       "city": "Santo Antônio do Pinhal",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354820"
     },
     "location": {
       "latitude": -22.827,
@@ -5386,7 +5669,8 @@
       "district": "CENTRO",
       "postalCode": "14270051",
       "city": "Santa Rosa de Viterbo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354760"
     },
     "location": {
       "latitude": -21.47538078851916,
@@ -5405,7 +5689,8 @@
       "district": "JARDIM ACAPULCO",
       "postalCode": "13563714",
       "city": "São Carlos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354890"
     },
     "location": {
       "latitude": -21.996137318074066,
@@ -5424,7 +5709,8 @@
       "district": "CENTRO",
       "postalCode": "14200089",
       "city": "São Simão",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355090"
     },
     "location": {
       "latitude": -21.47888888759805,
@@ -5443,7 +5729,8 @@
       "district": "JD SAO NICOLAU",
       "postalCode": "11900000",
       "city": "Registro",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354260"
     },
     "location": {
       "latitude": -24.502867335881145,
@@ -5462,7 +5749,8 @@
       "district": "VILA MARIA IZABEL",
       "postalCode": "19807250",
       "city": "Assis",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350400"
     },
     "location": {
       "latitude": -22.6702488,
@@ -5481,7 +5769,8 @@
       "district": "CENTRO",
       "postalCode": "14870570",
       "city": "Jaboticabal",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352430"
     },
     "location": {
       "latitude": -21.25605663065488,
@@ -5500,7 +5789,8 @@
       "district": "CENTRO",
       "postalCode": "15901082",
       "city": "Taquaritinga",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355370"
     },
     "location": {
       "latitude": -21.402174,
@@ -5519,7 +5809,8 @@
       "district": "ALTO DA PONTE",
       "postalCode": "12212500",
       "city": "São José dos Campos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354990"
     },
     "location": {
       "latitude": -23.153837449999997,
@@ -5538,7 +5829,8 @@
       "district": "CONJUNTO HAB ANA JA",
       "postalCode": "19064000",
       "city": "Presidente Prudente",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354140"
     },
     "location": {
       "latitude": -22.150046666477547,
@@ -5557,7 +5849,8 @@
       "district": "CENTRO",
       "postalCode": "11608608",
       "city": "São Sebastião",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355070"
     },
     "location": {
       "latitude": -23.80456616567106,
@@ -5576,7 +5869,8 @@
       "district": "VILA MINEIRA",
       "postalCode": "16901300",
       "city": "Andradina",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350210"
     },
     "location": {
       "latitude": -20.894584,
@@ -5595,7 +5889,8 @@
       "district": "PQ JABAQUARA",
       "postalCode": "19033000",
       "city": "Presidente Prudente",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354140"
     },
     "location": {
       "latitude": -22.099259216310116,
@@ -5614,7 +5909,8 @@
       "district": "CENTRO",
       "postalCode": "13730240",
       "city": "Mococa",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353050"
     },
     "location": {
       "latitude": -21.4634489,
@@ -5633,7 +5929,8 @@
       "district": "CIDADE JARDIM",
       "postalCode": "13501104",
       "city": "Rio Claro",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354390"
     },
     "location": {
       "latitude": -22.4216431,
@@ -5652,7 +5949,8 @@
       "district": "JARDIM RESID POR DO",
       "postalCode": "15600348",
       "city": "Fernandópolis",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351550"
     },
     "location": {
       "latitude": -20.2917688,
@@ -5671,7 +5969,8 @@
       "district": "WILLIAMS",
       "postalCode": "17402064",
       "city": "Garça",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351670"
     },
     "location": {
       "latitude": -22.20664,
@@ -5690,7 +5989,8 @@
       "district": "JARDIM PADRE BENTO",
       "postalCode": "13313100",
       "city": "Itu",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352390"
     },
     "location": {
       "latitude": -23.256343,
@@ -5709,7 +6009,8 @@
       "district": "JACARE",
       "postalCode": "13318122",
       "city": "Cabreúva",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350840"
     },
     "location": {
       "latitude": -23.2454482,
@@ -5728,7 +6029,8 @@
       "district": "JOAQUIM MARINHEIRO",
       "postalCode": "14315228",
       "city": "Batatais",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350590"
     },
     "location": {
       "latitude": -20.904503,
@@ -5747,7 +6049,8 @@
       "district": "MONTE CASTELO",
       "postalCode": "17520460",
       "city": "Marília",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352900"
     },
     "location": {
       "latitude": -22.2456473,
@@ -5766,7 +6069,8 @@
       "district": "CHACARA JUNQUEIRA",
       "postalCode": "18271200",
       "city": "Tatuí",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355400"
     },
     "location": {
       "latitude": -23.341773148571303,
@@ -5785,7 +6089,8 @@
       "district": "IBIRAPUERA",
       "postalCode": "14784200",
       "city": "Barretos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350550"
     },
     "location": {
       "latitude": -20.5831624,
@@ -5804,7 +6109,8 @@
       "district": "ITAQUERA",
       "postalCode": "08295005",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.54578,
@@ -5823,7 +6129,8 @@
       "district": "ALVES DIAS",
       "postalCode": "09851000",
       "city": "São Bernardo do Campo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354870"
     },
     "location": {
       "latitude": -23.72458455,
@@ -5842,7 +6149,8 @@
       "district": "JARDIM REVISTA",
       "postalCode": "08694030",
       "city": "Suzano",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355250"
     },
     "location": {
       "latitude": -23.5173395,
@@ -5861,7 +6169,8 @@
       "district": "JARDIM JARAGUA",
       "postalCode": "05275010",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.4353438,
@@ -5880,7 +6189,8 @@
       "district": "ARARETAMA",
       "postalCode": "12423501",
       "city": "Pindamonhangaba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353800"
     },
     "location": {
       "latitude": -22.941437,
@@ -5899,7 +6209,8 @@
       "district": "SANTA RITA DE CASSIA",
       "postalCode": "06700650",
       "city": "Cotia",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351300"
     },
     "location": {
       "latitude": -23.6076046,
@@ -5918,7 +6229,8 @@
       "district": "BAETA NEVES",
       "postalCode": "09760001",
       "city": "São Bernardo do Campo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354870"
     },
     "location": {
       "latitude": -23.699781205120484,
@@ -5937,7 +6249,8 @@
       "district": "VILA SAO PEDRO",
       "postalCode": "09210240",
       "city": "Santo André",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354780"
     },
     "location": {
       "latitude": -23.6411957,
@@ -5956,7 +6269,8 @@
       "district": "JARDIM MARINGA",
       "postalCode": "09340440",
       "city": "Mauá",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352940"
     },
     "location": {
       "latitude": -23.66679285,
@@ -5975,7 +6289,8 @@
       "district": "VILA LEMOS",
       "postalCode": "17063060",
       "city": "Bauru",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350600"
     },
     "location": {
       "latitude": -22.3066474,
@@ -5994,7 +6309,8 @@
       "district": "JARDIM PLANALTO",
       "postalCode": "06362170",
       "city": "Carapicuíba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351060"
     },
     "location": {
       "latitude": -24.5212404,
@@ -6013,7 +6329,8 @@
       "district": "CAMPO DOS ALEMAES",
       "postalCode": "12239310",
       "city": "São José dos Campos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354990"
     },
     "location": {
       "latitude": -23.2727815,
@@ -6032,7 +6349,8 @@
       "district": "VILA MARACANA",
       "postalCode": "05846420",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.649141,
@@ -6051,7 +6369,8 @@
       "district": "CECAP I",
       "postalCode": "12043107",
       "city": "Taubaté",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355410"
     },
     "location": {
       "latitude": -23.0341975,
@@ -6070,7 +6389,8 @@
       "district": "VILA FERROVIARIA",
       "postalCode": "14802330",
       "city": "Araraquara",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350320"
     },
     "location": {
       "latitude": -21.773349559094665,
@@ -6089,7 +6409,8 @@
       "district": "VILA MATHIAS",
       "postalCode": "11075300",
       "city": "Santos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354850"
     },
     "location": {
       "latitude": -23.94837,
@@ -6108,7 +6429,8 @@
       "district": "CENTRO",
       "postalCode": "09911190",
       "city": "Diadema",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351380"
     },
     "location": {
       "latitude": -23.6865647862821,
@@ -6127,7 +6449,8 @@
       "district": "CONJUNTO HABITACIONA",
       "postalCode": "08472170",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.5717,
@@ -6146,7 +6469,8 @@
       "district": "JARAGUA",
       "postalCode": "02991000",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.4418741,
@@ -6165,7 +6489,8 @@
       "district": "CIDADE IND SATELITE",
       "postalCode": "07231060",
       "city": "Guarulhos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351880"
     },
     "location": {
       "latitude": -23.453543,
@@ -6184,7 +6509,8 @@
       "district": "CENTRO",
       "postalCode": "06950000",
       "city": "Juquitiba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352620"
     },
     "location": {
       "latitude": -23.933086,
@@ -6203,7 +6529,8 @@
       "district": "MOREIRA CESAR",
       "postalCode": "12440060",
       "city": "Pindamonhangaba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353800"
     },
     "location": {
       "latitude": -22.913067,
@@ -6222,7 +6549,8 @@
       "district": "DEMARCHI",
       "postalCode": "09820340",
       "city": "São Bernardo do Campo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354870"
     },
     "location": {
       "latitude": -23.7442534,
@@ -6241,7 +6569,8 @@
       "district": "GRAJAU",
       "postalCode": "04845000",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.7494978,
@@ -6260,7 +6589,8 @@
       "district": "JARDIM DA PAZ",
       "postalCode": "13470460",
       "city": "Americana",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350160"
     },
     "location": {
       "latitude": -22.70874920781281,
@@ -6279,7 +6609,8 @@
       "district": "CENTRO",
       "postalCode": "15775037",
       "city": "Santa Fé do Sul",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354660"
     },
     "location": {
       "latitude": -20.2143915098922,
@@ -6298,7 +6629,8 @@
       "district": "JARDIM HENRIQUETA",
       "postalCode": "06765000",
       "city": "Taboão da Serra",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355280"
     },
     "location": {
       "latitude": -23.6148313,
@@ -6317,7 +6649,8 @@
       "district": "VILA REZENDE",
       "postalCode": "13405280",
       "city": "Piracicaba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353870"
     },
     "location": {
       "latitude": -22.705187579674327,
@@ -6336,7 +6669,8 @@
       "district": "VILA XAVIER",
       "postalCode": "14810150",
       "city": "Araraquara",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350320"
     },
     "location": {
       "latitude": -21.7858991,
@@ -6355,7 +6689,8 @@
       "district": "ITAIM PAULISTA",
       "postalCode": "08140000",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.5083112,
@@ -6374,7 +6709,8 @@
       "district": "CENTRO",
       "postalCode": "07850902",
       "city": "Franco da Rocha",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351640"
     },
     "location": {
       "latitude": -23.33254266189031,
@@ -6393,7 +6729,8 @@
       "district": "PARQUE VILA SAUDE",
       "postalCode": "15502327",
       "city": "Votuporanga",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355710"
     },
     "location": {
       "latitude": -20.4266204,
@@ -6412,7 +6749,8 @@
       "district": "ESTACAO",
       "postalCode": "18915124",
       "city": "Santa Cruz do Rio Pardo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354640"
     },
     "location": {
       "latitude": -22.90965149934447,
@@ -6431,7 +6769,8 @@
       "district": "VILA PRUDENTE",
       "postalCode": "13420500",
       "city": "Piracicaba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353870"
     },
     "location": {
       "latitude": -22.73941996000454,
@@ -6450,7 +6789,8 @@
       "district": "JD ROMULO MONTANARI",
       "postalCode": "14152012",
       "city": "Serrana",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355150"
     },
     "location": {
       "latitude": -21.20736370913348,
@@ -6469,7 +6809,8 @@
       "district": "PQ RES ABILIO PEDR",
       "postalCode": "13483339",
       "city": "Limeira",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352690"
     },
     "location": {
       "latitude": -22.555277754903873,
@@ -6488,7 +6829,8 @@
       "district": "JARDIM PAULISTANO",
       "postalCode": "14090270",
       "city": "Ribeirão Preto",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354340"
     },
     "location": {
       "latitude": -21.176099075570143,
@@ -6507,7 +6849,8 @@
       "district": "JARDIM JULIA",
       "postalCode": "14706038",
       "city": "Bebedouro",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350610"
     },
     "location": {
       "latitude": -20.9335225,
@@ -6526,7 +6869,8 @@
       "district": "AEROPORTO I",
       "postalCode": "14404091",
       "city": "Franca",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351620"
     },
     "location": {
       "latitude": -20.5734779,
@@ -6545,7 +6889,8 @@
       "district": "CENTRO",
       "postalCode": "13870249",
       "city": "São João da Boa Vista",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354910"
     },
     "location": {
       "latitude": -21.983050285568815,
@@ -6564,7 +6909,8 @@
       "district": "JARDIM GRANDE ALIANC",
       "postalCode": "14161334",
       "city": "Sertãozinho",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355170"
     },
     "location": {
       "latitude": -21.120299,
@@ -6583,7 +6929,8 @@
       "district": "JD PORTO BELLO",
       "postalCode": "18103750",
       "city": "Sorocaba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355220"
     },
     "location": {
       "latitude": -23.427591,
@@ -6602,7 +6949,8 @@
       "district": "JOSE OMETTO II",
       "postalCode": "13606414",
       "city": "Araras",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350330"
     },
     "location": {
       "latitude": -22.3517292,
@@ -6621,7 +6969,8 @@
       "district": "SANTA PAULA",
       "postalCode": "09551340",
       "city": "São Caetano do Sul",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354880"
     },
     "location": {
       "latitude": -23.614672659625764,
@@ -6640,7 +6989,8 @@
       "district": "CIDADE ATLANTICA",
       "postalCode": "11450000",
       "city": "Guarujá",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351870"
     },
     "location": {
       "latitude": -23.97769488474913,
@@ -6659,7 +7009,8 @@
       "district": "VILA PARANAGUA",
       "postalCode": "03807370",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.499121139790365,
@@ -6678,7 +7029,8 @@
       "district": "EUGENIO DE MELO",
       "postalCode": "12247190",
       "city": "São José dos Campos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354990"
     },
     "location": {
       "latitude": -23.1375332,
@@ -6697,7 +7049,8 @@
       "district": "JARDIM BAHIA FAZEN",
       "postalCode": "06530245",
       "city": "Santana de Parnaíba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354730"
     },
     "location": {
       "latitude": -23.4113339,
@@ -6716,7 +7069,8 @@
       "district": "JARDIM BELEM",
       "postalCode": "07910000",
       "city": "Francisco Morato",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351630"
     },
     "location": {
       "latitude": -23.28645205808271,
@@ -6735,7 +7089,8 @@
       "district": "JARDIM OLIMPICO",
       "postalCode": "17033841",
       "city": "Bauru",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350600"
     },
     "location": {
       "latitude": -22.326695584018942,
@@ -6754,7 +7109,8 @@
       "district": "CENTRO",
       "postalCode": "12501090",
       "city": "Guaratinguetá",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351840"
     },
     "location": {
       "latitude": -22.8258407,
@@ -6773,7 +7129,8 @@
       "district": "RODEIO",
       "postalCode": "08780010",
       "city": "Mogi das Cruzes",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353060"
     },
     "location": {
       "latitude": -23.501269294155364,
@@ -6792,7 +7149,8 @@
       "district": "PQ RESIDENCIAL JUNDI",
       "postalCode": "13212461",
       "city": "Jundiaí",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352590"
     },
     "location": {
       "latitude": -23.1492186,
@@ -6811,7 +7169,8 @@
       "district": "OROPO",
       "postalCode": "08760500",
       "city": "Mogi das Cruzes",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353060"
     },
     "location": {
       "latitude": -23.52303112638621,
@@ -6830,7 +7189,8 @@
       "district": "FREGUESIA DO O",
       "postalCode": "02738000",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.4735754,
@@ -6849,7 +7209,8 @@
       "district": "VILA CARRAO",
       "postalCode": "03403002",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.55012262888866,
@@ -6868,7 +7229,8 @@
       "district": "VILA MARIA BAIXA",
       "postalCode": "02168050",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.517233564170837,
@@ -6887,7 +7249,8 @@
       "district": "JARDIM MESQUITA",
       "postalCode": "12327683",
       "city": "Jacareí",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352440"
     },
     "location": {
       "latitude": -23.2973117,
@@ -6906,7 +7269,8 @@
       "district": "VILA DIONISIA",
       "postalCode": "02671100",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.46711,
@@ -6925,7 +7289,8 @@
       "district": "VILA HAMBURGUESA",
       "postalCode": "05319000",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.533,
@@ -6944,7 +7309,8 @@
       "district": "VILA ANTONIO",
       "postalCode": "05376000",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.56835098369041,
@@ -6963,7 +7329,8 @@
       "district": "VILA NIPONICA",
       "postalCode": "17052170",
       "city": "Bauru",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350600"
     },
     "location": {
       "latitude": -22.350175034704396,
@@ -6982,7 +7349,8 @@
       "district": "JARDIM BOTUCATU",
       "postalCode": "04174040",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.633363841785595,
@@ -7001,7 +7369,8 @@
       "district": "VILA CAMPESTRE",
       "postalCode": "04330060",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.431722,
@@ -7020,7 +7389,8 @@
       "district": "VILA NILO",
       "postalCode": "02278040",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.4590358,
@@ -7039,7 +7409,8 @@
       "district": "JAD MORADA DO SOL",
       "postalCode": "13348455",
       "city": "Indaiatuba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352050"
     },
     "location": {
       "latitude": -23.11952515,
@@ -7058,7 +7429,8 @@
       "district": "JARDIM JAGUARE",
       "postalCode": "15052276",
       "city": "São José do Rio Preto",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354980"
     },
     "location": {
       "latitude": -20.776399302310075,
@@ -7077,7 +7449,8 @@
       "district": "VL ANITA COSTA",
       "postalCode": "06600170",
       "city": "Jandira",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352500"
     },
     "location": {
       "latitude": -23.536291093876567,
@@ -7096,7 +7469,8 @@
       "district": "VL SANTA LUCIA",
       "postalCode": "04937000",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.6866667,
@@ -7115,7 +7489,8 @@
       "district": "CONJUNTO PROMORAR ES",
       "postalCode": "02873250",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.455204,
@@ -7134,7 +7509,8 @@
       "district": "JARDIM HELENA",
       "postalCode": "08090370",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.4791315,
@@ -7153,7 +7529,8 @@
       "district": "VILA SAO JOSE",
       "postalCode": "04837150",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.743845796672538,
@@ -7172,7 +7549,8 @@
       "district": "JARDIM PAINEIRAS",
       "postalCode": "09932210",
       "city": "Diadema",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351380"
     },
     "location": {
       "latitude": -23.664721974843427,
@@ -7191,7 +7569,8 @@
       "district": "JARDIM SANTO ANDRE",
       "postalCode": "09132740",
       "city": "Santo André",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354780"
     },
     "location": {
       "latitude": -23.70729144491338,
@@ -7210,7 +7589,8 @@
       "district": "JD AMANDA II",
       "postalCode": "13188100",
       "city": "Hortolândia",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351907"
     },
     "location": {
       "latitude": -22.858381059404774,
@@ -7229,7 +7609,8 @@
       "district": "JD PALMEIRAS",
       "postalCode": "14405600",
       "city": "Franca",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351620"
     },
     "location": {
       "latitude": -20.5214097,
@@ -7248,7 +7629,8 @@
       "district": "JD ROSOLEM",
       "postalCode": "13185300",
       "city": "Hortolândia",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351907"
     },
     "location": {
       "latitude": -22.897861112019445,
@@ -7267,7 +7649,8 @@
       "district": "JARDIM PAULISTA",
       "postalCode": "13198488",
       "city": "Monte Mor",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353180"
     },
     "location": {
       "latitude": -22.94547098560727,
@@ -7286,7 +7669,8 @@
       "district": "VILA MENCK",
       "postalCode": "06273050",
       "city": "Osasco",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353440"
     },
     "location": {
       "latitude": -23.539989481458367,
@@ -7305,7 +7689,8 @@
       "district": "CENTRO",
       "postalCode": "13520005",
       "city": "São Pedro",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355040"
     },
     "location": {
       "latitude": -22.5480684,
@@ -7324,7 +7709,8 @@
       "district": "JARDIM CONCEICAO",
       "postalCode": "06140040",
       "city": "Osasco",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353440"
     },
     "location": {
       "latitude": -23.572739277817778,
@@ -7343,7 +7729,8 @@
       "district": "PARQUE GUAIANASES",
       "postalCode": "08431640",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.527537000000002,
@@ -7362,7 +7749,8 @@
       "district": "JUNDIAPEBA",
       "postalCode": "08750770",
       "city": "Mogi das Cruzes",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353060"
     },
     "location": {
       "latitude": -23.553828003678408,
@@ -7381,7 +7769,8 @@
       "district": "JD FLORESTAN FERNAND",
       "postalCode": "14079298",
       "city": "Ribeirão Preto",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354340"
     },
     "location": {
       "latitude": -21.129280531354443,
@@ -7400,7 +7789,8 @@
       "district": "VILA MAGINI",
       "postalCode": "09390140",
       "city": "Mauá",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352940"
     },
     "location": {
       "latitude": -23.663530488437978,
@@ -7419,7 +7809,8 @@
       "district": "RIO DA PRATA",
       "postalCode": "11681220",
       "city": "Ubatuba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355540"
     },
     "location": {
       "latitude": -23.54364978243258,
@@ -7438,7 +7829,8 @@
       "district": "N HAB MARY DOTA",
       "postalCode": "17026390",
       "city": "Bauru",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350600"
     },
     "location": {
       "latitude": -22.291121552435563,
@@ -7457,7 +7849,8 @@
       "district": "SANTA CLARA",
       "postalCode": "13180000",
       "city": "Sumaré",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355240"
     },
     "location": {
       "latitude": -22.839378306766267,
@@ -7476,7 +7869,8 @@
       "district": "BELENZINHO",
       "postalCode": "03163030",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.5466591,
@@ -7495,7 +7889,8 @@
       "district": "ADELINO SIMIONI",
       "postalCode": "14071140",
       "city": "Ribeirão Preto",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354340"
     },
     "location": {
       "latitude": -21.122295110595505,
@@ -7514,7 +7909,8 @@
       "district": "VILA SONIA",
       "postalCode": "13408212",
       "city": "Piracicaba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353870"
     },
     "location": {
       "latitude": -22.671093631524922,
@@ -7533,7 +7929,8 @@
       "district": "JD NOVA HORTOLANDIA",
       "postalCode": "13183612",
       "city": "Hortolândia",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351907"
     },
     "location": {
       "latitude": -22.857886744648564,
@@ -7552,7 +7949,8 @@
       "district": "PQ NOVO HORIZONTE",
       "postalCode": "12225011",
       "city": "São José dos Campos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354990"
     },
     "location": {
       "latitude": -23.18427,
@@ -7571,7 +7969,8 @@
       "district": "JD DOS ALAMOS",
       "postalCode": "04883025",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.815368,
@@ -7590,7 +7989,8 @@
       "district": "JD SANTA TEREZINHA",
       "postalCode": "04474000",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.6977416,
@@ -7609,7 +8009,8 @@
       "district": "PARQUE MEIA LUA",
       "postalCode": "12335090",
       "city": "Jacareí",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352440"
     },
     "location": {
       "latitude": -23.2627595,
@@ -7628,7 +8029,8 @@
       "district": "TABOAO",
       "postalCode": "09657000",
       "city": "São Bernardo do Campo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354870"
     },
     "location": {
       "latitude": -23.6664659629774,
@@ -7647,7 +8049,8 @@
       "district": "JARDIM PAULISTA",
       "postalCode": "07083230",
       "city": "Guarulhos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351880"
     },
     "location": {
       "latitude": -23.436759,
@@ -7666,7 +8069,8 @@
       "district": "VILA EMIR",
       "postalCode": "04447021",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.6964255,
@@ -7685,7 +8089,8 @@
       "district": "CENTRO",
       "postalCode": "09020220",
       "city": "Santo André",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354780"
     },
     "location": {
       "latitude": -23.664,
@@ -7704,7 +8109,8 @@
       "district": "PERUS",
       "postalCode": "05202140",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.40072671942731,
@@ -7723,7 +8129,8 @@
       "district": "PIRITUBA",
       "postalCode": "02945000",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.4846347,
@@ -7742,7 +8149,8 @@
       "district": "JD CEREJEIRAS",
       "postalCode": "12951006",
       "city": "Atibaia",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350410"
     },
     "location": {
       "latitude": -23.132124776391105,
@@ -7761,7 +8169,8 @@
       "district": "VILA MARIA LUIZA",
       "postalCode": "14055380",
       "city": "Ribeirão Preto",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354340"
     },
     "location": {
       "latitude": -21.157919315786014,
@@ -7780,7 +8189,8 @@
       "district": "PUTIM",
       "postalCode": "12228000",
       "city": "São José dos Campos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354990"
     },
     "location": {
       "latitude": -23.24428185,
@@ -7799,7 +8209,8 @@
       "district": "JARDIM ANTUNES",
       "postalCode": "15047050",
       "city": "São José do Rio Preto",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354980"
     },
     "location": {
       "latitude": -20.777456,
@@ -7818,7 +8229,8 @@
       "district": "RIACHO GRANDE",
       "postalCode": "09830291",
       "city": "São Bernardo do Campo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354870"
     },
     "location": {
       "latitude": -23.78387461811079,
@@ -7837,7 +8249,8 @@
       "district": "RUDGE RAMOS",
       "postalCode": "09624070",
       "city": "São Bernardo do Campo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354870"
     },
     "location": {
       "latitude": -23.6556018,
@@ -7856,7 +8269,8 @@
       "district": "JD AEROPORTO",
       "postalCode": "19813178",
       "city": "Assis",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350400"
     },
     "location": {
       "latitude": -22.6475566,
@@ -7875,7 +8289,8 @@
       "district": "SACADURA CABRAL",
       "postalCode": "09061260",
       "city": "Santo André",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354780"
     },
     "location": {
       "latitude": -23.6519136,
@@ -7894,7 +8309,8 @@
       "district": "SACOMA",
       "postalCode": "04232000",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.61349792093791,
@@ -7913,7 +8329,8 @@
       "district": "RESIDENCIAL FLAMBOYA",
       "postalCode": "08588050",
       "city": "Itaquaquecetuba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352310"
     },
     "location": {
       "latitude": -23.438738151072176,
@@ -7932,7 +8349,8 @@
       "district": "AGUA QUENTE",
       "postalCode": "12062741",
       "city": "Taubaté",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355410"
     },
     "location": {
       "latitude": -23.003211154276055,
@@ -7951,7 +8369,8 @@
       "district": "ESPLANADA SANTA HELE",
       "postalCode": "12053831",
       "city": "Taubaté",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355410"
     },
     "location": {
       "latitude": -22.99803147339078,
@@ -7970,7 +8389,8 @@
       "district": "SANTA LUZIA",
       "postalCode": "09405390",
       "city": "Ribeirão Pires",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354330"
     },
     "location": {
       "latitude": -23.6937676,
@@ -7989,7 +8409,8 @@
       "district": "SANTO AMARO",
       "postalCode": "04734000",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.651261259856767,
@@ -8008,7 +8429,8 @@
       "district": "JARDIM SANTO ANTONIO",
       "postalCode": "15047162",
       "city": "São José do Rio Preto",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354980"
     },
     "location": {
       "latitude": -20.76208035421769,
@@ -8027,7 +8449,8 @@
       "district": "CIDADE SOBERANA",
       "postalCode": "07162000",
       "city": "Guarulhos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351880"
     },
     "location": {
       "latitude": -23.40284605,
@@ -8046,7 +8469,8 @@
       "district": "JD SAO JOSE",
       "postalCode": "13467000",
       "city": "Americana",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350160"
     },
     "location": {
       "latitude": -22.7464189,
@@ -8065,7 +8489,8 @@
       "district": "VILA SAO PEDRO",
       "postalCode": "09784000",
       "city": "São Bernardo do Campo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354870"
     },
     "location": {
       "latitude": -23.71831455,
@@ -8084,7 +8509,8 @@
       "district": "LAURA MOLINA",
       "postalCode": "14806336",
       "city": "Araraquara",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350320"
     },
     "location": {
       "latitude": -21.726992224615362,
@@ -8103,7 +8529,8 @@
       "district": "FERRAZOPOLIS",
       "postalCode": "09791260",
       "city": "São Bernardo do Campo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354870"
     },
     "location": {
       "latitude": -23.740569201918223,
@@ -8122,7 +8549,8 @@
       "district": "JARDIM PARAISO",
       "postalCode": "07144000",
       "city": "Guarulhos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351880"
     },
     "location": {
       "latitude": -23.4162536,
@@ -8141,7 +8569,8 @@
       "district": "SAO FRANCISCO",
       "postalCode": "15086080",
       "city": "São José do Rio Preto",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354980"
     },
     "location": {
       "latitude": -20.839394868632226,
@@ -8160,7 +8589,8 @@
       "district": "TATUAPE",
       "postalCode": "03064000",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.533566417354958,
@@ -8179,7 +8609,8 @@
       "district": "VILA AMERICANA",
       "postalCode": "08020000",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.4989951,
@@ -8198,7 +8629,8 @@
       "district": "ALVARENGA",
       "postalCode": "09850550",
       "city": "São Bernardo do Campo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354870"
     },
     "location": {
       "latitude": -23.74081065,
@@ -8217,7 +8649,8 @@
       "district": "VILA HORTENCIA",
       "postalCode": "18020003",
       "city": "Sorocaba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355220"
     },
     "location": {
       "latitude": -23.509110658054986,
@@ -8236,7 +8669,8 @@
       "district": "VILA OLIMPIA",
       "postalCode": "18075042",
       "city": "Sorocaba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355220"
     },
     "location": {
       "latitude": -23.4834831,
@@ -8255,7 +8689,8 @@
       "district": "V LUCY",
       "postalCode": "18043004",
       "city": "Sorocaba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355220"
     },
     "location": {
       "latitude": -23.5043477,
@@ -8274,7 +8709,8 @@
       "district": "JARDIM MARILU",
       "postalCode": "15135070",
       "city": "Mirassol",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353030"
     },
     "location": {
       "latitude": -20.81617657951,
@@ -8293,7 +8729,8 @@
       "district": "HIPICA JAGUARI",
       "postalCode": "12926449",
       "city": "Bragança Paulista",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350760"
     },
     "location": {
       "latitude": -22.920442807611757,
@@ -8312,7 +8749,8 @@
       "district": "VILA DAVID",
       "postalCode": "12908040",
       "city": "Bragança Paulista",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350760"
     },
     "location": {
       "latitude": -22.936519,
@@ -8331,7 +8769,8 @@
       "district": "LOT PQ EMPRESARIAL",
       "postalCode": "13257576",
       "city": "Itatiba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352340"
     },
     "location": {
       "latitude": -22.988269371230405,
@@ -8350,7 +8789,8 @@
       "district": "PARQUE IRACEMA",
       "postalCode": "15809007",
       "city": "Catanduva",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351110"
     },
     "location": {
       "latitude": -21.1421543,
@@ -8369,7 +8809,8 @@
       "district": "SAMAMBAIA",
       "postalCode": "11712400",
       "city": "Praia Grande",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354100"
     },
     "location": {
       "latitude": -24.038963612670404,
@@ -8388,7 +8829,8 @@
       "district": "PQ SAO LUIZ",
       "postalCode": "11533480",
       "city": "Cubatão",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "351350"
     },
     "location": {
       "latitude": -23.92440575216499,
@@ -8407,7 +8849,8 @@
       "district": "VILA SAO LUIZ",
       "postalCode": "19911205",
       "city": "Ourinhos",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353470"
     },
     "location": {
       "latitude": -22.961684,
@@ -8426,7 +8869,8 @@
       "district": "JORDANESIA",
       "postalCode": "07776395",
       "city": "Cajamar",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "350920"
     },
     "location": {
       "latitude": -23.3381654,
@@ -8445,7 +8889,8 @@
       "district": "CENTRO",
       "postalCode": "12995005",
       "city": "Pinhalzinho",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353820"
     },
     "location": {
       "latitude": -22.784391,
@@ -8464,7 +8909,8 @@
       "district": "JARDIM VERA CRUZ",
       "postalCode": "04965140",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.5505199,
@@ -8483,7 +8929,8 @@
       "district": "VILA FIGUEIREDO",
       "postalCode": "09450000",
       "city": "Rio Grande da Serra",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354410"
     },
     "location": {
       "latitude": -23.746176665119826,
@@ -8502,7 +8949,8 @@
       "district": "LIBERDADE",
       "postalCode": "01504000",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.56742767023839,
@@ -8521,7 +8969,8 @@
       "district": "CENTRO",
       "postalCode": "06016006",
       "city": "Osasco",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353440"
     },
     "location": {
       "latitude": -23.53709766599214,
@@ -8540,7 +8989,8 @@
       "district": "JARAGUA",
       "postalCode": "13401270",
       "city": "Piracicaba",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353870"
     },
     "location": {
       "latitude": -22.741213399531283,
@@ -8559,7 +9009,8 @@
       "district": "VIL LUZITA",
       "postalCode": "09171120",
       "city": "Santo André",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "354780"
     },
     "location": {
       "latitude": -23.699371499999998,
@@ -8578,7 +9029,8 @@
       "district": "V CLEMENTINO",
       "postalCode": "04037002",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.596005848765493,
@@ -8597,7 +9049,8 @@
       "district": "JARDIM MIRA",
       "postalCode": "04377036",
       "city": "São Paulo",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "355030"
     },
     "location": {
       "latitude": -23.6542396,
@@ -8616,7 +9069,8 @@
       "district": "JARDIM ZAIRA",
       "postalCode": "09390140",
       "city": "Mauá",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "352940"
     },
     "location": {
       "latitude": -23.65498595,
@@ -8635,7 +9089,8 @@
       "district": "JARDIM EUROPA",
       "postalCode": "13802444",
       "city": "Mogi Mirim",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353080"
     },
     "location": {
       "latitude": -22.430943,
@@ -8654,7 +9109,8 @@
       "district": "VILA BELEM",
       "postalCode": "15470094",
       "city": "Palestina",
-      "state": "SP"
+      "state": "SP",
+      "municipalityCode": "353500"
     },
     "location": {
       "latitude": -20.389606718506844,
