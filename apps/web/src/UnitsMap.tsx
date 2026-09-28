@@ -16,6 +16,21 @@ const brazilCenter: [number, number] = [-14.2, -51.9];
 // Canvas does not resolve CSS variables, so the brand blue is repeated here.
 const markerColor = "#1266cc";
 const fitPadding = 24;
+const preciseMarker = {
+  color: "white",
+  fillColor: markerColor,
+  fillOpacity: 0.8,
+  opacity: 1,
+  weight: 2,
+};
+// A hollow ring tells the position is not the unit's own coordinate.
+const approximateMarker = {
+  color: markerColor,
+  fillColor: "white",
+  fillOpacity: 0.6,
+  opacity: 1,
+  weight: 2,
+};
 
 interface UnitsMapProps {
   units: HealthUnit[];
@@ -119,13 +134,11 @@ export function UnitsMap({
           key={unit.id}
           center={[unit.location.latitude!, unit.location.longitude!]}
           radius={markerRadius}
-          pathOptions={{
-            color: "white",
-            fillColor: markerColor,
-            fillOpacity: 0.8,
-            opacity: 1,
-            weight: 2,
-          }}
+          pathOptions={
+            unit.location.precision === "municipality"
+              ? approximateMarker
+              : preciseMarker
+          }
         >
           <Popup>
             <div className="min-w-48 max-w-[16rem]">
@@ -136,6 +149,12 @@ export function UnitsMap({
               {unit.serviceHours && (
                 <p className="my-2 text-sm text-slate-600">
                   {unit.serviceHours}
+                </p>
+              )}
+              {unit.location.precision === "municipality" && (
+                <p className="my-2 text-xs font-medium text-amber-800">
+                  Localização aproximada: centro do município. O cadastro do
+                  CNES não traz uma posição válida para esta unidade.
                 </p>
               )}
               <p className="mb-0 text-xs text-slate-500">

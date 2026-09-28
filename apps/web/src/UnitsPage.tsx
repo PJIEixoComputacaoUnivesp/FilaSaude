@@ -68,7 +68,9 @@ function UnitCard({
           <dd>
             {unit.location.latitude === null || unit.location.longitude === null
               ? "Coordenadas não informadas na fonte pública"
-              : "Disponível"}
+              : unit.location.precision === "municipality"
+                ? "Aproximada: centro do município"
+                : "Disponível"}
           </dd>
         </div>
       </dl>

@@ -18,6 +18,8 @@ export interface HealthUnit {
   location: {
     latitude: number | null;
     longitude: number | null;
+    /** `municipality`: the CNES coordinate was unusable, so the point is the municipality center. */
+    precision: "source" | "municipality";
   };
   serviceHours: string | null;
   lastUpdatedAt: string;
@@ -60,6 +62,8 @@ function isUnit(value: unknown): value is HealthUnit {
       "PRONTO SOCORRO GERAL",
       "PRONTO SOCORRO ESPECIALIZADO",
     ].includes(value.unitType as string) &&
+    (value.location.precision === "source" ||
+      value.location.precision === "municipality") &&
     typeof value.address.city === "string" &&
     typeof value.address.state === "string" &&
     typeof value.lastUpdatedAt === "string"
