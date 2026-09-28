@@ -5,30 +5,46 @@ import { formatAddress, formatSourceDate } from "./units";
 import { useUnits } from "./useUnits";
 
 export function MapPage() {
-  const [stateCode, setStateCode] = useState("SP");
-  const { state, retry } = useUnits(stateCode);
+  const [selectedState, setSelectedState] = useState("ALL");
+  const { state, retry } = useUnits("ALL");
   const [query, setQuery] = useState("");
+
   const filteredUnits = useMemo(() => {
     if (state.status !== "success") return [];
+    let list = state.response.data;
+
+    if (selectedState !== "ALL") {
+      list = list.filter((unit) => unit.address.state === selectedState);
+    }
+
     const normalized = query.trim().toLocaleLowerCase("pt-BR");
-    if (!normalized) return state.response.data;
-    return state.response.data.filter((unit) =>
-      `${unit.name} ${formatAddress(unit.address)}`
-        .toLocaleLowerCase("pt-BR")
-        .includes(normalized),
-    );
-  }, [query, state]);
+    if (normalized) {
+      list = list.filter((unit) =>
+        `${unit.name} ${formatAddress(unit.address)}`
+          .toLocaleLowerCase("pt-BR")
+          .includes(normalized),
+      );
+    }
+
+    return list;
+  }, [query, selectedState, state]);
+
   const mapUnits = state.status === "success" ? filteredUnits : [];
+  const isCountryWide = selectedState === "ALL" && !query.trim();
 
   return (
     <main className="relative h-[calc(100vh-73px)] min-h-[34rem] w-full">
-      <UnitsMap units={mapUnits} />
+      <UnitsMap units={mapUnits} isCountryWide={isCountryWide} />
 
       <section
         className="absolute left-4 right-4 top-4 z-[900] rounded-2xl border border-slate-200 bg-white p-4 sm:left-6 sm:right-auto sm:w-96"
         aria-label="Busca no mapa"
       >
-        <BrazilianStateSelect value={stateCode} onChange={setStateCode} />
+        <BrazilianStateSelect
+          value={selectedState}
+          onChange={setSelectedState}
+          allOptionLabel="Todas as UFs"
+        />
         <label className="block">
           <span className="mb-2 mt-3 block text-sm font-semibold text-slate-800">
             Buscar no mapa

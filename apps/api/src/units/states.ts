@@ -37,6 +37,9 @@ const stateCodes: Record<string, string> = {
 
 export function parseState(value: string): BrazilianState {
   const abbreviation = value.trim().toUpperCase();
+  if (abbreviation === 'ALL' || abbreviation === 'BR') {
+    return { abbreviation: 'BR', ibgeCode: '00' };
+  }
   const ibgeCode = stateCodes[abbreviation];
 
   if (!ibgeCode) {

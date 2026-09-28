@@ -13,6 +13,7 @@ import type { HealthUnit } from "./units";
 import { formatAddress, formatSourceDate } from "./units";
 
 const brazilCenter: [number, number] = [-14.2, -51.9];
+const markerColor = "#1266cc";
 
 const BRAZIL_BOUNDS: LatLngBoundsExpression = [
   [-34, -74],
@@ -22,12 +23,26 @@ const BRAZIL_BOUNDS: LatLngBoundsExpression = [
 interface UnitsMapProps {
   units: HealthUnit[];
   className?: string;
+  isCountryWide?: boolean;
 }
 
-function FitUnits({ units }: { units: HealthUnit[] }) {
+function FitUnits({
+  units,
+  isCountryWide = false,
+}: {
+  units: HealthUnit[];
+  isCountryWide?: boolean;
+}) {
   const map = useMap();
 
   useEffect(() => {
+    map.invalidateSize();
+
+    if (isCountryWide) {
+      map.fitBounds(BRAZIL_BOUNDS, { padding: [16, 16], animate: true });
+      return;
+    }
+
     const coordinates = units
       .filter(
         (unit) =>
@@ -41,13 +56,14 @@ function FitUnits({ units }: { units: HealthUnit[] }) {
           ],
       );
 
-    map.invalidateSize();
     if (coordinates.length > 0) {
-      map.fitBounds(coordinates, { padding: [32, 32], maxZoom: 13 });
-    } else {
-      map.setView(brazilCenter, 4);
+      map.fitBounds(coordinates, {
+        padding: [32, 32],
+        maxZoom: 13,
+        animate: true,
+      });
     }
-  }, [map, units]);
+  }, [map, units, isCountryWide]);
 
   return null;
 }
@@ -73,13 +89,17 @@ function EnforceCountryZoom() {
   return null;
 }
 
-
-export function UnitsMap({ units, className = "" }: UnitsMapProps) {
+export function UnitsMap({
+  units,
+  className = "",
+  isCountryWide = false,
+}: UnitsMapProps) {
   const unitsWithLocation = units.filter(
     (unit) =>
       unit.location.latitude !== null && unit.location.longitude !== null,
   );
-  const markerRadius = unitsWithLocation.length > 100 ? 3 : 6;
+  const markerRadius =
+    unitsWithLocation.length > 500 ? 3 : unitsWithLocation.length > 50 ? 4 : 6;
 
   return (
     <MapContainer
@@ -90,6 +110,7 @@ export function UnitsMap({ units, className = "" }: UnitsMapProps) {
       className={`h-full w-full ${className}`}
       scrollWheelZoom
       zoomControl={false}
+      preferCanvas={true}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -98,7 +119,7 @@ export function UnitsMap({ units, className = "" }: UnitsMapProps) {
       />
       <EnforceCountryZoom />
       <ZoomControl position="bottomleft" />
-      <FitUnits units={unitsWithLocation} />
+      <FitUnits units={unitsWithLocation} isCountryWide={isCountryWide} />
       {unitsWithLocation.map((unit) => (
         <CircleMarker
           key={unit.id}
@@ -106,7 +127,7 @@ export function UnitsMap({ units, className = "" }: UnitsMapProps) {
           radius={markerRadius}
           pathOptions={{
             color: "white",
-            fillColor: "var(--color-fila-blue)",
+            fillColor: markerColor,
             fillOpacity: 0.8,
             opacity: 1,
             weight: 2,

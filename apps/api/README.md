@@ -22,8 +22,8 @@ A API inicia em `http://localhost:3000`.
 O endpoint de unidades consulta diretamente os tipos oficiais `20` (pronto
 socorro geral), `21` (pronto socorro especializado) e `73` (pronto atendimento)
 do Cadastro Nacional de Estabelecimentos de Saúde (CNES), mantém o resultado em memória por seis horas e usa
-um snapshot local de São Paulo somente quando a fonte oficial está indisponível.
-O parâmetro `state` aceita qualquer sigla de UF e usa `SP` como padrão. Os nomes
+um snapshot local com cobertura nacional quando a fonte oficial está indisponível.
+O parâmetro `state` aceita qualquer sigla de UF, `ALL` ou `BR` para cobertura nacional, e usa `SP` como padrão. Os nomes
 dos municípios vêm da API de localidades do IBGE. O campo
 `metadata.dataOrigin` indica `live` ou `fallback`, e `metadata.isStale` informa
 quando a cópia de segurança está sendo exibida.

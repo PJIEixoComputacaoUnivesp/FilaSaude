@@ -91,4 +91,16 @@ describe('UnitsService', () => {
     );
     expect(fetchUnits).not.toHaveBeenCalled();
   });
+
+  it('returns all country units for ALL/BR', async () => {
+    const fetchUnits = vi.fn();
+    const client = { fetchUnits } as unknown as CnesClient;
+    const service = new UnitsService(client);
+
+    const response = await service.findAll('ALL');
+    expect(response.data.length).toBeGreaterThan(1000);
+    expect(response.metadata.state).toBe('BR');
+    expect(response.metadata.dataOrigin).toBe('fallback');
+    expect(fetchUnits).not.toHaveBeenCalled();
+  });
 });

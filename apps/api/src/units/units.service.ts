@@ -17,8 +17,8 @@ function latestUpdate(units: readonly HealthUnit[]): string {
   );
 }
 
-function fallbackUnits(): HealthUnit[] {
-  return snapshot.map((unit) => ({
+function fallbackUnits(stateAbbr?: string): HealthUnit[] {
+  const units: HealthUnit[] = snapshot.map((unit) => ({
     id: unit.id,
     name: unit.name,
     unitType: unit.unitType as HealthUnit['unitType'],
@@ -39,6 +39,11 @@ function fallbackUnits(): HealthUnit[] {
     serviceHours: unit.serviceHours ?? null,
     lastUpdatedAt: unit.lastUpdatedAt,
   }));
+
+  if (!stateAbbr || stateAbbr === 'BR') {
+    return units;
+  }
+  return units.filter((unit) => unit.address.state === stateAbbr);
 }
 
 @Injectable()
@@ -55,6 +60,21 @@ export class UnitsService {
     const state = parseState(stateValue);
     const cached = this.cache.get(state.abbreviation);
     if (cached && cached.expiresAt > Date.now()) return cached.response;
+
+    if (state.abbreviation === 'BR') {
+      const units = fallbackUnits('BR');
+      const response = this.buildResponse(
+        units,
+        state,
+        'fallback',
+        FALLBACK_RETRIEVED_AT,
+      );
+      this.cache.set(state.abbreviation, {
+        expiresAt: Date.now() + CACHE_TTL_MS,
+        response,
+      });
+      return response;
+    }
 
     try {
       const units = await this.cnesClient.fetchUnits(state);
@@ -89,15 +109,20 @@ export class UnitsService {
         };
       }
 
-      if (state.abbreviation !== 'SP') throw error;
+      const fallback = fallbackUnits(state.abbreviation);
+      if (fallback.length > 0) {
+        this.logger.warn(
+          `Using the CNES fallback snapshot for ${state.abbreviation}`,
+        );
+        return this.buildResponse(
+          fallback,
+          state,
+          'fallback',
+          FALLBACK_RETRIEVED_AT,
+        );
+      }
 
-      this.logger.warn('Using the CNES fallback snapshot for SP');
-      return this.buildResponse(
-        fallbackUnits(),
-        state,
-        'fallback',
-        FALLBACK_RETRIEVED_AT,
-      );
+      throw error;
     }
   }
 
