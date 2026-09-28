@@ -93,10 +93,12 @@ percentual, faixa textual, data da observação e situação da confirmação ta
 devem estar disponíveis para tecnologias assistivas.
 
 Como ponto de partida para discussão, a ocupação geral seria calculada pela soma
-da ocupação dividida pela soma da capacidade das categorias informadas:
+da ocupação dividida pela soma da capacidade das categorias informadas. Se não
+houver categorias ou se a soma das capacidades for zero, a ocupação geral será
+“não informada”:
 
 - **baixa:** abaixo de 60%;
-- **moderada:** entre 60% e 84%;
+- **moderada:** a partir de 60% e abaixo de 85%;
 - **alta:** a partir de 85%.
 
 Uma categoria ausente significa “não informada” ou “não aplicável”, nunca zero.
@@ -233,8 +235,11 @@ uma associação explícita com as unidades que pode atualizar.
   de transporte;
 - timeouts e respostas `5xx` podem ser repetidos com espera progressiva;
 - erros de contrato ou autenticação (`4xx`) não entram em repetição infinita;
+- a ordenação dos snapshots usa `occurredAt` como timestamp principal, pois ele
+  representa quando o estado ocorreu na origem; em caso de empate, compara-se
+  `observedAt`, depois `receivedAt` e, por fim, `eventId` em ordem lexicográfica;
 - um snapshot atrasado é preservado no histórico, mas não sobrescreve o estado
-  atual quando já existe outro mais recente.
+  atual quando já existe outro mais recente segundo essa ordenação.
 
 ### Confirmação periódica
 
@@ -346,7 +351,7 @@ Nem todas as frentes precisam ser assumidas pelas mesmas pessoas.
 | Haverá tentativa de parceria institucional? | Desejável, mas não obrigatória para o simulador | Em aberto | — |
 | Quais unidades entram na amostra? | 10 a 20 unidades com CNES e coordenadas válidas | Em aberto | — |
 | Quais categorias serão exibidas? | Observação, estabilização e internação | Em aberto | — |
-| Quais faixas representam ocupação? | `<60%`, `60–84%` e `>=85%` | Em aberto | — |
+| Quais faixas representam ocupação? | `<60%`, `>=60% e <85%` e `>=85%` | Em aberto | — |
 | A camada começa desligada? | Sim | Em aberto | — |
 | Qual período de histórico será público? | Últimas 24 horas | Em aberto | — |
 | Quais intervalos de confirmação usar? | Envio a cada 5 minutos; expiração após 20 | Em aberto | — |
