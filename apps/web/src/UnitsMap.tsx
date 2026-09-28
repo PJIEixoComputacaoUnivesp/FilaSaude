@@ -8,10 +8,16 @@ import {
   useMap,
   ZoomControl,
 } from "react-leaflet";
+import type { LatLngBoundsExpression } from "leaflet";
 import type { HealthUnit } from "./units";
 import { formatAddress, formatSourceDate } from "./units";
 
 const brazilCenter: [number, number] = [-14.2, -51.9];
+
+const BRAZIL_BOUNDS: LatLngBoundsExpression = [
+  [-34, -74],
+  [6, -34],
+];
 
 interface UnitsMapProps {
   units: HealthUnit[];
@@ -46,6 +52,28 @@ function FitUnits({ units }: { units: HealthUnit[] }) {
   return null;
 }
 
+function EnforceCountryZoom() {
+  const map = useMap();
+
+  useEffect(() => {
+    const updateMinZoom = () => {
+      map.invalidateSize();
+      const boundsZoom = map.getBoundsZoom(BRAZIL_BOUNDS, false);
+      map.setMinZoom(boundsZoom);
+      if (map.getZoom() < boundsZoom) {
+        map.setZoom(boundsZoom);
+      }
+    };
+
+    updateMinZoom();
+    window.addEventListener("resize", updateMinZoom);
+    return () => window.removeEventListener("resize", updateMinZoom);
+  }, [map]);
+
+  return null;
+}
+
+
 export function UnitsMap({ units, className = "" }: UnitsMapProps) {
   const unitsWithLocation = units.filter(
     (unit) =>
@@ -57,6 +85,8 @@ export function UnitsMap({ units, className = "" }: UnitsMapProps) {
     <MapContainer
       center={brazilCenter}
       zoom={4}
+      maxBounds={BRAZIL_BOUNDS}
+      maxBoundsViscosity={1.0}
       className={`h-full w-full ${className}`}
       scrollWheelZoom
       zoomControl={false}
@@ -64,7 +94,9 @@ export function UnitsMap({ units, className = "" }: UnitsMapProps) {
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        noWrap
       />
+      <EnforceCountryZoom />
       <ZoomControl position="bottomleft" />
       <FitUnits units={unitsWithLocation} />
       {unitsWithLocation.map((unit) => (
