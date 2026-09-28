@@ -124,8 +124,28 @@ Para cada unidade serão mantidos, no mínimo:
 - data da última ingestão pelo FilaSaúde.
 
 Campos ausentes permanecerão nulos. Coordenadas inválidas não serão corrigidas
-por inferência; serão rejeitadas ou sinalizadas para não produzir localização
-enganosa.
+por inferência silenciosa; toda posição que não vem do CNES é sinalizada para
+não produzir localização enganosa.
+
+### Coordenadas fora do município
+
+O CNES é autodeclarado e algumas coordenadas apontam para fora do município
+declarado (cerca de 1,8% das unidades ficam a mais de 5 km dele). Nenhuma
+unidade é removida por isso. A API compara a coordenada com o contorno do
+município no IBGE (malhas v3, qualidade mínima, em cache por UF) com tolerância
+de 5 km, porque o contorno é simplificado:
+
+- dentro do município ou da tolerância: usa a coordenada do CNES
+  (`location.precision = "source"`);
+- fora, ou ausente: usa o centro do município calculado do contorno
+  (`location.precision = "municipality"`), preserva a coordenada informada em
+  `location.original` e registra a unidade no log;
+- a interface mostra um marcador vazado e o aviso “localização aproximada:
+  centro do município”.
+
+Correções manuais e geocodificação pelo endereço (`manual` e `geocoded`) serão
+adicionadas com o job de ingestão e, quando existirem, também serão
+identificadas na interface.
 
 ## Exibição e transparência
 
