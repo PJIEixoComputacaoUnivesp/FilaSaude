@@ -22,7 +22,7 @@ orientação médica ou recomendação de estabelecimentos.
 
 ## Ambiente e comandos
 
-- Use Node.js 24 LTS e pnpm 11.
+- Use Node.js 24 LTS (mínimo 24.15.0, definido em `.nvmrc` e `engines`) e pnpm 11.
 - Instale dependências com `pnpm install` na raiz.
 - Execute todos os projetos em desenvolvimento com `pnpm dev`.
 - Antes de concluir uma mudança, rode `pnpm lint`, `pnpm typecheck`,
