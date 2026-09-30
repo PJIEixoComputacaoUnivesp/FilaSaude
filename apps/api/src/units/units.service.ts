@@ -56,8 +56,8 @@ export class UnitsService {
 
   constructor(private readonly cnesClient: CnesClient) {}
 
-  async findAll(stateValue: string): Promise<UnitsResponse> {
-    const state = parseState(stateValue);
+  async findAll(stateValue?: string): Promise<UnitsResponse> {
+    const state = parseState(stateValue ?? 'ALL');
     const cached = this.cache.get(state.abbreviation);
     if (cached && cached.expiresAt > Date.now()) return cached.response;
 

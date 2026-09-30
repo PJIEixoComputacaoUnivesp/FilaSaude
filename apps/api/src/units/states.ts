@@ -35,7 +35,18 @@ const stateCodes: Record<string, string> = {
   TO: '17',
 };
 
-export function parseState(value: string): BrazilianState {
+const abbreviationsByIbgeCode = new Map(
+  Object.entries(stateCodes).map(([abbreviation, ibgeCode]) => [
+    ibgeCode,
+    abbreviation,
+  ]),
+);
+
+export function stateAbbreviation(ibgeCode: string): string | undefined {
+  return abbreviationsByIbgeCode.get(ibgeCode);
+}
+
+export function parseState(value: string = 'ALL'): BrazilianState {
   const abbreviation = value.trim().toUpperCase();
   if (abbreviation === 'ALL' || abbreviation === 'BR') {
     return { abbreviation: 'BR', ibgeCode: '00' };
