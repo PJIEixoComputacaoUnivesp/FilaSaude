@@ -5,6 +5,7 @@
 - **Público da revisão:** equipe do projeto FilaSaúde e orientação acadêmica
 - **Decisão esperada:** refinar, aprovar, substituir ou remover as propostas deste documento
 - **Referências relacionadas:** [ADR 0001](../adr/0001-public-health-unit-data-source.md),
+  [issue #57](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/57),
   [issue #22](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/22),
   [PR #44](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/pull/44) e
   [issue #45](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/45)
@@ -280,10 +281,10 @@ O desenho inicial exige, além do cadastro de unidades:
 - projeção do estado atual por unidade.
 
 Nomes de tabelas, índices e políticas de retenção devem ser definidos durante o
-detalhamento da implementação. A infraestrutura PostgreSQL da
-[PR #44](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/pull/44) é uma
-dependência técnica em andamento; este documento não pressupõe sua aprovação ou
-autoriza seu merge.
+detalhamento da implementação. A infraestrutura PostgreSQL do `compose.yaml` e a
+modelagem inicial da issue #22 são dependências técnicas para as próximas etapas;
+este documento continua sendo uma proposta de ocupação e não substitui as
+decisões específicas de persistência e ingestão.
 
 ## 10. Acessibilidade, transparência e segurança
 

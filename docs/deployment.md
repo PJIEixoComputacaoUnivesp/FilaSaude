@@ -134,7 +134,8 @@ Qualquer commit da `main` com CI aprovada pode ser publicado ou usado num
 rollback (`git log --format='sha-%H' origin/main`).
 
 O deploy acontece em duas etapas. Primeiro, `deploy.sh deploy <tag>` sobe a
-nova versão e aguarda os health checks do Compose. Depois, a CI verifica
+versão do PostgreSQL, aplica as migrations da imagem e sobe a nova versão,
+aguardando os health checks do Compose. Depois, a CI verifica
 `https://<APP_DOMAIN>/api/health` pela internet, o que também cobre DNS,
 firewall, emissão do certificado TLS e roteamento do Caddy. Somente quando essa
 verificação pública passa, `deploy.sh confirm <tag>` registra a tag como a
