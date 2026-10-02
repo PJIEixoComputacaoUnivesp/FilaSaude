@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { getDataSourceToken } from '@nestjs/typeorm';
 import { Server } from 'node:http';
 import request from 'supertest';
 import { AppModule } from './../src/app.module.js';
@@ -30,6 +31,12 @@ describe('AppController (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
+      .overrideProvider(getDataSourceToken())
+      .useValue({
+        entityMetadatas: [],
+        getRepository: vi.fn().mockReturnValue({}),
+        options: { type: 'postgres' },
+      })
       .overrideProvider(CnesClient)
       .useValue({ fetchUnits: vi.fn().mockResolvedValue([testUnit]) })
       .compile();

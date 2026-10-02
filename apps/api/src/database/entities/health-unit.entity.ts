@@ -5,7 +5,14 @@ import {
   Index,
   PrimaryColumn,
   UpdateDateColumn,
+  type ValueTransformer,
 } from 'typeorm';
+
+export const decimalTransformer: ValueTransformer = {
+  to: (value: number | null) => value,
+  from: (value: number | string | null) =>
+    value === null ? null : Number(value),
+};
 
 @Entity({ name: 'health_units' })
 @Index('idx_health_units_state', ['state'])
@@ -38,10 +45,22 @@ export class HealthUnitEntity {
   @Column({ type: 'char', length: 2 })
   state!: string;
 
-  @Column({ type: 'numeric', precision: 9, scale: 6, nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: 9,
+    scale: 6,
+    nullable: true,
+    transformer: decimalTransformer,
+  })
   latitude!: number | null;
 
-  @Column({ type: 'numeric', precision: 9, scale: 6, nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: 9,
+    scale: 6,
+    nullable: true,
+    transformer: decimalTransformer,
+  })
   longitude!: number | null;
 
   @Column({ name: 'service_hours', type: 'text', nullable: true })
