@@ -29,6 +29,9 @@ export const brazilianStates = [
 ] as const;
 
 export function stateName(abbreviation: string): string {
+  if (abbreviation === "ALL" || abbreviation === "BR") {
+    return "Todas as UFs";
+  }
   return (
     brazilianStates.find((state) => state.abbreviation === abbreviation)
       ?.name ?? abbreviation
