@@ -22,6 +22,15 @@ validate_tag() {
 compose_up() {
   IMAGE_TAG="$1" docker compose --env-file .env -f compose.prod.yaml up \
     --detach \
+    --wait \
+    --wait-timeout 120 \
+    postgres
+  IMAGE_TAG="$1" docker compose --env-file .env -f compose.prod.yaml run \
+    --rm --no-deps api \
+    node_modules/.bin/typeorm migration:run \
+    -d apps/api/dist/database/data-source.js
+  IMAGE_TAG="$1" docker compose --env-file .env -f compose.prod.yaml up \
+    --detach \
     --remove-orphans \
     --wait \
     --wait-timeout 120

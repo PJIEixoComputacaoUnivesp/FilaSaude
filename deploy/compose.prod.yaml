@@ -27,6 +27,11 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-filasaude}
+      DB_USER: ${POSTGRES_USER:-filasaude}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     expose:
       - "3000"
     healthcheck:
@@ -44,6 +49,9 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   web:
     image: ${WEB_IMAGE:-ghcr.io/pjieixocomputacaounivesp/filasaude-web}:${IMAGE_TAG:?IMAGE_TAG is required}

@@ -25,8 +25,8 @@ export class CreateHealthUnits1760000000000 implements MigrationInterface {
           { name: 'source_updated_at', type: 'date' },
           { name: 'ingested_at', type: 'timestamptz' },
           { name: 'is_active', type: 'boolean', default: true },
-          { name: 'created_at', type: 'timestamptz', default: 'CURRENT_TIMESTAMP' },
-          { name: 'updated_at', type: 'timestamptz', default: 'CURRENT_TIMESTAMP' },
+          { name: 'created_at', type: 'timestamptz', default: 'now()' },
+          { name: 'updated_at', type: 'timestamptz', default: 'now()' },
         ],
       }),
     );
