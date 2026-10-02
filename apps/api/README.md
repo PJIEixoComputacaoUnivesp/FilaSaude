@@ -52,8 +52,9 @@ pnpm --filter @filasaude/api migration:run
 ```
 
 As migrations são executadas explicitamente e `synchronize` permanece desativado.
-Os parâmetros de conexão podem ser configurados por `DB_HOST`, `DB_PORT`,
-`DB_NAME`, `DB_USER` e `DB_PASSWORD`.
+O Compose injeta `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` e `DB_PASSWORD` na
+API. Ao executar a API diretamente fora do Compose, essas variáveis precisam
+ser exportadas no shell; a API não carrega arquivos `.env` automaticamente.
 
 O serviço deve expor apenas dados públicos e nunca oferecer diagnóstico,
 triagem, orientação médica ou recomendação de unidades.
