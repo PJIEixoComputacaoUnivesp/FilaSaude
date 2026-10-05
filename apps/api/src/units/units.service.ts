@@ -53,11 +53,12 @@ export class UnitsService {
     string,
     { expiresAt: number; response: UnitsResponse }
   >();
+  private readonly pending = new Map<string, Promise<UnitsResponse>>();
 
   constructor(private readonly cnesClient: CnesClient) {}
 
   async findAll(stateValue?: string): Promise<UnitsResponse> {
-    const state = parseState(stateValue ?? 'ALL');
+    const state = parseState(stateValue);
     const cached = this.cache.get(state.abbreviation);
     if (cached && cached.expiresAt > Date.now()) return cached.response;
 
@@ -76,6 +77,21 @@ export class UnitsService {
       return response;
     }
 
+    let request = this.pending.get(state.abbreviation);
+    if (!request) {
+      request = this.loadLive(state, cached).finally(() => {
+        this.pending.delete(state.abbreviation);
+      });
+      this.pending.set(state.abbreviation, request);
+    }
+
+    return request;
+  }
+
+  private async loadLive(
+    state: BrazilianState,
+    cached?: { expiresAt: number; response: UnitsResponse },
+  ): Promise<UnitsResponse> {
     try {
       const units = await this.cnesClient.fetchUnits(state);
       if (units.length === 0) {

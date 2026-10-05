@@ -40,6 +40,27 @@ describe('UnitsService', () => {
     expect(fetchUnits).toHaveBeenCalledTimes(1);
   });
 
+  it('shares an in-flight CNES request for the same state', async () => {
+    let resolveFetch: ((units: HealthUnit[]) => void) | undefined;
+    const fetchUnits = vi.fn().mockImplementation(
+      () =>
+        new Promise<HealthUnit[]>((resolve) => {
+          resolveFetch = resolve;
+        }),
+    );
+    const client = { fetchUnits } as unknown as CnesClient;
+    const service = new UnitsService(client);
+
+    const first = service.findAll('SP');
+    const second = service.findAll('SP');
+
+    expect(fetchUnits).toHaveBeenCalledTimes(1);
+    resolveFetch?.([liveUnit]);
+    const [firstResponse, secondResponse] = await Promise.all([first, second]);
+
+    expect(secondResponse).toBe(firstResponse);
+  });
+
   it('returns the snapshot when CNES is unavailable', async () => {
     const client = {
       fetchUnits: vi.fn().mockRejectedValue(new Error('unavailable')),
