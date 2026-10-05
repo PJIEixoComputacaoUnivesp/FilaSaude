@@ -25,7 +25,10 @@ export function useUnits(stateCode: string) {
 
   useEffect(() => {
     const cached = unitsCache.get(stateCode);
-    if (cached && attempt === 0) {
+    if (cached) {
+      // Sync the hook with its module-level cache when the selected UF changes.
+      // oxlint-disable-next-line react/set-state-in-effect
+      setState({ status: "success", stateCode, response: cached });
       return;
     }
 
