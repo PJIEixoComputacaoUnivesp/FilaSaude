@@ -5,6 +5,11 @@ export interface BrazilianState {
   ibgeCode: string;
 }
 
+export const NationalStateCode = {
+  All: 'ALL',
+  Brazil: 'BR',
+} as const;
+
 const stateCodes: Record<string, string> = {
   AC: '12',
   AL: '27',
@@ -46,10 +51,15 @@ export function stateAbbreviation(ibgeCode: string): string | undefined {
   return abbreviationsByIbgeCode.get(ibgeCode);
 }
 
-export function parseState(value: string = 'ALL'): BrazilianState {
+export function parseState(
+  value: string = NationalStateCode.All,
+): BrazilianState {
   const abbreviation = value.trim().toUpperCase();
-  if (abbreviation === 'ALL' || abbreviation === 'BR') {
-    return { abbreviation: 'BR', ibgeCode: '00' };
+  if (
+    abbreviation === NationalStateCode.All ||
+    abbreviation === NationalStateCode.Brazil
+  ) {
+    return { abbreviation: NationalStateCode.Brazil, ibgeCode: '00' };
   }
   const ibgeCode = stateCodes[abbreviation];
 

@@ -2,12 +2,15 @@ import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { BrazilianStateSelect } from "./BrazilianStateSelect";
 import { UnitsMap } from "./UnitsMap";
+import { NationalStateCode } from "./brazilianStates";
 import { formatAddress, formatSourceDate } from "./units";
 import { useUnits } from "./useUnits";
 
 export function MapPage() {
-  const [selectedState, setSelectedState] = useState("ALL");
-  const { state, retry } = useUnits("ALL");
+  const [selectedState, setSelectedState] = useState<string>(
+    NationalStateCode.All,
+  );
+  const { state, retry } = useUnits(NationalStateCode.All);
   const [query, setQuery] = useState("");
   const panelRef = useRef<HTMLElement>(null);
 
@@ -15,7 +18,7 @@ export function MapPage() {
     if (state.status !== "success") return [];
     let list = state.response.data;
 
-    if (selectedState !== "ALL") {
+    if (selectedState !== NationalStateCode.All) {
       list = list.filter((unit) => unit.address.state === selectedState);
     }
 
@@ -32,7 +35,8 @@ export function MapPage() {
   }, [query, selectedState, state]);
 
   const mapUnits = state.status === "success" ? filteredUnits : [];
-  const isCountryWide = selectedState === "ALL" && !query.trim();
+  const isCountryWide =
+    selectedState === NationalStateCode.All && !query.trim();
 
   return (
     <main className="relative min-h-[28rem] w-full flex-1">

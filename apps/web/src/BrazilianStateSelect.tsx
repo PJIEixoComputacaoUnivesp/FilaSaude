@@ -1,4 +1,4 @@
-import { brazilianStates } from "./brazilianStates";
+import { brazilianStates, NationalStateCode } from "./brazilianStates";
 
 interface BrazilianStateSelectProps {
   value: string;
@@ -26,7 +26,7 @@ export function BrazilianStateSelect({
         className={`w-full border border-slate-300 bg-white text-slate-900 outline-none transition focus:border-fila-blue focus:ring-2 focus:ring-blue-100 ${compact ? "min-h-11 rounded-lg px-2 py-2 sm:px-3" : "rounded-xl px-4 py-3 shadow-sm"}`}
       >
         {allOptionLabel && (
-          <option value="ALL">{allOptionLabel}</option>
+          <option value={NationalStateCode.All}>{allOptionLabel}</option>
         )}
         {brazilianStates.map((state) => (
           <option key={state.abbreviation} value={state.abbreviation}>

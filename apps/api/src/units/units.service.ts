@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import snapshot from './units.snapshot.json' with { type: 'json' };
 import { CnesClient } from './cnes.client.js';
-import { parseState, type BrazilianState } from './states.js';
+import {
+  NationalStateCode,
+  parseState,
+  type BrazilianState,
+} from './states.js';
 import type { HealthUnit, UnitsResponse } from './units.types.js';
 
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
@@ -40,7 +44,7 @@ function fallbackUnits(stateAbbr?: string): HealthUnit[] {
     lastUpdatedAt: unit.lastUpdatedAt,
   }));
 
-  if (!stateAbbr || stateAbbr === 'BR') {
+  if (!stateAbbr || stateAbbr === NationalStateCode.Brazil) {
     return units;
   }
   return units.filter((unit) => unit.address.state === stateAbbr);
@@ -62,8 +66,8 @@ export class UnitsService {
     const cached = this.cache.get(state.abbreviation);
     if (cached && cached.expiresAt > Date.now()) return cached.response;
 
-    if (state.abbreviation === 'BR') {
-      const units = fallbackUnits('BR');
+    if (state.abbreviation === NationalStateCode.Brazil) {
+      const units = fallbackUnits(NationalStateCode.Brazil);
       const response = this.buildResponse(
         units,
         state,
