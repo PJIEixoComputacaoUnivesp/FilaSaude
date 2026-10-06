@@ -3,14 +3,12 @@ import { BadRequestException } from '@nestjs/common';
 export interface CorrectionInput {
   latitude: number;
   longitude: number;
-  verifiedBy: string;
   method: string;
 }
 
 // Brazil, with a margin: catches swapped or mistyped coordinates early.
 const LATITUDE_RANGE = [-34, 6] as const;
 const LONGITUDE_RANGE = [-75, -28] as const;
-const VERIFIED_BY_MAX_LENGTH = 80;
 const METHOD_MAX_LENGTH = 500;
 
 function hasControlCharacters(value: string): boolean {
@@ -67,7 +65,6 @@ export function parseCorrectionInput(body: unknown): CorrectionInput {
   return {
     latitude: coordinate(input.latitude, 'latitude', LATITUDE_RANGE),
     longitude: coordinate(input.longitude, 'longitude', LONGITUDE_RANGE),
-    verifiedBy: text(input.verifiedBy, 'verifiedBy', VERIFIED_BY_MAX_LENGTH),
     method: text(input.method, 'method', METHOD_MAX_LENGTH),
   };
 }

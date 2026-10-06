@@ -76,6 +76,7 @@ export class LocationCorrectionsService {
   async register(
     cnesCode: string,
     input: CorrectionInput,
+    actor: string,
   ): Promise<{ correction: AdminCorrection; boundaryChecked: boolean }> {
     const unit = await this.cnesClient
       .fetchUnit(cnesCode)
@@ -109,7 +110,7 @@ export class LocationCorrectionsService {
     entity.cnesCode = unit.id;
     entity.latitude = input.latitude;
     entity.longitude = input.longitude;
-    entity.verifiedBy = input.verifiedBy;
+    entity.verifiedBy = actor;
     entity.method = input.method;
     entity.correctedAt = new Date();
     entity.anchorMunicipalityCode = unit.address.municipalityCode;
@@ -120,21 +121,19 @@ export class LocationCorrectionsService {
 
     const saved = await this.corrections.save(entity);
     this.units.invalidate();
-    // The verifier stays out of the log: it is kept with the correction, and
-    // logs are less controlled than the database.
-    this.logger.log(`Manual position of CNES ${unit.id} set`);
+    this.logger.log(`Manual position of CNES ${unit.id} set by ${actor}`);
     return {
       correction: toAdminCorrection(saved),
       boundaryChecked: distanceKm !== null,
     };
   }
 
-  async remove(cnesCode: string): Promise<void> {
+  async remove(cnesCode: string, actor: string): Promise<void> {
     if (!(await this.corrections.deleteByCnesCode(cnesCode))) {
       throw new NotFoundException('No manual position for this unit');
     }
     this.units.invalidate();
-    this.logger.log(`Manual position of CNES ${cnesCode} removed`);
+    this.logger.log(`Manual position of CNES ${cnesCode} removed by ${actor}`);
   }
 }
 

@@ -177,8 +177,9 @@ jobs:
           DROPLET_KNOWN_HOSTS: ${{ secrets.DROPLET_KNOWN_HOSTS }}
           APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          # Optional: only written when the secret exists.
-          ADMIN_API_TOKEN: ${{ secrets.ADMIN_API_TOKEN }}
+          # Optional: only written when the secret exists. One login:token
+          # entry per administrator.
+          ADMIN_API_TOKENS: ${{ secrets.ADMIN_API_TOKENS }}
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
           set -eu
@@ -190,8 +191,8 @@ jobs:
             printf 'APP_DOMAIN=%s\n' "$APP_DOMAIN"
             printf 'POSTGRES_PASSWORD=%s\n' "$POSTGRES_PASSWORD"
             printf 'IMAGE_TAG=%s\n' "$TAG"
-            if [ -n "$ADMIN_API_TOKEN" ]; then
-              printf 'ADMIN_API_TOKEN=%s\n' "$ADMIN_API_TOKEN"
+            if [ -n "$ADMIN_API_TOKENS" ]; then
+              printf 'ADMIN_API_TOKENS=%s\n' "$ADMIN_API_TOKENS"
             fi
           } > "$RUNNER_TEMP/production.env"
 

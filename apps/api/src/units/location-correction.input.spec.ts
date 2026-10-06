@@ -7,7 +7,6 @@ import {
 const valid = {
   latitude: -23.535249,
   longitude: -46.841459,
-  verifiedBy: 'Maria Souza',
   method: 'Conferido no mapa oficial da prefeitura',
 };
 
@@ -40,13 +39,11 @@ describe('parseCorrectionInput', () => {
         ...valid,
         latitude: -23.5352491234,
         longitude: -46.8414591234,
-        verifiedBy: '  Maria Souza  ',
         method: '\tConferido  ',
       }),
     ).toMatchObject({
       latitude: -23.535249,
       longitude: -46.841459,
-      verifiedBy: 'Maria Souza',
     });
   });
 
@@ -67,14 +64,9 @@ describe('parseCorrectionInput', () => {
     ['a latitude outside Brazil', { latitude: 48.85 }],
     ['a longitude outside Brazil', { longitude: 2.35 }],
     ['swapped coordinates', { latitude: -46.84, longitude: -23.53 }],
-    ['no verifier', { verifiedBy: undefined }],
-    ['a blank verifier', { verifiedBy: '   ' }],
-    ['a verifier that is too long', { verifiedBy: 'x'.repeat(81) }],
-    ['a verifier that is not text', { verifiedBy: 42 }],
     ['no method', { method: undefined }],
     ['a method that is too long', { method: 'x'.repeat(501) }],
     ['a method with a line break', { method: 'a\nb' }],
-    ['a verifier with a null byte', { verifiedBy: 'a\u0000b' }],
   ])('rejects %s', (_label, override) => {
     expect(() => parseCorrectionInput({ ...valid, ...override })).toThrow(
       BadRequestException,
@@ -85,10 +77,15 @@ describe('parseCorrectionInput', () => {
     expect(() =>
       parseCorrectionInput({
         ...valid,
-        verifiedBy: 'x'.repeat(80),
         method: 'y'.repeat(500),
       }),
     ).not.toThrow();
+  });
+
+  it('does not take who verified from the caller', () => {
+    expect(
+      parseCorrectionInput({ ...valid, verifiedBy: 'someone-else' }),
+    ).not.toHaveProperty('verifiedBy');
   });
 
   it('ignores fields it does not know', () => {

@@ -36,10 +36,11 @@ const cnesUnit: HealthUnit = {
   lastUpdatedAt: '2026-09-20',
 };
 
+const ACTOR = 'maria-souza';
+
 const input = {
   latitude: -8.05,
   longitude: -34.9,
-  verifiedBy: 'Maria Souza',
   method: 'Conferido no mapa oficial',
 };
 
@@ -84,6 +85,7 @@ describe('LocationCorrectionsService', () => {
       const { correction, boundaryChecked } = await service.register(
         '0113360',
         input,
+        ACTOR,
       );
 
       const saved = save.mock.calls[0]![0];
@@ -91,7 +93,7 @@ describe('LocationCorrectionsService', () => {
         cnesCode: '0113360',
         latitude: -8.05,
         longitude: -34.9,
-        verifiedBy: 'Maria Souza',
+        verifiedBy: 'maria-souza',
         method: 'Conferido no mapa oficial',
         anchorMunicipalityCode: '261160',
         anchorStreet: 'RUA TESTE',
@@ -111,23 +113,27 @@ describe('LocationCorrectionsService', () => {
       expect(invalidate).toHaveBeenCalledTimes(1);
     });
 
+    it('records the authenticated administrator, whatever the input claims', async () => {
+      const { service, save } = build();
+      const spoofed = { ...input, verifiedBy: 'someone-else' } as typeof input;
+
+      await service.register('0113360', spoofed, 'joao');
+
+      expect(save.mock.calls[0]![0].verifiedBy).toBe('joao');
+    });
+
     it('checks the position against the municipality of the unit', async () => {
       const { service, distanceToMunicipalityKm } = build();
 
-      await service.register('0113360', input);
+      await service.register('0113360', input, ACTOR);
 
-      expect(distanceToMunicipalityKm).toHaveBeenCalledWith(cnesUnit, {
-        latitude: -8.05,
-        longitude: -34.9,
-        verifiedBy: 'Maria Souza',
-        method: 'Conferido no mapa oficial',
-      });
+      expect(distanceToMunicipalityKm).toHaveBeenCalledWith(cnesUnit, input);
     });
 
     it('accepts a position within the border tolerance', async () => {
       const { service, save } = build({ distance: 4.9 });
 
-      await service.register('0113360', input);
+      await service.register('0113360', input, ACTOR);
 
       expect(save).toHaveBeenCalledTimes(1);
     });
@@ -135,7 +141,7 @@ describe('LocationCorrectionsService', () => {
     it('rejects a position outside the municipality, without saving or invalidating', async () => {
       const { service, save, invalidate } = build({ distance: 5.1 });
 
-      await expect(service.register('0113360', input)).rejects.toThrow(
+      await expect(service.register('0113360', input, ACTOR)).rejects.toThrow(
         UnprocessableEntityException,
       );
       expect(save).not.toHaveBeenCalled();
@@ -145,7 +151,11 @@ describe('LocationCorrectionsService', () => {
     it('trusts the administrator when the municipality has no boundary yet', async () => {
       const { service, save } = build({ distance: null });
 
-      const { boundaryChecked } = await service.register('0113360', input);
+      const { boundaryChecked } = await service.register(
+        '0113360',
+        input,
+        ACTOR,
+      );
 
       expect(save).toHaveBeenCalledTimes(1);
       expect(boundaryChecked).toBe(false);
@@ -159,7 +169,7 @@ describe('LocationCorrectionsService', () => {
       };
       const { service, save } = build({ unit: bare });
 
-      await service.register('0113360', input);
+      await service.register('0113360', input, ACTOR);
 
       expect(save.mock.calls[0]![0]).toMatchObject({
         anchorStreet: null,
@@ -172,7 +182,7 @@ describe('LocationCorrectionsService', () => {
     it('stores the code in the 7-digit form the units use', async () => {
       const { service, save } = build();
 
-      await service.register('113360', input);
+      await service.register('113360', input, ACTOR);
 
       expect(save.mock.calls[0]![0].cnesCode).toBe('0113360');
     });
@@ -180,7 +190,7 @@ describe('LocationCorrectionsService', () => {
     it('reports an unknown unit', async () => {
       const { service, save } = build({ unit: null });
 
-      await expect(service.register('9999999', input)).rejects.toThrow(
+      await expect(service.register('9999999', input, ACTOR)).rejects.toThrow(
         NotFoundException,
       );
       expect(save).not.toHaveBeenCalled();
@@ -192,7 +202,9 @@ describe('LocationCorrectionsService', () => {
         new Error('connect ECONNREFUSED 10.0.0.1:443'),
       );
 
-      const error = await service.register('0113360', input).catch((e) => e);
+      const error = await service
+        .register('0113360', input, ACTOR)
+        .catch((e) => e);
 
       expect(error).toBeInstanceOf(ServiceUnavailableException);
       expect(error.message).not.toContain('ECONNREFUSED');
@@ -204,7 +216,7 @@ describe('LocationCorrectionsService', () => {
       const { service, distanceToMunicipalityKm, save } = build();
       distanceToMunicipalityKm.mockRejectedValue(new Error('IBGE timeout'));
 
-      await expect(service.register('0113360', input)).rejects.toThrow(
+      await expect(service.register('0113360', input, ACTOR)).rejects.toThrow(
         ServiceUnavailableException,
       );
       expect(save).not.toHaveBeenCalled();
@@ -214,7 +226,7 @@ describe('LocationCorrectionsService', () => {
       const { service, save, invalidate } = build();
       save.mockRejectedValue(new Error('database is down'));
 
-      await expect(service.register('0113360', input)).rejects.toThrow(
+      await expect(service.register('0113360', input, ACTOR)).rejects.toThrow(
         'database is down',
       );
       expect(invalidate).not.toHaveBeenCalled();
@@ -225,7 +237,7 @@ describe('LocationCorrectionsService', () => {
     it('removes the correction and invalidates the cache', async () => {
       const { service, deleteByCnesCode, invalidate } = build();
 
-      await service.remove('0113360');
+      await service.remove('0113360', ACTOR);
 
       expect(deleteByCnesCode).toHaveBeenCalledWith('0113360');
       expect(invalidate).toHaveBeenCalledTimes(1);
@@ -235,7 +247,7 @@ describe('LocationCorrectionsService', () => {
       const { service, deleteByCnesCode, invalidate } = build();
       deleteByCnesCode.mockResolvedValue(false);
 
-      await expect(service.remove('0113360')).rejects.toThrow(
+      await expect(service.remove('0113360', ACTOR)).rejects.toThrow(
         NotFoundException,
       );
       expect(invalidate).not.toHaveBeenCalled();
@@ -249,7 +261,7 @@ describe('LocationCorrectionsService', () => {
         cnesCode: '0113360',
         latitude: -8.05,
         longitude: -34.9,
-        verifiedBy: 'Maria Souza',
+        verifiedBy: 'maria-souza',
         method: 'Conferido no mapa oficial',
         correctedAt: new Date('2026-10-07T15:00:00Z'),
         anchorMunicipalityCode: '261160',
@@ -265,7 +277,7 @@ describe('LocationCorrectionsService', () => {
           cnesCode: '0113360',
           latitude: -8.05,
           longitude: -34.9,
-          verifiedBy: 'Maria Souza',
+          verifiedBy: 'maria-souza',
           method: 'Conferido no mapa oficial',
           correctedAt: '2026-10-07T15:00:00.000Z',
           anchor: {

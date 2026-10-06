@@ -3,11 +3,13 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   Param,
   Put,
   UseGuards,
 } from '@nestjs/common';
+import { AdminLogin } from '../admin/admin.decorator.js';
 import { AdminTokenGuard } from '../admin/admin-token.guard.js';
 import {
   parseCnesCode,
@@ -25,25 +27,33 @@ export class LocationCorrectionsController {
   constructor(private readonly corrections: LocationCorrectionsService) {}
 
   @Get()
+  @Header('Cache-Control', 'no-store')
   list(): Promise<AdminCorrection[]> {
     return this.corrections.list();
   }
 
   @Put(':cnesCode')
   @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
   register(
     @Param('cnesCode') cnesCode: string,
     @Body() body: unknown,
+    @AdminLogin() actor: string,
   ): Promise<{ correction: AdminCorrection; boundaryChecked: boolean }> {
     return this.corrections.register(
       parseCnesCode(cnesCode),
       parseCorrectionInput(body),
+      actor,
     );
   }
 
   @Delete(':cnesCode')
   @HttpCode(204)
-  remove(@Param('cnesCode') cnesCode: string): Promise<void> {
-    return this.corrections.remove(parseCnesCode(cnesCode));
+  @Header('Cache-Control', 'no-store')
+  remove(
+    @Param('cnesCode') cnesCode: string,
+    @AdminLogin() actor: string,
+  ): Promise<void> {
+    return this.corrections.remove(parseCnesCode(cnesCode), actor);
   }
 }

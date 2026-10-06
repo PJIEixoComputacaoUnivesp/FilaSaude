@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AdminModule } from '../admin/admin.module.js';
 import { CnesClient } from './cnes.client.js';
 import { CnesHistoryClient } from './cnes-history.client.js';
 import { LocationCorrectionsController } from './location-corrections.controller.js';
@@ -16,6 +17,7 @@ import { UnitLocationCorrectionRepository } from '../database/repositories/unit-
 
 @Module({
   imports: [
+    AdminModule,
     TypeOrmModule.forFeature([HealthUnitEntity, UnitLocationCorrectionEntity]),
   ],
   controllers: [UnitsController, LocationCorrectionsController],
