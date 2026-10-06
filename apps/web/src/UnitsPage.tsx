@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type Ref } from "react";
 import { BrazilianStateSelect } from "./BrazilianStateSelect";
+import { UnitSources } from "./UnitSources";
 import { stateName } from "./brazilianStates";
 import {
   formatAddress,
@@ -71,28 +72,10 @@ function UnitCard({
         </div>
       </dl>
 
-      <ul className="mt-4 space-y-1 border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-500 sm:mt-5 sm:pt-4">
-        {unit.sources.map((source) => (
-          <li key={`${source.name}-${source.fields.join("-")}`}>
-            {source.fields.length === 1 && source.fields[0] === "location"
-              ? "Localização"
-              : "Cadastro"}
-            :{" "}
-            <a
-              className="underline hover:text-fila-blue"
-              href={source.url}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {source.name}
-            </a>
-            {source.lastUpdatedAt && (
-              <> · atualizado em {formatSourceDate(source.lastUpdatedAt)}</>
-            )}
-            {!source.lastUpdatedAt && " · atualização não informada pela fonte"}
-          </li>
-        ))}
-      </ul>
+      <UnitSources
+        sources={unit.sources}
+        className="mt-4 space-y-1 border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-500 sm:mt-5 sm:pt-4"
+      />
     </article>
   );
 }

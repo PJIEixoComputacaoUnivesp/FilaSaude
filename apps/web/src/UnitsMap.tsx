@@ -10,8 +10,9 @@ import {
   ZoomControl,
 } from "react-leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
+import { UnitSources } from "./UnitSources";
 import type { HealthUnit } from "./units";
-import { formatAddress, formatSourceDate } from "./units";
+import { formatAddress } from "./units";
 
 const brazilCenter: [number, number] = [-14.2, -51.9];
 // Canvas does not resolve CSS variables, so the brand blue is repeated here.
@@ -26,20 +27,6 @@ interface BoundaryFeature {
   geometry: BoundaryGeometry;
 }
 const boundaryOptions: L.PolylineOptions = { smoothFactor: 0 };
-
-function LocationSource({ unit }: { unit: HealthUnit }) {
-  const source = unit.sources.find((item) => item.fields.includes("location"));
-  if (!source) return <>fonte pública · atualização não informada</>;
-
-  return (
-    <>
-      {source.name} ·{" "}
-      {source.lastUpdatedAt
-        ? `atualizado em ${formatSourceDate(source.lastUpdatedAt)}`
-        : "atualização não informada pela fonte"}
-    </>
-  );
-}
 
 const BRAZIL_BOUNDS: LatLngBoundsExpression = [
   [-34, -74],
@@ -270,9 +257,10 @@ export function UnitsMap({ units, className = "", overlayRef, isCountryWide }: U
                   {unit.serviceHours}
                 </p>
               )}
-              <p className="mb-0 text-xs text-slate-500">
-                Localização: <LocationSource unit={unit} />
-              </p>
+              <UnitSources
+                sources={unit.sources}
+                className="mb-0 space-y-1 text-xs text-slate-500"
+              />
             </div>
           </Popup>
         </CircleMarker>
