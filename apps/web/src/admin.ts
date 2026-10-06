@@ -70,7 +70,9 @@ export function adminErrorMessage(
     case "outsideMunicipality":
       return "A posição está fora do município da unidade. Confira a latitude e a longitude.";
     case "tooManyAttempts":
-      return "Muitas tentativas inválidas. Aguarde alguns minutos e tente de novo.";
+      return action === "signIn"
+        ? "Token inválido. O servidor está recebendo muitas tentativas inválidas; confira o valor que recebeu."
+        : "Muitas tentativas inválidas. Aguarde alguns minutos e tente de novo.";
     case "unavailable":
       return "O CNES ou os contornos do IBGE estão indisponíveis agora. Tente novamente em instantes.";
     case "network":
@@ -247,9 +249,14 @@ export function parseCoordinate(text: string): number | null {
  * Splits a pasted "latitude, longitude" pair, as a map copies it, in either
  * decimal notation. Anything that is not exactly two numbers is left alone.
  */
+const NUMBER = "-?\\d+(?:[.,]\\d+)?";
+const PAIR = new RegExp(
+  `^\\s*\\(?\\s*(${NUMBER})(?![.,]\\d)\\s*(?:[;,]|\\s)\\s*(${NUMBER})\\s*\\)?\\s*$`,
+);
+
 export function extractCoordinatePair(text: string): [string, string] | null {
-  const numbers = text.replace(MINUS_SIGNS, "-").match(/-?\d+(?:[.,]\d+)?/g);
-  return numbers?.length === 2 ? [numbers[0]!, numbers[1]!] : null;
+  const match = PAIR.exec(text.replace(MINUS_SIGNS, "-"));
+  return match ? [match[1]!, match[2]!] : null;
 }
 
 /** A clicked point, in the form the fields take: 6 decimals, comma. */

@@ -78,12 +78,24 @@ describe("extractCoordinatePair", () => {
     ["-23,5343; -46,8368", ["-23,5343", "-46,8368"]],
     ["-23.5343 -46.8368", ["-23.5343", "-46.8368"]],
     ["−23,5343, −46,8368", ["-23,5343", "-46,8368"]],
-    ["Lat: -23.5343 Lon: -46.8368", ["-23.5343", "-46.8368"]],
+    ["(-23.5343, -46.8368)", ["-23.5343", "-46.8368"]],
+    ["-23.5343,-46.8368", ["-23.5343", "-46.8368"]],
   ])("splits %j", (text, expected) => {
     expect(extractCoordinatePair(text)).toEqual(expected);
   });
 
-  it.each(["", "-23,5343", "-23.5343", "1, 2, 3", "sem números"])(
+  it.each([
+    "",
+    "-23,5343",
+    "-23.5343",
+    "1, 2, 3",
+    "sem números",
+    "10\u201320",
+    "10-20",
+    "5 - 7",
+    "06/10/2026",
+    "Lat: -23.5343 Lon: -46.8368",
+  ])(
     "leaves %j alone",
     (text) => {
       expect(extractCoordinatePair(text)).toBeNull();
@@ -338,6 +350,11 @@ describe("adminErrorMessage", () => {
 
   it.each(kinds)("has a message for %s", (kind) => {
     expect(adminErrorMessage(kind).length).toBeGreaterThan(10);
+  });
+
+  it("says a refused token at sign-in was wrong, even when the server is busy", () => {
+    expect(adminErrorMessage("tooManyAttempts", "signIn")).toContain("Token inválido");
+    expect(adminErrorMessage("tooManyAttempts", "read")).toContain("Aguarde");
   });
 
   it("tells a rejected token at sign-in from an expired session", () => {
