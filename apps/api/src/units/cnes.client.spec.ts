@@ -65,6 +65,14 @@ describe('CnesClient', () => {
     });
   });
 
+  it('exposes the 6-digit municipality code that links the unit to its boundary', async () => {
+    mockCnes([establishment(-23.55, -46.63)]);
+
+    const [unit] = await client.fetchUnits(parseState('SP'));
+
+    expect(unit.address.municipalityCode).toBe('355030');
+  });
+
   it('discards coordinates outside the valid range', async () => {
     mockCnes([establishment(200, -300)]);
 

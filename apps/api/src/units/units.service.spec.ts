@@ -166,4 +166,102 @@ describe('UnitsService', () => {
     expect(response.metadata.dataOrigin).toBe('fallback');
     expect(fetchUnits).not.toHaveBeenCalled();
   });
+
+  describe('national snapshot', () => {
+    const noClient = { fetchUnits: vi.fn() } as unknown as CnesClient;
+
+    it('checks the position of the snapshot units against their municipality', async () => {
+      const apply = vi.fn((units: HealthUnit[]) =>
+        Promise.resolve({
+          units: units.map((unit, index) =>
+            index === 0
+              ? {
+                  ...unit,
+                  location: {
+                    ...unit.location,
+                    precision: 'municipality' as const,
+                  },
+                }
+              : unit,
+          ),
+          validated: true,
+          historyComplete: true,
+        }),
+      );
+      const service = new UnitsService(noClient, {
+        apply,
+      } as unknown as UnitLocationsService);
+
+      const response = await service.findAll('BR');
+
+      // History stays enabled: the CNES host is not known to be down here.
+      expect(apply).toHaveBeenCalledWith(expect.any(Array));
+      expect(apply.mock.calls[0]).toHaveLength(1);
+      expect(response.data[0]!.location.precision).toBe('municipality');
+      expect(response.metadata.dataOrigin).toBe('fallback');
+    });
+
+    it('gives every snapshot unit the code of its municipality', async () => {
+      const apply = vi.fn((units: HealthUnit[]) =>
+        Promise.resolve({ units, validated: true, historyComplete: true }),
+      );
+      const service = new UnitsService(noClient, {
+        apply,
+      } as unknown as UnitLocationsService);
+
+      const { data } = await service.findAll('BR');
+
+      expect(data.length).toBeGreaterThan(1000);
+      expect(
+        data.filter((unit) => !/^\d{6}$/.test(unit.address.municipalityCode)),
+      ).toEqual([]);
+    });
+
+    it('shares one check between concurrent requests', async () => {
+      const apply = vi.fn((units: HealthUnit[]) =>
+        Promise.resolve({ units, validated: true, historyComplete: true }),
+      );
+      const service = new UnitsService(noClient, {
+        apply,
+      } as unknown as UnitLocationsService);
+
+      const [first, second] = await Promise.all([
+        service.findAll('BR'),
+        service.findAll('ALL'),
+      ]);
+
+      expect(second).toBe(first);
+      expect(apply).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['everything loaded', true, true, 6 * 60],
+      ['the history could not be fully loaded', true, false, 60],
+      ['the municipality boundaries are unavailable', false, true, 5],
+    ])(
+      'rechecks at the right time when %s',
+      async (_label, validated, historyComplete, minutes) => {
+        vi.useFakeTimers();
+        try {
+          const apply = vi.fn((units: HealthUnit[]) =>
+            Promise.resolve({ units, validated, historyComplete }),
+          );
+          const service = new UnitsService(noClient, {
+            apply,
+          } as unknown as UnitLocationsService);
+
+          await service.findAll('BR');
+          vi.advanceTimersByTime((minutes - 1) * 60 * 1000);
+          await service.findAll('BR');
+          expect(apply).toHaveBeenCalledTimes(1);
+
+          vi.advanceTimersByTime(2 * 60 * 1000);
+          await service.findAll('BR');
+          expect(apply).toHaveBeenCalledTimes(2);
+        } finally {
+          vi.useRealTimers();
+        }
+      },
+    );
+  });
 });
