@@ -13,6 +13,8 @@ services:
       DB_NAME: ${POSTGRES_DB:-filasaude}
       DB_USER: ${POSTGRES_USER:-filasaude}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-filasaude}
+      # Optional: at least 32 characters turns the admin endpoints on.
+      ADMIN_API_TOKEN: ${ADMIN_API_TOKEN:-}
     ports:
       - "3000:3000"
     healthcheck:

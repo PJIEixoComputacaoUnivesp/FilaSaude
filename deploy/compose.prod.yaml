@@ -32,6 +32,8 @@ services:
       DB_NAME: ${POSTGRES_DB:-filasaude}
       DB_USER: ${POSTGRES_USER:-filasaude}
       DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      # Optional. Without it the admin endpoints do not exist (404).
+      ADMIN_API_TOKEN: ${ADMIN_API_TOKEN:-}
     expose:
       - "3000"
     healthcheck:

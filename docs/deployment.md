@@ -68,6 +68,7 @@ adicione os secrets:
 | `DROPLET_KNOWN_HOSTS` | Linha de host key confiável do servidor |
 | `APP_DOMAIN` | Domínio completo, sem protocolo, ou `http://IP` sem domínio |
 | `POSTGRES_PASSWORD` | Senha do PostgreSQL de produção (`openssl rand -hex 32`) |
+| `ADMIN_API_TOKEN` | Opcional. Liga a API de correção manual de posições (`openssl rand -hex 32`, mínimo de 32 caracteres) |
 
 Crie também duas variáveis de Actions:
 
@@ -184,6 +185,39 @@ serviço tem recursos limitados para caber em um Droplet de 1 GB:
 Adicione o secret `POSTGRES_PASSWORD` ao environment `production` antes do
 próximo deploy. Gere a senha com `openssl rand -hex 32`. `POSTGRES_DB` e
 `POSTGRES_USER` usam `filasaude` por padrão.
+
+### Correções manuais de posição
+
+Quando o cadastro do CNES traz uma coordenada errada, um administrador pode
+definir a posição da unidade em tempo de execução, sem novo deploy. A função
+fica **desligada** enquanto o secret `ADMIN_API_TOKEN` não existir: sem ele, as
+rotas `/admin/location-corrections` respondem 404. Antes de criá-lo, o grupo
+precisa ter confirmado o uso de posições que não vêm do CNES (ver "Licença e
+referências" no ADR 0001).
+
+Quem tem o token é administrador. Guarde-o como um segredo, sem enviá-lo por
+chat nem registrá-lo, e gere um novo para trocá-lo. Depois do próximo deploy:
+
+```bash
+export API=https://SEU_DOMINIO/api
+export ADMIN_API_TOKEN="..."
+
+# definir ou substituir a posição da unidade com CNES 5563704
+curl -X PUT "$API/admin/location-corrections/5563704" \
+  -H "Authorization: Bearer $ADMIN_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"latitude": -23.5343, "longitude": -46.8368, "verifiedBy": "Nome de quem verificou", "method": "Como foi verificada"}'
+
+# listar e remover
+curl -H "Authorization: Bearer $ADMIN_API_TOKEN" "$API/admin/location-corrections"
+curl -X DELETE -H "Authorization: Bearer $ADMIN_API_TOKEN" "$API/admin/location-corrections/5563704"
+```
+
+A posição precisa estar dentro do município da unidade (tolerância de 5 km) e
+no Brasil. A resposta pública mostra apenas `precision: "manual"` e a data;
+`verifiedBy` e `method` ficam só para os administradores. A correção vale
+enquanto o município e o endereço da unidade no CNES forem os de quando ela foi
+feita. Se algum mudar, ela deixa de valer e o motivo vai para o log.
 
 ### Swap
 
