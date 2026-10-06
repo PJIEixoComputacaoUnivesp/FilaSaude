@@ -193,7 +193,9 @@ pnpm test
 pnpm playwright test
 ```
 
-Os testes E2E com **Playwright** serão utilizados para validar os principais fluxos da aplicação, como pesquisa, visualização de unidades e tratamento de resultados.
+Os testes E2E com **Playwright** validam o fluxo de pesquisa, listagem, exibição
+dos detalhes públicos das unidades e tratamento de buscas sem resultados. A
+suíte inicia o frontend automaticamente e usa respostas determinísticas para a API.
 
 ---
 
