@@ -10,7 +10,11 @@ import {
   ZoomControl,
 } from "react-leaflet";
 import type { HealthUnit } from "./units";
-import { formatAddress, formatSourceDate } from "./units";
+import {
+  formatAddress,
+  formatReferenceMonth,
+  formatSourceDate,
+} from "./units";
 
 const brazilCenter: [number, number] = [-14.2, -51.9];
 // Canvas does not resolve CSS variables, so the brand blue is repeated here.
@@ -151,6 +155,16 @@ export function UnitsMap({
                   {unit.serviceHours}
                 </p>
               )}
+              {unit.location.precision === "history" &&
+                unit.location.referenceMonth && (
+                  <p className="my-2 text-xs font-medium text-amber-800">
+                    Posição registrada no CNES em{" "}
+                    {formatReferenceMonth(unit.location.referenceMonth)}. A
+                    coordenada atual do cadastro está fora do município, então
+                    mostramos o último ponto válido informado para este mesmo
+                    endereço.
+                  </p>
+                )}
               {unit.location.precision === "municipality" && (
                 <p className="my-2 text-xs font-medium text-amber-800">
                   Localização aproximada: centro do município. O cadastro do
