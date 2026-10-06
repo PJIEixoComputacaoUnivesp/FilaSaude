@@ -26,6 +26,7 @@ const testUnit: HealthUnit = {
     longitude: -46.63,
     precision: 'source',
     original: null,
+    referenceMonth: null,
   },
   serviceHours: 'ATENDIMENTO CONTINUO DE 24 HORAS/DIA',
   lastUpdatedAt: '2026-09-20',

@@ -42,6 +42,7 @@ function fallbackUnits(): HealthUnit[] {
       longitude: unit.location.longitude ?? null,
       precision: 'source',
       original: null,
+      referenceMonth: null,
     },
     serviceHours: unit.serviceHours ?? null,
     lastUpdatedAt: unit.lastUpdatedAt,
@@ -120,8 +121,9 @@ export class UnitsService {
       if (key !== 'SP') throw error;
 
       this.logger.warn('Using the CNES fallback snapshot for SP');
+      // CNES is already unreachable, so its history would be as well.
       return this.buildResponse(
-        (await this.locations.apply(fallbackUnits())).units,
+        (await this.locations.apply(fallbackUnits(), { history: false })).units,
         key,
         'fallback',
         FALLBACK_RETRIEVED_AT,

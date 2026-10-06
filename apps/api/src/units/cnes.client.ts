@@ -111,6 +111,7 @@ function normalizeUnit(
       ),
       precision: 'source',
       original: null,
+      referenceMonth: null,
     },
     serviceHours: optionalString(record, 'descricao_turno_atendimento'),
     lastUpdatedAt: requiredString(record, 'data_atualizacao'),

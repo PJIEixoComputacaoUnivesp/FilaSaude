@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CnesClient } from './cnes.client.js';
+import { CnesHistoryClient } from './cnes-history.client.js';
 import { MunicipalitiesClient } from './municipalities.client.js';
 import { MunicipalityBoundariesClient } from './municipality-boundaries.client.js';
 import { UnitLocationsService } from './unit-locations.service.js';
@@ -14,6 +15,7 @@ import { HealthUnitRepository } from '../database/repositories/health-unit.repos
   controllers: [UnitsController],
   providers: [
     CnesClient,
+    CnesHistoryClient,
     MunicipalitiesClient,
     MunicipalityBoundariesClient,
     UnitLocationsService,

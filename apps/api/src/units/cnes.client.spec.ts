@@ -61,6 +61,7 @@ describe('CnesClient', () => {
       longitude: -46.63,
       precision: 'source',
       original: null,
+      referenceMonth: null,
     });
   });
 
@@ -74,6 +75,7 @@ describe('CnesClient', () => {
       longitude: null,
       precision: 'source',
       original: null,
+      referenceMonth: null,
     });
   });
 

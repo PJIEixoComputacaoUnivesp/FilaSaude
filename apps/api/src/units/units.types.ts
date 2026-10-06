@@ -15,11 +15,13 @@ export interface Coordinate {
 }
 
 /**
- * Where the position comes from: `source` is the CNES coordinate as
- * declared; `municipality` is the center of the declared municipality, used
- * when the CNES coordinate is missing or outside it.
+ * Where the position comes from: `source` is the CNES coordinate as declared;
+ * `history` is the latest earlier CNES coordinate that is inside the municipality
+ * and was registered for the same address (see `referenceMonth`); `municipality`
+ * is the center of the declared municipality. The last two are used when the
+ * current CNES coordinate is missing or outside the municipality.
  */
-export type LocationPrecision = 'source' | 'municipality';
+export type LocationPrecision = 'source' | 'history' | 'municipality';
 
 export interface UnitLocation {
   latitude: number | null;
@@ -27,6 +29,8 @@ export interface UnitLocation {
   precision: LocationPrecision;
   /** The CNES coordinate replaced by `latitude`/`longitude`, kept for audit. */
   original: Coordinate | null;
+  /** CNES monthly release (`YYYY-MM`) the `history` position comes from. */
+  referenceMonth: string | null;
 }
 
 export interface HealthUnit {
