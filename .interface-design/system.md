@@ -36,5 +36,22 @@
 - Safety notice: amber-tinted surface with a strong left border and direct label.
 - Public-data records must expose source and update time in their own context.
 
+## Admin area
+
+- The admin page (`/admin`) is outside the public navigation and marked
+  `noindex`. Secrets such as the admin token stay in React memory only.
+- A button that stays focused while it works uses `aria-disabled` and a ref
+  guard instead of `disabled`, which would drop focus and not give it back.
+- A destructive action asks for confirmation inline, moves focus to the safe
+  choice ("Cancelar"), and after it completes announces the result in a live
+  region and moves focus to the list heading.
+- Long unbroken text (URLs pasted into a field) uses `wrap-anywhere` and grid
+  columns are `grid-cols-1`, otherwise the text widens the whole page.
+- A map used to pick a point is capped by the screen height (a map that fills it
+  leaves no room to scroll) and its zoom buttons are 44px on touch screens. The
+  fields that hold the same values stay the keyboard path.
+- Do not use `inputmode="decimal"` for signed coordinates: the iOS decimal
+  keyboard has no minus sign.
+
 Update this file only when a reusable decision is introduced or intentionally
 changed. Component-specific implementation details do not belong here.

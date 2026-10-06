@@ -25,6 +25,8 @@ export interface HealthUnit {
      * `manual`: an administrator set the position (see `correctedAt`).
      */
     precision: "source" | "history" | "municipality" | "manual";
+    /** The coordinate CNES declared, when the position shown replaced it. */
+    original?: { latitude: number; longitude: number } | null;
     /** CNES monthly release (`YYYY-MM`) a `history` point comes from. */
     referenceMonth: string | null;
     /** Date (`YYYY-MM-DD`) an administrator set a `manual` position. */
@@ -150,4 +152,21 @@ export function formatSourceDate(value: string): string {
   return Number.isNaN(date.getTime())
     ? value
     : new Intl.DateTimeFormat("pt-BR").format(date);
+}
+
+/** Says where the position on the map comes from. */
+export function formatPosition({ location }: HealthUnit): string {
+  if (location.latitude === null || location.longitude === null) {
+    return "Coordenadas não informadas na fonte pública";
+  }
+  if (location.precision === "municipality") {
+    return "Aproximada: centro do município (contorno do IBGE)";
+  }
+  if (location.precision === "manual" && location.correctedAt) {
+    return `Posição corrigida manualmente em ${formatSourceDate(location.correctedAt)}`;
+  }
+  if (location.precision === "history" && location.referenceMonth) {
+    return `Posição do CNES de ${formatReferenceMonth(location.referenceMonth)} (a coordenada atual não é utilizável)`;
+  }
+  return "Disponível";
 }
