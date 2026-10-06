@@ -57,9 +57,9 @@ describe('AppController (e2e)', () => {
       .get('/units')
       .expect(200)
       .expect(({ body }) => {
-        expect(body.data).toEqual([testUnit]);
+        expect(body.data.length).toBeGreaterThan(1000);
         expect(body.metadata.state).toBe('BR');
-        expect(body.metadata.dataOrigin).toBe('live');
+        expect(body.metadata.dataOrigin).toBe('fallback');
       });
   });
 
