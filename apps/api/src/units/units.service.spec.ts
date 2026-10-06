@@ -168,6 +168,87 @@ describe('UnitsService', () => {
     expect(fetchUnits).not.toHaveBeenCalled();
   });
 
+  describe('invalidate', () => {
+    const deferredFetch = () => {
+      const resolvers: ((units: HealthUnit[]) => void)[] = [];
+      const fetchUnits = vi.fn().mockImplementation(
+        () =>
+          new Promise<HealthUnit[]>((resolve) => {
+            resolvers.push(resolve);
+          }),
+      );
+      return { fetchUnits, resolvers };
+    };
+
+    it('drops the cached response, so the next request loads again', async () => {
+      const fetchUnits = vi.fn().mockResolvedValue([liveUnit]);
+      const service = new UnitsService(
+        { fetchUnits } as unknown as CnesClient,
+        passthrough,
+      );
+
+      await service.findAll('SP');
+      service.invalidate();
+      await service.findAll('SP');
+
+      expect(fetchUnits).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps a load started before it from refilling the cache with outdated data', async () => {
+      const { fetchUnits, resolvers } = deferredFetch();
+      const service = new UnitsService(
+        { fetchUnits } as unknown as CnesClient,
+        passthrough,
+      );
+
+      const stale = service.findAll('SP');
+      service.invalidate();
+      resolvers[0]!([liveUnit]);
+      await stale;
+
+      const fresh = service.findAll('SP');
+      resolvers[1]!([liveUnit]);
+      await fresh;
+
+      expect(fetchUnits).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not let a request after it join a load that started before it', async () => {
+      const { fetchUnits, resolvers } = deferredFetch();
+      const service = new UnitsService(
+        { fetchUnits } as unknown as CnesClient,
+        passthrough,
+      );
+
+      const before = service.findAll('SP');
+      service.invalidate();
+      const after = service.findAll('SP');
+      resolvers[0]!([liveUnit]);
+      resolvers[1]!([liveUnit]);
+
+      expect(await after).not.toBe(await before);
+      expect(fetchUnits).toHaveBeenCalledTimes(2);
+    });
+
+    it('also drops the national response', async () => {
+      const apply = vi.fn((units: HealthUnit[]) =>
+        Promise.resolve({ units, validated: true, historyComplete: true }),
+      );
+      const service = new UnitsService(
+        { fetchUnits: vi.fn() } as unknown as CnesClient,
+        {
+          apply,
+        } as unknown as UnitLocationsService,
+      );
+
+      await service.findAll('BR');
+      service.invalidate();
+      await service.findAll('BR');
+
+      expect(apply).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('national snapshot', () => {
     const noClient = { fetchUnits: vi.fn() } as unknown as CnesClient;
 

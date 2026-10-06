@@ -80,13 +80,27 @@ export class UnitsService {
     { expiresAt: number; response: UnitsResponse }
   >();
   private readonly pending = new Map<string, Promise<UnitsResponse>>();
+  // Bumped by `invalidate`, so that a load started before it does not put its
+  // outdated response back in the cache.
+  private generation = 0;
 
   constructor(
     private readonly cnesClient: CnesClient,
     private readonly locations: UnitLocationsService,
   ) {}
 
+  /**
+   * Drops every cached and in-flight response, so that a change to the
+   * positions (a manual correction) shows on the next request.
+   */
+  invalidate(): void {
+    this.generation++;
+    this.cache.clear();
+    this.pending.clear();
+  }
+
   async findAll(stateValue?: string): Promise<UnitsResponse> {
+    const generation = this.generation;
     const state = parseState(stateValue);
     const cached = this.cache.get(state.abbreviation);
     if (cached && cached.expiresAt > Date.now()) return cached.response;
@@ -96,10 +110,13 @@ export class UnitsService {
     if (!request) {
       request = (
         state.abbreviation === NationalStateCode.Brazil
-          ? this.loadNational(state)
-          : this.loadLive(state, cached)
+          ? this.loadNational(state, generation)
+          : this.loadLive(state, generation, cached)
       ).finally(() => {
-        this.pending.delete(state.abbreviation);
+        // An invalidation may already have replaced this entry.
+        if (this.pending.get(state.abbreviation) === request) {
+          this.pending.delete(state.abbreviation);
+        }
       });
       this.pending.set(state.abbreviation, request);
     }
@@ -113,7 +130,10 @@ export class UnitsService {
    * against the municipality, like any other response, so that a misplaced
    * unit does not appear outside it.
    */
-  private async loadNational(state: BrazilianState): Promise<UnitsResponse> {
+  private async loadNational(
+    state: BrazilianState,
+    generation: number,
+  ): Promise<UnitsResponse> {
     const located = await this.locations.apply(
       fallbackUnits(NationalStateCode.Brazil),
     );
@@ -123,15 +143,23 @@ export class UnitsService {
       'fallback',
       FALLBACK_RETRIEVED_AT,
     );
-    this.cache.set(state.abbreviation, {
-      expiresAt: Date.now() + cacheTtl(located),
-      response,
-    });
+    this.remember(state.abbreviation, generation, cacheTtl(located), response);
     return response;
+  }
+
+  private remember(
+    key: string,
+    generation: number,
+    ttlMs: number,
+    response: UnitsResponse,
+  ): void {
+    if (generation !== this.generation) return;
+    this.cache.set(key, { expiresAt: Date.now() + ttlMs, response });
   }
 
   private async loadLive(
     state: BrazilianState,
+    generation: number,
     cached?: { expiresAt: number; response: UnitsResponse },
   ): Promise<UnitsResponse> {
     try {
@@ -147,10 +175,12 @@ export class UnitsService {
         'live',
         new Date().toISOString(),
       );
-      this.cache.set(state.abbreviation, {
-        expiresAt: Date.now() + cacheTtl(located),
+      this.remember(
+        state.abbreviation,
+        generation,
+        cacheTtl(located),
         response,
-      });
+      );
       return response;
     } catch (error: unknown) {
       const reason = error instanceof Error ? error.message : 'unknown error';
