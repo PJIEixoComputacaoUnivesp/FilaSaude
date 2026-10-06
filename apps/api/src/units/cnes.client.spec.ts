@@ -221,6 +221,22 @@ describe('CnesClient.fetchUnit', () => {
     await expect(client.fetchUnit('1234567')).rejects.toThrow('status 503');
   });
 
+  it('refuses a record for a different establishment than the one asked for', async () => {
+    respondWith(establishment(-23.55, -46.63, { codigo_cnes: 7654321 }));
+
+    await expect(client.fetchUnit('1234567')).rejects.toThrow(
+      'different establishment',
+    );
+  });
+
+  it('accepts the code asked for without its leading zeros', async () => {
+    respondWith(establishment(-23.55, -46.63, { codigo_cnes: 113360 }));
+
+    await expect(client.fetchUnit('113360')).resolves.toMatchObject({
+      id: '0113360',
+    });
+  });
+
   it('refuses a code that is not numeric before calling CNES', async () => {
     const fetch = respondWith({});
 

@@ -107,6 +107,23 @@ describe('AdminTokenGuard', () => {
     );
   });
 
+  it('tells "switched off" apart from "no such unit" in the answer', () => {
+    vi.stubEnv('ADMIN_API_TOKENS', '');
+
+    let thrown: unknown;
+    try {
+      guard().canActivate(contextWith(bearer(MARIA)));
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(NotFoundException);
+    expect((thrown as NotFoundException).getResponse()).toMatchObject({
+      statusCode: 404,
+      error: 'AdminDisabled',
+    });
+  });
+
   it('keeps every route off for a malformed list and says why, without the values', () => {
     vi.stubEnv('ADMIN_API_TOKENS', `maria:${MARIA},joao:short`);
     const instance = guard();
@@ -221,6 +238,25 @@ describe('AdminTokenGuard', () => {
       // The administrators are not locked out.
       expect(instance.canActivate(contextWith(bearer(MARIA)))).toBe(true);
       expect(instance.canActivate(contextWith(bearer(JOAO)))).toBe(true);
+    });
+
+    it('does not count a request without a token as a failed attempt', () => {
+      vi.stubEnv('ADMIN_API_TOKENS', LIST);
+      const limiter = new FailureLimiter();
+      const instance = guard(limiter);
+
+      for (const headers of [
+        {},
+        { authorization: '' },
+        { authorization: 'Bearer' },
+      ]) {
+        expect(() => instance.canActivate(contextWith({ headers }))).toThrow(
+          UnauthorizedException,
+        );
+      }
+
+      // Nothing was guessed, so anonymous requests cannot use up the window.
+      expect(limiter.size).toBe(0);
     });
 
     it('does not count a valid token as a failure', () => {

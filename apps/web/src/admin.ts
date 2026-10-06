@@ -121,7 +121,17 @@ async function request(
   } catch {
     throw new AdminApiError("network");
   }
-  if (!response.ok) throw new AdminApiError(kindOfStatus(response.status));
+  if (!response.ok) {
+    // The server answers 404 both when the administration is switched off and
+    // when a unit does not exist; the body says which.
+    if (response.status === 404) {
+      const body: unknown = await response.json().catch(() => null);
+      if (isRecord(body) && body.error === "AdminDisabled") {
+        throw new AdminApiError("disabled");
+      }
+    }
+    throw new AdminApiError(kindOfStatus(response.status));
+  }
   return response;
 }
 

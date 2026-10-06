@@ -288,6 +288,21 @@ describe("admin API calls", () => {
     expect(await kindOf(listCorrections(TOKEN))).toBe(kind);
   });
 
+  it("tells an administration that was switched off from a unit that does not exist", async () => {
+    const save = () =>
+      saveCorrection(TOKEN, "5563704", {
+        latitude: -23.5,
+        longitude: -46.8,
+        method: "x",
+      });
+
+    respondWith({ statusCode: 404, error: "AdminDisabled" }, 404);
+    expect(await kindOf(save())).toBe("disabled");
+
+    respondWith({ statusCode: 404, message: "Unit not found" }, 404);
+    expect(await kindOf(save())).toBe("notFound");
+  });
+
   it("reports a network failure", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("Failed to fetch"));
 

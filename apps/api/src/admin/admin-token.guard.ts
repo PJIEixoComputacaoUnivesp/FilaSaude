@@ -38,7 +38,15 @@ export class AdminTokenGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const configured = this.configuration();
-    if (!configured || 'error' in configured) throw new NotFoundException();
+    if (!configured || 'error' in configured) {
+      // A machine-readable reason, so the admin page can tell "switched off"
+      // from "no such unit", which are both 404.
+      throw new NotFoundException({
+        statusCode: 404,
+        error: 'AdminDisabled',
+        message: 'Not Found',
+      });
+    }
 
     const request = context.switchToHttp().getRequest<{
       headers: Record<string, string | string[] | undefined>;
@@ -50,6 +58,10 @@ export class AdminTokenGuard implements CanActivate {
       typeof authorization === 'string'
         ? (/^Bearer\s+(\S+)\s*$/i.exec(authorization)?.[1] ?? '')
         : '';
+
+    // Nothing was guessed, so this is not a failed attempt: counting it would
+    // let any anonymous request use up the window.
+    if (supplied === '') throw new UnauthorizedException();
 
     const admin = this.authenticate(configured.admins, supplied);
     if (admin) {

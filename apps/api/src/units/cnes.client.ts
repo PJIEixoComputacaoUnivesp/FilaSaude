@@ -190,7 +190,13 @@ export class CnesClient {
       parseState(abbreviation),
     );
     try {
-      return normalizeUnit(record, municipalities);
+      const unit = normalizeUnit(record, municipalities);
+      // A correction is stored under the code in the record, so it must be the
+      // code the administrator asked for.
+      if (unit && Number(unit.id) !== Number(cnesCode)) {
+        throw new Error('CNES returned a different establishment');
+      }
+      return unit;
     } catch (error: unknown) {
       if (error instanceof OutOfScopeError) return null;
       throw error;

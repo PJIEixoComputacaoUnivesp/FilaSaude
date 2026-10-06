@@ -82,6 +82,15 @@ describe('Location corrections (e2e)', () => {
       vi.stubEnv('ADMIN_API_TOKENS', configured);
     });
 
+    it('says in the answer that the administration is switched off', async () => {
+      await call('GET', '/admin/me')
+        .set('Authorization', asMaria)
+        .expect(404)
+        .expect(({ body }) => {
+          expect(body.error).toBe('AdminDisabled');
+        });
+    });
+
     it.each(routes)(
       'hides %s %s, even for a request that names a token',
       async (method, path) => {

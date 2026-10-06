@@ -266,6 +266,54 @@ describe('UnitsService', () => {
       expect(fetchUnits).toHaveBeenCalledTimes(3);
     });
 
+    it('still caches a slow load of another state that finishes after the write', async () => {
+      const resolvers: ((units: HealthUnit[]) => void)[] = [];
+      const fetchUnits = vi.fn().mockImplementation(
+        () =>
+          new Promise<HealthUnit[]>((resolve) => {
+            resolvers.push(resolve);
+          }),
+      );
+      const service = new UnitsService(
+        { fetchUnits } as unknown as CnesClient,
+        passthrough,
+      );
+
+      const slow = service.findAll('SP');
+      // A correction is saved for a unit in another state meanwhile.
+      service.invalidate('RJ');
+      resolvers[0]!([liveUnit]);
+      await slow;
+      await service.findAll('SP');
+
+      // The SP load was not thrown away, so it did not have to be repeated.
+      expect(fetchUnits).toHaveBeenCalledTimes(1);
+    });
+
+    it('still discards a load of the same state that started before the write', async () => {
+      const resolvers: ((units: HealthUnit[]) => void)[] = [];
+      const fetchUnits = vi.fn().mockImplementation(
+        () =>
+          new Promise<HealthUnit[]>((resolve) => {
+            resolvers.push(resolve);
+          }),
+      );
+      const service = new UnitsService(
+        { fetchUnits } as unknown as CnesClient,
+        passthrough,
+      );
+
+      const stale = service.findAll('SP');
+      service.invalidate('SP');
+      resolvers[0]!([liveUnit]);
+      await stale;
+      const fresh = service.findAll('SP');
+      resolvers[1]!([liveUnit]);
+      await fresh;
+
+      expect(fetchUnits).toHaveBeenCalledTimes(2);
+    });
+
     it('drops the national view along with the state', async () => {
       const apply = vi.fn((units: HealthUnit[]) =>
         Promise.resolve({ units, validated: true, historyComplete: true }),

@@ -81,8 +81,11 @@ export class UnitsService {
   >();
   private readonly pending = new Map<string, Promise<UnitsResponse>>();
   // Bumped by `invalidate`, so that a load started before it does not put its
-  // outdated response back in the cache.
-  private generation = 0;
+  // outdated response back in the cache. It is kept per key: a correction for a
+  // unit in one state must not keep a slow load of another state from being
+  // cached.
+  private epoch = 0;
+  private readonly keyGeneration = new Map<string, number>();
 
   constructor(
     private readonly cnesClient: CnesClient,
@@ -102,21 +105,26 @@ export class UnitsService {
    * removed position.
    */
   invalidate(state?: string): void {
-    this.generation++;
     if (!state) {
+      this.epoch++;
       this.cache.clear();
       this.pending.clear();
       return;
     }
     for (const key of [state, NationalStateCode.Brazil]) {
+      this.keyGeneration.set(key, (this.keyGeneration.get(key) ?? 0) + 1);
       this.cache.delete(key);
       this.pending.delete(key);
     }
   }
 
+  private generationOf(key: string): string {
+    return `${this.epoch}:${this.keyGeneration.get(key) ?? 0}`;
+  }
+
   async findAll(stateValue?: string): Promise<UnitsResponse> {
-    const generation = this.generation;
     const state = parseState(stateValue);
+    const generation = this.generationOf(state.abbreviation);
     const cached = this.cache.get(state.abbreviation);
     if (cached && cached.expiresAt > Date.now()) return cached.response;
 
@@ -147,7 +155,7 @@ export class UnitsService {
    */
   private async loadNational(
     state: BrazilianState,
-    generation: number,
+    generation: string,
   ): Promise<UnitsResponse> {
     const located = await this.locations.apply(
       fallbackUnits(NationalStateCode.Brazil),
@@ -164,17 +172,17 @@ export class UnitsService {
 
   private remember(
     key: string,
-    generation: number,
+    generation: string,
     ttlMs: number,
     response: UnitsResponse,
   ): void {
-    if (generation !== this.generation) return;
+    if (generation !== this.generationOf(key)) return;
     this.cache.set(key, { expiresAt: Date.now() + ttlMs, response });
   }
 
   private async loadLive(
     state: BrazilianState,
-    generation: number,
+    generation: string,
     cached?: { expiresAt: number; response: UnitsResponse },
   ): Promise<UnitsResponse> {
     try {
