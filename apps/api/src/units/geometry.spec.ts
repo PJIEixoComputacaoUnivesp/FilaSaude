@@ -85,6 +85,22 @@ describe('centerOfArea', () => {
     expect(distanceToAreaKm([withHole], center)).toBe(0);
   });
 
+  it('returns a finite coordinate for a ring with no area', () => {
+    // A sliver collapsed to a line has no centroid.
+    const sliver: Polygon = [
+      [
+        [0, 0],
+        [1, 1],
+        [2, 2],
+        [0, 0],
+      ],
+    ];
+    const { latitude, longitude } = centerOfArea([sliver]);
+
+    expect(Number.isFinite(latitude)).toBe(true);
+    expect(Number.isFinite(longitude)).toBe(true);
+  });
+
   it('stays inside a concave polygon whose centroid is outside it', () => {
     const lShape: Polygon = [
       [
