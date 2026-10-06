@@ -66,7 +66,6 @@ describe('parseCorrectionInput', () => {
     ['swapped coordinates', { latitude: -46.84, longitude: -23.53 }],
     ['no method', { method: undefined }],
     ['a method that is too long', { method: 'x'.repeat(501) }],
-    ['a method with a line break', { method: 'a\nb' }],
   ])('rejects %s', (_label, override) => {
     expect(() => parseCorrectionInput({ ...valid, ...override })).toThrow(
       BadRequestException,
@@ -80,6 +79,40 @@ describe('parseCorrectionInput', () => {
         method: 'y'.repeat(500),
       }),
     ).not.toThrow();
+  });
+
+  describe('a multi-line method', () => {
+    it('keeps the line breaks of a text area', () => {
+      expect(
+        parseCorrectionInput({
+          ...valid,
+          method: 'Primeira linha\nSegunda linha',
+        }),
+      ).toMatchObject({ method: 'Primeira linha\nSegunda linha' });
+    });
+
+    it('reads a Windows line break as one', () => {
+      expect(
+        parseCorrectionInput({ ...valid, method: 'a\r\nb\rc' }).method,
+      ).toBe('a\nb\nc');
+    });
+
+    it('accepts a tab', () => {
+      expect(() =>
+        parseCorrectionInput({ ...valid, method: 'a\tb' }),
+      ).not.toThrow();
+    });
+
+    it.each([
+      ['a bell', 'a\u0007b'],
+      ['an escape', 'a\u001bb'],
+      ['a delete', 'a\u007fb'],
+      ['a null byte', 'a\u0000b'],
+    ])('still rejects %s', (_label, method) => {
+      expect(() => parseCorrectionInput({ ...valid, method })).toThrow(
+        BadRequestException,
+      );
+    });
   });
 
   it('does not take who verified from the caller', () => {

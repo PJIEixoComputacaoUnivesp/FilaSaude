@@ -11,10 +11,11 @@ const LATITUDE_RANGE = [-34, 6] as const;
 const LONGITUDE_RANGE = [-75, -28] as const;
 const METHOD_MAX_LENGTH = 500;
 
+/** Line breaks and tabs are text; every other control character is not. */
 function hasControlCharacters(value: string): boolean {
   return [...value].some((character) => {
     const code = character.charCodeAt(0);
-    return code < 0x20 || code === 0x7f;
+    return (code < 0x20 && code !== 0x0a && code !== 0x09) || code === 0x7f;
   });
 }
 
@@ -37,14 +38,17 @@ function text(value: unknown, name: string, maxLength: number): string {
   if (typeof value !== 'string') {
     throw new BadRequestException(`${name} must be a string`);
   }
-  const trimmed = value.trim();
+  // The field is a multi-line text area; Windows line breaks count as one.
+  const trimmed = value.replace(/\r\n?/g, '\n').trim();
   if (trimmed === '' || trimmed.length > maxLength) {
     throw new BadRequestException(
       `${name} must have between 1 and ${maxLength} characters`,
     );
   }
   if (hasControlCharacters(trimmed)) {
-    throw new BadRequestException(`${name} must not have control characters`);
+    throw new BadRequestException(
+      `${name} must not have control characters other than line breaks`,
+    );
   }
   return trimmed;
 }
