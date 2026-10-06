@@ -68,7 +68,9 @@ function isUnit(value: unknown): value is HealthUnit {
       "PRONTO SOCORRO GERAL",
       "PRONTO SOCORRO ESPECIALIZADO",
     ].includes(value.unitType as string) &&
-    (value.location.precision === "source" ||
+    // An API that predates the position check sends no precision at all.
+    (value.location.precision === undefined ||
+      value.location.precision === "source" ||
       value.location.precision === "municipality" ||
       (value.location.precision === "history" &&
         typeof value.location.referenceMonth === "string")) &&
@@ -98,7 +100,12 @@ function parseUnitsResponse(value: unknown): UnitsResponse {
     throw new Error("A API retornou dados em um formato inesperado.");
   }
 
-  return value as unknown as UnitsResponse;
+  const response = value as unknown as UnitsResponse;
+  // Those older responses only carry the coordinates as CNES declared them. An
+  // unknown value is still rejected above, so a future kind of position is
+  // never shown as if it were the CNES coordinate.
+  for (const unit of response.data) unit.location.precision ??= "source";
+  return response;
 }
 
 export async function fetchUnits(
