@@ -61,7 +61,11 @@ export class CreateUnitLocationCorrections1761000000000 implements MigrationInte
           { name: 'cnes_code', type: 'varchar', length: '7' },
           { name: 'action', type: 'varchar', length: '8' },
           { name: 'actor', type: 'varchar', length: '39' },
-          { name: 'occurred_at', type: 'timestamptz', default: 'now()' },
+          {
+            name: 'occurred_at',
+            type: 'timestamptz',
+            default: 'clock_timestamp()',
+          },
           { name: 'method', type: 'text', isNullable: true },
           {
             name: 'previous_latitude',

@@ -90,15 +90,28 @@ export class UnitsService {
   ) {}
 
   /**
-   * Expires every cached response and forgets the in-flight ones, so that a
-   * change to the positions (a manual correction) shows on the next request.
+   * Drops the cached and in-flight responses a change to the positions (a
+   * manual correction) can affect, so that it shows on the next request: the
+   * state of the unit and the national view. Other states keep theirs, since
+   * refetching one from CNES takes tens of seconds. Without a state, all of
+   * them go.
+   *
+   * The entries are dropped, not kept as a stale fallback: if CNES is down
+   * right after a removal, the embedded snapshot still goes through the
+   * current corrections, while a stale response would keep serving the
+   * removed position.
    */
-  invalidate(): void {
+  invalidate(state?: string): void {
     this.generation++;
-    // Expired, not dropped: if CNES is unreachable at that moment, the last
-    // live response is a better stale fallback than the embedded snapshot.
-    for (const entry of this.cache.values()) entry.expiresAt = 0;
-    this.pending.clear();
+    if (!state) {
+      this.cache.clear();
+      this.pending.clear();
+      return;
+    }
+    for (const key of [state, NationalStateCode.Brazil]) {
+      this.cache.delete(key);
+      this.pending.delete(key);
+    }
   }
 
   async findAll(stateValue?: string): Promise<UnitsResponse> {

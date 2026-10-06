@@ -63,7 +63,7 @@ describe('UnitLocationCorrectionRepository', () => {
       UnitLocationCorrectionEventEntity,
       {
         where: { cnesCode: '5563704' },
-        order: { occurredAt: 'DESC', id: 'DESC' },
+        order: { id: 'DESC' },
         take: 100,
       },
     );
@@ -142,6 +142,31 @@ describe('UnitLocationCorrectionRepository', () => {
       );
     });
 
+    it('dates the correction after the lock, so "when" follows the order of the changes', async () => {
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(new Date('2026-10-07T12:00:00.000Z'));
+        // Waiting for the lock takes a second.
+        const manager = managerWith({
+          query: vi.fn(() => {
+            vi.setSystemTime(new Date('2026-10-07T12:00:01.000Z'));
+            return Promise.resolve(undefined);
+          }),
+        });
+        const next = correction({
+          correctedAt: new Date('2026-10-07T12:00:00.000Z'),
+        });
+
+        const saved = await repositoryOn(manager).saveWithEvent(next, 'maria');
+
+        expect(saved.correctedAt.toISOString()).toBe(
+          '2026-10-07T12:00:01.000Z',
+        );
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it('changes the correction and records the event inside one transaction', async () => {
       const manager = managerWith();
 
@@ -170,9 +195,13 @@ describe('UnitLocationCorrectionRepository', () => {
         findOne: vi.fn().mockResolvedValue(correction()),
       });
 
-      await expect(
-        repositoryOn(manager).removeWithEvent('5563704', 'joao'),
-      ).resolves.toBe(true);
+      const removed = await repositoryOn(manager).removeWithEvent(
+        '5563704',
+        'joao',
+      );
+
+      // The removed row comes back, so the caller can tell which state it was in.
+      expect(removed).toMatchObject({ cnesCode: '5563704' });
 
       expect(manager.delete).toHaveBeenCalledWith(
         UnitLocationCorrectionEntity,
@@ -216,7 +245,7 @@ describe('UnitLocationCorrectionRepository', () => {
 
       await expect(
         repositoryOn(manager).removeWithEvent('5563704', 'joao'),
-      ).resolves.toBe(false);
+      ).resolves.toBeNull();
 
       expect(manager.delete).not.toHaveBeenCalled();
       expect(manager.insert).not.toHaveBeenCalled();

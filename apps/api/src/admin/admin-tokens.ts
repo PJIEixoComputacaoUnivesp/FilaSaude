@@ -59,6 +59,13 @@ export function parseAdminTokens(
     if (token.includes(':')) {
       return { error: `Entry ${position} has a token with a colon` };
     }
+    // A header carries visible characters; a space or a non-ASCII character
+    // would make the entry valid on paper and impossible to send.
+    if (!/^[\x21-\x7e]+$/.test(token)) {
+      return {
+        error: `Entry ${position} has a token with spaces or characters a header cannot carry`,
+      };
+    }
     if (logins.has(login.toLowerCase())) {
       return { error: `Entry ${position} repeats a login` };
     }

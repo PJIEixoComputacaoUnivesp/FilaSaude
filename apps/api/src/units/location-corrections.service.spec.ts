@@ -51,7 +51,10 @@ function build({
   const save = vi.fn((entity: UnitLocationCorrectionEntity) =>
     Promise.resolve(entity),
   );
-  const deleteByCnesCode = vi.fn().mockResolvedValue(true);
+  // The removed row comes back; its municipality code says which state it was in.
+  const deleteByCnesCode = vi.fn().mockResolvedValue({
+    anchorMunicipalityCode: '261160',
+  });
   const findAll = vi.fn().mockResolvedValue([]);
   const findEvents = vi.fn().mockResolvedValue([]);
   const fetchUnit = vi.fn().mockResolvedValue(unit);
@@ -123,6 +126,32 @@ describe('LocationCorrectionsService', () => {
       await service.register('0113360', spoofed, 'joao');
 
       expect(save.mock.calls[0]![0].verifiedBy).toBe('joao');
+    });
+
+    it('invalidates only the state of the unit', async () => {
+      const { service, invalidate } = build();
+
+      await service.register('0113360', input, ACTOR);
+
+      expect(invalidate).toHaveBeenCalledWith('PE');
+    });
+
+    it('keeps an anchor that does not fit its column from failing the save', async () => {
+      const long: HealthUnit = {
+        ...cnesUnit,
+        address: {
+          ...cnesUnit.address,
+          street: 'R'.repeat(400),
+          number: '9'.repeat(60),
+        },
+      };
+      const { service, save } = build({ unit: long });
+
+      await service.register('0113360', input, ACTOR);
+
+      const saved = save.mock.calls[0]![0];
+      expect(saved.anchorStreet).toHaveLength(255);
+      expect(saved.anchorNumber).toHaveLength(32);
     });
 
     it('hands the authenticated administrator to the audit trail', async () => {
@@ -273,6 +302,16 @@ describe('LocationCorrectionsService', () => {
       );
     });
 
+    it('invalidates the state the removed correction belonged to', async () => {
+      const { service, deleteByCnesCode, invalidate } = build();
+      deleteByCnesCode.mockResolvedValue({ anchorMunicipalityCode: '351060' });
+
+      await service.remove('5563704', ACTOR);
+
+      // 35 is São Paulo.
+      expect(invalidate).toHaveBeenCalledWith('SP');
+    });
+
     it('removes the correction and invalidates the cache', async () => {
       const { service, deleteByCnesCode, invalidate } = build();
 
@@ -284,7 +323,7 @@ describe('LocationCorrectionsService', () => {
 
     it('reports a unit that has no correction', async () => {
       const { service, deleteByCnesCode, invalidate } = build();
-      deleteByCnesCode.mockResolvedValue(false);
+      deleteByCnesCode.mockResolvedValue(null);
 
       await expect(service.remove('0113360', ACTOR)).rejects.toThrow(
         NotFoundException,

@@ -1,6 +1,21 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 import { decimalTransformer } from './health-unit.entity.js';
 
+export const ANCHOR_STREET_MAX_LENGTH = 255;
+export const ANCHOR_NUMBER_MAX_LENGTH = 32;
+
+/**
+ * CNES values can be longer than the columns that keep them, and an insert
+ * that does not fit fails. The anchor is compared as stored, so both sides use
+ * the same cut.
+ */
+export function fitAnchor(
+  value: string | null,
+  maxLength: number,
+): string | null {
+  return value === null ? null : value.slice(0, maxLength);
+}
+
 /**
  * A position set by an administrator for one unit. It also keeps the CNES
  * state it was made against (the anchor), so that a later relocation of the
@@ -44,7 +59,7 @@ export class UnitLocationCorrectionEntity {
   @Column({
     name: 'anchor_street',
     type: 'varchar',
-    length: 255,
+    length: ANCHOR_STREET_MAX_LENGTH,
     nullable: true,
   })
   anchorStreet!: string | null;
@@ -52,7 +67,7 @@ export class UnitLocationCorrectionEntity {
   @Column({
     name: 'anchor_number',
     type: 'varchar',
-    length: 32,
+    length: ANCHOR_NUMBER_MAX_LENGTH,
     nullable: true,
   })
   anchorNumber!: string | null;

@@ -48,7 +48,9 @@ export class UnitLocationCorrectionRepository {
   findEvents(cnesCode: string): Promise<UnitLocationCorrectionEventEntity[]> {
     return this.repository.manager.find(UnitLocationCorrectionEventEntity, {
       where: { cnesCode },
-      order: { occurredAt: 'DESC', id: 'DESC' },
+      // The id is assigned at insert, inside the unit's lock, so it follows the
+      // real order of the changes; a timestamp taken earlier might not.
+      order: { id: 'DESC' },
       take: EVENTS_LIMIT,
     });
   }
@@ -60,6 +62,8 @@ export class UnitLocationCorrectionRepository {
   ): Promise<UnitLocationCorrectionEntity> {
     return this.repository.manager.transaction(async (manager) => {
       await this.lockUnit(manager, correction.cnesCode);
+      // Taken after the lock, so that "when" follows the order of the changes.
+      correction.correctedAt = new Date();
       const previous = await manager.findOne(UnitLocationCorrectionEntity, {
         where: { cnesCode: correction.cnesCode },
       });
@@ -78,14 +82,17 @@ export class UnitLocationCorrectionRepository {
     });
   }
 
-  /** Removes a correction and records who did it. False when there was none. */
-  removeWithEvent(cnesCode: string, actor: string): Promise<boolean> {
+  /** Removes a correction and records who did it. Null when there was none. */
+  removeWithEvent(
+    cnesCode: string,
+    actor: string,
+  ): Promise<UnitLocationCorrectionEntity | null> {
     return this.repository.manager.transaction(async (manager) => {
       await this.lockUnit(manager, cnesCode);
       const previous = await manager.findOne(UnitLocationCorrectionEntity, {
         where: { cnesCode },
       });
-      if (!previous) return false;
+      if (!previous) return null;
 
       await manager.delete(UnitLocationCorrectionEntity, { cnesCode });
       await manager.insert(UnitLocationCorrectionEventEntity, {
@@ -98,7 +105,7 @@ export class UnitLocationCorrectionRepository {
         newLatitude: null,
         newLongitude: null,
       });
-      return true;
+      return previous;
     });
   }
 }

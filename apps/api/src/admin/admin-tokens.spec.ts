@@ -38,6 +38,21 @@ describe('parseAdminTokens', () => {
     ['a short token', `maria:${'a'.repeat(31)}`, 'fewer than 32'],
     ['an empty token', 'maria:', 'fewer than 32'],
     ['a colon in the token', `maria:${A}:${A}`, 'colon'],
+    [
+      'a space in the token',
+      `maria:${'a'.repeat(20)} ${'b'.repeat(20)}`,
+      'cannot carry',
+    ],
+    [
+      'a tab in the token',
+      `maria:${'a'.repeat(20)}\t${'b'.repeat(20)}`,
+      'cannot carry',
+    ],
+    [
+      'a non-ASCII character in the token',
+      `maria:${'a'.repeat(40)}ç`,
+      'cannot carry',
+    ],
     ['a repeated login', `maria:${A},maria:${B}`, 'Entry 2 repeats a login'],
     [
       'a login repeated in another case',

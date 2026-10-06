@@ -272,8 +272,12 @@ coordenadas dessa tabela pelo código CNES.
   não de um lock de linha, que não segura nada quando a unidade ainda não tem
   correção. Em 320 primeiras escritas simultâneas, o lock de linha falhou em 273
   por violação da chave primária, e o lock advisory em nenhuma. O cache só é
-  invalidado depois do commit, e fica marcado como expirado, e não apagado, para
-  que a última resposta viva sirva de reserva se o CNES estiver fora do ar.
+  invalidado depois do commit, e só o da UF da unidade e o da visão nacional,
+  pois refazer uma UF no CNES leva dezenas de segundos. As entradas são
+  descartadas, e não mantidas como reserva: se o CNES estiver fora do ar logo
+  depois de uma remoção, o snapshot embutido passa pelas correções atuais, e uma
+  resposta antiga continuaria mostrando a posição removida. A auditoria é
+  ordenada pelo id, que é atribuído dentro do lock da unidade.
 - **Âncora:** a correção guarda o município, o logradouro, o número e a
   coordenada que o CNES tinha quando ela foi feita. Se o município ou o
   endereço mudarem, a unidade pode ter se mudado e a correção deixa de valer,

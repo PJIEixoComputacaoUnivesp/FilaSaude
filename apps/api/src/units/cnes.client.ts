@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { CNES_CODE_PATTERN } from './cnes-code.js';
 import { MunicipalitiesClient } from './municipalities.client.js';
 import {
   parseState,
@@ -20,6 +21,14 @@ const unitTypes = new Map<number, HealthUnit['unitType']>([
   [21, 'PRONTO SOCORRO ESPECIALIZADO'],
   [73, 'PRONTO ATENDIMENTO'],
 ]);
+
+/**
+ * The establishment is not one the product lists: a type other than 20, 21 and
+ * 73, or a municipality or state it does not know. Kept apart from a malformed
+ * record, which is a failure of the source and must not look like a missing
+ * unit.
+ */
+export class OutOfScopeError extends Error {}
 
 type JsonRecord = Record<string, unknown>;
 
@@ -81,13 +90,16 @@ function normalizeUnit(
   const unitType = unitTypes.get(
     Number(numericId(record, 'codigo_tipo_unidade')),
   );
-  if (!unitType) throw new Error('CNES returned an unknown unit type');
+  if (!unitType)
+    throw new OutOfScopeError('CNES returned an unknown unit type');
 
   const city = municipalities.get(numericId(record, 'codigo_municipio'));
-  if (!city) throw new Error('CNES returned an unknown municipality');
+  if (!city) {
+    throw new OutOfScopeError('CNES returned an unknown municipality');
+  }
 
   const state = stateAbbreviation(numericId(record, 'codigo_uf'));
-  if (!state) throw new Error('CNES returned an unknown state');
+  if (!state) throw new OutOfScopeError('CNES returned an unknown state');
 
   return {
     id: numericId(record, 'codigo_cnes').padStart(7, '0'),
@@ -157,7 +169,7 @@ export class CnesClient {
    * accepts the code with or without leading zeros.
    */
   async fetchUnit(cnesCode: string): Promise<HealthUnit | null> {
-    if (!/^\d{1,7}$/.test(cnesCode)) throw new Error('Invalid CNES code');
+    if (!CNES_CODE_PATTERN.test(cnesCode)) throw new Error('Invalid CNES code');
 
     const response = await fetch(`${CNES_API_URL}/${cnesCode}`, {
       headers: { Accept: 'application/json' },
@@ -180,15 +192,7 @@ export class CnesClient {
     try {
       return normalizeUnit(record, municipalities);
     } catch (error: unknown) {
-      // A type outside 20, 21 and 73, or an unknown municipality, means the
-      // establishment is not one the product lists. Any other failure is a
-      // malformed record and must not look like a missing one.
-      if (
-        error instanceof Error &&
-        error.message.startsWith('CNES returned an unknown')
-      ) {
-        return null;
-      }
+      if (error instanceof OutOfScopeError) return null;
       throw error;
     }
   }

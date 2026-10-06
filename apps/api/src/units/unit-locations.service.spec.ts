@@ -606,6 +606,20 @@ describe('UnitLocationsService', () => {
       expect(units[0]!.location.precision).toBe('manual');
     });
 
+    it('compares a long CNES address as it was stored, cut to the column length', async () => {
+      const street = 'R'.repeat(400);
+      const number = '9'.repeat(60);
+
+      const { units } = await withCorrections([
+        correction({
+          anchorStreet: street.slice(0, 255),
+          anchorNumber: number.slice(0, 32),
+        }),
+      ]).apply([unit(-24.9, -46.9, { street, number })]);
+
+      expect(units[0]!.location.precision).toBe('manual');
+    });
+
     it('does not report a change when only the CNES rounding differs', async () => {
       const log = vi
         .spyOn(Logger.prototype, 'log')

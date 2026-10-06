@@ -52,8 +52,10 @@ describe('CreateUnitLocationCorrections1761000000000', () => {
     for (const name of ['cnes_code', 'action', 'actor']) {
       expect(table.findColumnByName(name)).toMatchObject({ isNullable: false });
     }
+    // The moment of the insert, not of the start of the transaction: the audit
+    // trail must follow the order of the changes, which a lock decides.
     expect(table.findColumnByName('occurred_at')).toMatchObject({
-      default: 'now()',
+      default: 'clock_timestamp()',
     });
     expect(createIndex).toHaveBeenCalledWith(
       'unit_location_correction_events',

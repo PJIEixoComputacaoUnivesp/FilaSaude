@@ -230,7 +230,7 @@ describe('UnitsService', () => {
       expect(fetchUnits).toHaveBeenCalledTimes(2);
     });
 
-    it('keeps the last live response as the stale fallback when CNES fails right after', async () => {
+    it('does not keep serving a removed position when CNES fails right after', async () => {
       const fetchUnits = vi
         .fn()
         .mockResolvedValueOnce([liveUnit])
@@ -239,17 +239,49 @@ describe('UnitsService', () => {
         { fetchUnits } as unknown as CnesClient,
         passthrough,
       );
-      const live = await service.findAll('RJ');
+      await service.findAll('SP');
 
-      service.invalidate();
-      const afterFailure = await service.findAll('RJ');
+      service.invalidate('SP');
+      const afterFailure = await service.findAll('SP');
 
-      // The last live data, marked stale, and not the embedded snapshot.
-      expect(afterFailure.data).toEqual(live.data);
-      expect(afterFailure.metadata).toMatchObject({
-        dataOrigin: 'live',
-        isStale: true,
-      });
+      // The embedded snapshot goes through the current corrections; the last
+      // live response would still carry the position that was just removed.
+      expect(afterFailure.metadata.dataOrigin).toBe('fallback');
+    });
+
+    it('leaves the other states cached, since refetching one takes tens of seconds', async () => {
+      const fetchUnits = vi.fn().mockResolvedValue([liveUnit]);
+      const service = new UnitsService(
+        { fetchUnits } as unknown as CnesClient,
+        passthrough,
+      );
+      await service.findAll('SP');
+      await service.findAll('RJ');
+
+      service.invalidate('SP');
+      await service.findAll('RJ');
+      await service.findAll('SP');
+
+      // RJ came from the cache; SP was loaded again.
+      expect(fetchUnits).toHaveBeenCalledTimes(3);
+    });
+
+    it('drops the national view along with the state', async () => {
+      const apply = vi.fn((units: HealthUnit[]) =>
+        Promise.resolve({ units, validated: true, historyComplete: true }),
+      );
+      const service = new UnitsService(
+        { fetchUnits: vi.fn() } as unknown as CnesClient,
+        {
+          apply,
+        } as unknown as UnitLocationsService,
+      );
+      await service.findAll('BR');
+
+      service.invalidate('SP');
+      await service.findAll('BR');
+
+      expect(apply).toHaveBeenCalledTimes(2);
     });
 
     it('also drops the national response', async () => {

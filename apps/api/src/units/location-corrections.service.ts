@@ -5,10 +5,16 @@ import {
   ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { UnitLocationCorrectionEntity } from '../database/entities/unit-location-correction.entity.js';
+import {
+  ANCHOR_NUMBER_MAX_LENGTH,
+  ANCHOR_STREET_MAX_LENGTH,
+  fitAnchor,
+  UnitLocationCorrectionEntity,
+} from '../database/entities/unit-location-correction.entity.js';
 import type { UnitLocationCorrectionEventEntity } from '../database/entities/unit-location-correction-event.entity.js';
 import { UnitLocationCorrectionRepository } from '../database/repositories/unit-location-correction.repository.js';
 import { CnesClient } from './cnes.client.js';
+import { stateAbbreviation } from './states.js';
 import type { CorrectionInput } from './location-correction.input.js';
 import {
   BOUNDARY_TOLERANCE_KM,
@@ -154,15 +160,21 @@ export class LocationCorrectionsService {
     entity.method = input.method;
     entity.correctedAt = new Date();
     entity.anchorMunicipalityCode = unit.address.municipalityCode;
-    entity.anchorStreet = unit.address.street;
-    entity.anchorNumber = unit.address.number;
+    entity.anchorStreet = fitAnchor(
+      unit.address.street,
+      ANCHOR_STREET_MAX_LENGTH,
+    );
+    entity.anchorNumber = fitAnchor(
+      unit.address.number,
+      ANCHOR_NUMBER_MAX_LENGTH,
+    );
     entity.anchorLatitude = unit.location.latitude;
     entity.anchorLongitude = unit.location.longitude;
 
     // Invalidate after the transaction commits: before it, a load could read
     // the old row and cache it for hours under the new generation.
     const saved = await this.corrections.saveWithEvent(entity, actor);
-    this.units.invalidate();
+    this.units.invalidate(unit.address.state);
     this.logger.log(`Manual position of CNES ${unit.id} set by ${actor}`);
     return {
       correction: toAdminCorrection(saved),
@@ -171,10 +183,14 @@ export class LocationCorrectionsService {
   }
 
   async remove(cnesCode: string, actor: string): Promise<void> {
-    if (!(await this.corrections.removeWithEvent(cnesCode, actor))) {
+    const removed = await this.corrections.removeWithEvent(cnesCode, actor);
+    if (!removed) {
       throw new NotFoundException('No manual position for this unit');
     }
-    this.units.invalidate();
+    // The first two digits of the 6-digit municipality code are the state.
+    this.units.invalidate(
+      stateAbbreviation(removed.anchorMunicipalityCode.slice(0, 2)),
+    );
     this.logger.log(`Manual position of CNES ${cnesCode} removed by ${actor}`);
   }
 }

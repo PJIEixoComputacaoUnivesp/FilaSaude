@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { CNES_CODE_PATTERN, padCnesCode } from './cnes-code.js';
 
 export interface CorrectionInput {
   latitude: number;
@@ -55,10 +56,10 @@ function text(value: unknown, name: string, maxLength: number): string {
 
 /** The 7-digit CNES code, from the code with or without leading zeros. */
 export function parseCnesCode(value: string): string {
-  if (!/^\d{1,7}$/.test(value)) {
+  if (!CNES_CODE_PATTERN.test(value)) {
     throw new BadRequestException('Invalid CNES code');
   }
-  return value.padStart(7, '0');
+  return padCnesCode(value);
 }
 
 export function parseCorrectionInput(body: unknown): CorrectionInput {

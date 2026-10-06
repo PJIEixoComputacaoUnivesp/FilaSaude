@@ -27,7 +27,8 @@ export class UnitLocationCorrectionEventEntity {
   @Column({
     name: 'occurred_at',
     type: 'timestamptz',
-    default: () => 'now()',
+    // The moment of the insert, which is after the unit's lock is held.
+    default: () => 'clock_timestamp()',
   })
   occurredAt!: Date;
 

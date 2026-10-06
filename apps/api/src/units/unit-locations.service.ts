@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { UnitLocationCorrectionEntity } from '../database/entities/unit-location-correction.entity.js';
+import {
+  ANCHOR_NUMBER_MAX_LENGTH,
+  ANCHOR_STREET_MAX_LENGTH,
+  fitAnchor,
+  UnitLocationCorrectionEntity,
+} from '../database/entities/unit-location-correction.entity.js';
 import { UnitLocationCorrectionRepository } from '../database/repositories/unit-location-correction.repository.js';
 import { isSameAddress, isSameRecordedAddress } from './address-match.js';
 import {
@@ -234,10 +239,13 @@ export class UnitLocationsService {
 
       const holds =
         unit.address.municipalityCode === correction.anchorMunicipalityCode &&
-        isSameRecordedAddress(unit.address, {
-          street: correction.anchorStreet,
-          number: correction.anchorNumber,
-        });
+        isSameRecordedAddress(
+          {
+            street: fitAnchor(unit.address.street, ANCHOR_STREET_MAX_LENGTH),
+            number: fitAnchor(unit.address.number, ANCHOR_NUMBER_MAX_LENGTH),
+          },
+          { street: correction.anchorStreet, number: correction.anchorNumber },
+        );
       if (!holds) {
         stale.push(unit.id);
         return null;
