@@ -27,6 +27,7 @@ const testUnit: HealthUnit = {
     precision: 'source',
     original: null,
     referenceMonth: null,
+    correctedAt: null,
   },
   serviceHours: 'ATENDIMENTO CONTINUO DE 24 HORAS/DIA',
   lastUpdatedAt: '2026-09-20',

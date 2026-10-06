@@ -60,6 +60,7 @@ function fallbackUnits(stateAbbr?: string): HealthUnit[] {
       precision: 'source',
       original: null,
       referenceMonth: null,
+      correctedAt: null,
     },
     serviceHours: unit.serviceHours ?? null,
     lastUpdatedAt: unit.lastUpdatedAt,

@@ -8,10 +8,14 @@ import { UnitsController } from './units.controller.js';
 import { UnitsService } from './units.service.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HealthUnitEntity } from '../database/entities/health-unit.entity.js';
+import { UnitLocationCorrectionEntity } from '../database/entities/unit-location-correction.entity.js';
 import { HealthUnitRepository } from '../database/repositories/health-unit.repository.js';
+import { UnitLocationCorrectionRepository } from '../database/repositories/unit-location-correction.repository.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([HealthUnitEntity])],
+  imports: [
+    TypeOrmModule.forFeature([HealthUnitEntity, UnitLocationCorrectionEntity]),
+  ],
   controllers: [UnitsController],
   providers: [
     CnesClient,
@@ -21,6 +25,7 @@ import { HealthUnitRepository } from '../database/repositories/health-unit.repos
     UnitLocationsService,
     UnitsService,
     HealthUnitRepository,
+    UnitLocationCorrectionRepository,
   ],
 })
 export class UnitsModule {}

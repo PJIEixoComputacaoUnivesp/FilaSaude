@@ -62,6 +62,7 @@ describe('CnesClient', () => {
       precision: 'source',
       original: null,
       referenceMonth: null,
+      correctedAt: null,
     });
   });
 
@@ -84,6 +85,7 @@ describe('CnesClient', () => {
       precision: 'source',
       original: null,
       referenceMonth: null,
+      correctedAt: null,
     });
   });
 
@@ -150,5 +152,81 @@ describe('CnesClient', () => {
 
     expect(units).toHaveLength(145);
     expect(new Set(units.map((unit) => unit.id)).size).toBe(145);
+  });
+});
+
+describe('CnesClient.fetchUnit', () => {
+  const municipalities = {
+    fetchNames: vi.fn().mockResolvedValue(new Map([['355030', 'São Paulo']])),
+  } as unknown as MunicipalitiesClient;
+  const client = new CnesClient(municipalities);
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const respondWith = (body: unknown, status = 200) =>
+    vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(() =>
+        Promise.resolve(
+          status === 200 ? Response.json(body) : new Response('', { status }),
+        ),
+      );
+
+  it('returns the establishment normalized like the listing does', async () => {
+    const fetch = respondWith(establishment(-23.55, -46.63));
+
+    const unit = await client.fetchUnit('1234567');
+
+    expect(String(fetch.mock.calls[0]![0])).toMatch(
+      /\/cnes\/estabelecimentos\/1234567$/,
+    );
+    expect(unit).toMatchObject({
+      id: '1234567',
+      address: { municipalityCode: '355030', state: 'SP' },
+      location: { latitude: -23.55, longitude: -46.63, precision: 'source' },
+    });
+  });
+
+  it('returns null for an unknown establishment', async () => {
+    respondWith(null, 404);
+
+    expect(await client.fetchUnit('9999999')).toBeNull();
+  });
+
+  it('returns null for an establishment that is not an urgent care unit', async () => {
+    respondWith(establishment(-23.55, -46.63, { codigo_tipo_unidade: 5 }));
+    expect(await client.fetchUnit('1234567')).toBeNull();
+
+    respondWith(
+      establishment(-23.55, -46.63, {
+        estabelecimento_faz_atendimento_ambulatorial_sus: 'NAO',
+      }),
+    );
+    expect(await client.fetchUnit('1234567')).toBeNull();
+  });
+
+  it('fails on a malformed record instead of reporting it as missing', async () => {
+    respondWith(establishment(-23.55, -46.63, { nome_fantasia: '' }));
+
+    await expect(client.fetchUnit('1234567')).rejects.toThrow(
+      'invalid nome_fantasia',
+    );
+  });
+
+  it('fails on an HTTP error', async () => {
+    respondWith(null, 503);
+
+    await expect(client.fetchUnit('1234567')).rejects.toThrow('status 503');
+  });
+
+  it('refuses a code that is not numeric before calling CNES', async () => {
+    const fetch = respondWith({});
+
+    await expect(client.fetchUnit('../health')).rejects.toThrow(
+      'Invalid CNES code',
+    );
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

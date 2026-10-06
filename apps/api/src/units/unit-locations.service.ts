@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { isSameAddress } from './address-match.js';
+import { UnitLocationCorrectionEntity } from '../database/entities/unit-location-correction.entity.js';
+import { UnitLocationCorrectionRepository } from '../database/repositories/unit-location-correction.repository.js';
+import { isSameAddress, isSameRecordedAddress } from './address-match.js';
 import {
   CnesHistoryClient,
   type CnesHistoryEntry,
@@ -20,6 +22,19 @@ const HISTORY_TTL_MS = 24 * 60 * 60 * 1000;
 // the response by more than this.
 const HISTORY_DEADLINE_MS = 10_000;
 const HISTORY_CONCURRENCY = 5;
+// `sv-SE` formats as YYYY-MM-DD.
+const brazilianDate = new Intl.DateTimeFormat('sv-SE', {
+  timeZone: 'America/Sao_Paulo',
+});
+
+/**
+ * Whether two coordinate values differ. The anchor is stored with 6 decimals
+ * and CNES has up to 7, so the comparison tolerates the rounding.
+ */
+function differs(left: number | null, right: number | null): boolean {
+  if (left === null || right === null) return left !== right;
+  return Math.abs(left - right) > 1e-6;
+}
 
 interface Misplaced {
   unit: HealthUnit;
@@ -70,10 +85,14 @@ export class UnitLocationsService {
   constructor(
     private readonly boundariesClient: MunicipalityBoundariesClient,
     private readonly historyClient: CnesHistoryClient,
+    private readonly corrections: UnitLocationCorrectionRepository,
   ) {}
 
   /**
-   * Checks each unit's CNES coordinate against its declared municipality.
+   * Applies the positions an administrator set by hand (`manual`), which take
+   * precedence over everything else as long as the unit still has the
+   * municipality and address the correction was made for. Then checks each
+   * remaining unit's CNES coordinate against its declared municipality.
    * A missing coordinate, or one farther than the tolerance from the
    * municipality, is replaced and flagged by `precision`, and the original
    * coordinate is kept for audit. In order of preference the replacement is:
@@ -86,7 +105,8 @@ export class UnitLocationsService {
    * affected units fall back to the municipality center and `historyComplete`
    * is false. Either way the caller should check again sooner than usual.
    * `history: false` skips the history lookup, for when the CNES host is
-   * already known to be unavailable.
+   * already known to be unavailable. When the corrections cannot be read,
+   * that layer is skipped and `validated` is false.
    */
   async apply(
     units: readonly HealthUnit[],
@@ -96,6 +116,9 @@ export class UnitLocationsService {
     validated: boolean;
     historyComplete: boolean;
   }> {
+    const { corrections, loaded } = await this.loadCorrections();
+    const manual = this.applyCorrections(units, corrections);
+
     const states = [...new Set(units.map((unit) => unit.address.state))];
     const results = await Promise.allSettled(
       states.map((state) => this.boundariesOf(state)),
@@ -120,7 +143,8 @@ export class UnitLocationsService {
     });
 
     const withoutBoundary = units.filter(
-      (unit) =>
+      (unit, index) =>
+        !manual[index] &&
         !failedStates.has(unit.address.state) &&
         !byMunicipality.has(unit.address.municipalityCode),
     );
@@ -130,8 +154,8 @@ export class UnitLocationsService {
       );
     }
 
-    const checks = units.map((unit) =>
-      failedStates.has(unit.address.state)
+    const checks = units.map((unit, index) =>
+      manual[index] || failedStates.has(unit.address.state)
         ? null
         : this.check(unit, byMunicipality.get(unit.address.municipalityCode)),
     );
@@ -144,11 +168,113 @@ export class UnitLocationsService {
     return {
       units: units.map((unit, index) => {
         const check = checks[index];
-        return check ? this.relocate(check, histories.get(unit.id)) : unit;
+        return (
+          manual[index] ??
+          (check ? this.relocate(check, histories.get(unit.id)) : unit)
+        );
       }),
-      validated: failedStates.size === 0,
+      validated: failedStates.size === 0 && loaded,
       historyComplete: complete,
     };
+  }
+
+  /**
+   * Distance in km from a coordinate to the municipality of a unit, or null
+   * when the IBGE has no boundary for it yet. Rejects when the boundaries of
+   * the state cannot be loaded.
+   */
+  async distanceToMunicipalityKm(
+    unit: HealthUnit,
+    coordinate: Coordinate,
+  ): Promise<number | null> {
+    const boundaries = await this.boundariesOf(unit.address.state);
+    const area = boundaries.get(unit.address.municipalityCode);
+    return area ? distanceToAreaKm(area, coordinate) : null;
+  }
+
+  private async loadCorrections(): Promise<{
+    corrections: Map<string, UnitLocationCorrectionEntity>;
+    loaded: boolean;
+  }> {
+    try {
+      const rows = await this.corrections.findAll();
+      return {
+        corrections: new Map(rows.map((row) => [row.cnesCode, row])),
+        loaded: true,
+      };
+    } catch (error: unknown) {
+      const reason = error instanceof Error ? error.message : 'unknown error';
+      this.logger.warn(
+        `Manual corrections unavailable, so they were not applied: ${reason}`,
+      );
+      return { corrections: new Map(), loaded: false };
+    }
+  }
+
+  /**
+   * The unit with its manual position, or null where there is none to apply.
+   * A correction is anchored to the municipality and address the unit had in
+   * CNES when it was made; if either changed the unit may have moved, so the
+   * correction is left out and reported. The national view comes from a
+   * snapshot that can lag behind CNES, so a correction made against a newer
+   * address can be left out there until the snapshot is refreshed.
+   */
+  private applyCorrections(
+    units: readonly HealthUnit[],
+    corrections: ReadonlyMap<string, UnitLocationCorrectionEntity>,
+  ): (HealthUnit | null)[] {
+    const stale: string[] = [];
+    const cnesChanged: string[] = [];
+
+    const applied = units.map((unit) => {
+      const correction = corrections.get(unit.id);
+      if (!correction) return null;
+
+      const holds =
+        unit.address.municipalityCode === correction.anchorMunicipalityCode &&
+        isSameRecordedAddress(unit.address, {
+          street: correction.anchorStreet,
+          number: correction.anchorNumber,
+        });
+      if (!holds) {
+        stale.push(unit.id);
+        return null;
+      }
+
+      const { latitude, longitude } = unit.location;
+      if (
+        differs(latitude, correction.anchorLatitude) ||
+        differs(longitude, correction.anchorLongitude)
+      ) {
+        cnesChanged.push(unit.id);
+      }
+      return {
+        ...unit,
+        location: {
+          latitude: correction.latitude,
+          longitude: correction.longitude,
+          precision: 'manual' as const,
+          original:
+            latitude !== null && longitude !== null
+              ? { latitude, longitude }
+              : null,
+          referenceMonth: null,
+          correctedAt: brazilianDate.format(correction.correctedAt),
+        },
+      };
+    });
+
+    if (stale.length > 0) {
+      this.logger.warn(
+        `Manual correction not applied to ${stale.length} unit(s) whose municipality or address changed in CNES since it was made: ${stale.join(', ')}`,
+      );
+    }
+    if (cnesChanged.length > 0) {
+      this.logger.log(
+        `The CNES coordinate changed since the manual correction of ${cnesChanged.length} unit(s), which is still applied; review it: ${cnesChanged.join(', ')}`,
+      );
+    }
+    return applied;
   }
 
   /** Returns what to relocate, or null when the coordinate can be kept. */
@@ -188,6 +314,7 @@ export class UnitLocationsService {
           precision: 'history',
           original,
           referenceMonth: point.referenceMonth,
+          correctedAt: null,
         },
       };
     }
@@ -202,6 +329,7 @@ export class UnitLocationsService {
         precision: 'municipality',
         original,
         referenceMonth: null,
+        correctedAt: null,
       },
     };
   }

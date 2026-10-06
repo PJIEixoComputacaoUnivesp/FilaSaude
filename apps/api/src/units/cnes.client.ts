@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { MunicipalitiesClient } from './municipalities.client.js';
-import { stateAbbreviation, type BrazilianState } from './states.js';
+import {
+  parseState,
+  stateAbbreviation,
+  type BrazilianState,
+} from './states.js';
 import type { HealthUnit } from './units.types.js';
 
 const CNES_API_URL =
@@ -112,6 +116,7 @@ function normalizeUnit(
       precision: 'source',
       original: null,
       referenceMonth: null,
+      correctedAt: null,
     },
     serviceHours: optionalString(record, 'descricao_turno_atendimento'),
     lastUpdatedAt: requiredString(record, 'data_atualizacao'),
@@ -144,6 +149,48 @@ export class CnesClient {
     return [...new Map(units.map((unit) => [unit.id, unit])).values()].sort(
       (left, right) => left.name.localeCompare(right.name, 'pt-BR'),
     );
+  }
+
+  /**
+   * Fetches one establishment by CNES code, or null when it does not exist or
+   * is not one of the urgent care units the product lists. The endpoint
+   * accepts the code with or without leading zeros.
+   */
+  async fetchUnit(cnesCode: string): Promise<HealthUnit | null> {
+    if (!/^\d{1,7}$/.test(cnesCode)) throw new Error('Invalid CNES code');
+
+    const response = await fetch(`${CNES_API_URL}/${cnesCode}`, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      throw new Error(`CNES request failed with status ${response.status}`);
+    }
+
+    const record: unknown = await response.json();
+    if (!isRecord(record))
+      throw new Error('CNES returned an unexpected response');
+
+    const abbreviation = stateAbbreviation(numericId(record, 'codigo_uf'));
+    if (!abbreviation) return null;
+    const municipalities = await this.municipalitiesClient.fetchNames(
+      parseState(abbreviation),
+    );
+    try {
+      return normalizeUnit(record, municipalities);
+    } catch (error: unknown) {
+      // A type outside 20, 21 and 73, or an unknown municipality, means the
+      // establishment is not one the product lists. Any other failure is a
+      // malformed record and must not look like a missing one.
+      if (
+        error instanceof Error &&
+        error.message.startsWith('CNES returned an unknown')
+      ) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   /**
