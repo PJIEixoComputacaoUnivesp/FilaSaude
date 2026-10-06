@@ -257,9 +257,12 @@ método e a posição anterior e a nova, na tabela `unit_location_correction_eve
 só com inserções. Uma remoção também fica registrada.
 
 **Tentativas inválidas.** Depois de 20 tentativas com token inválido em 10
-minutos, novas tentativas inválidas recebem 429 por um tempo. Quem tem um token
-válido nunca é bloqueado. As falhas aparecem no log de forma agregada, sem o
-token.
+minutos, as novas tentativas inválidas recebem 429, e o log avisa uma vez,
+sem o token. Isso sinaliza o abuso, mas **não impede adivinhar** um token: quem
+acertasse o valor continuaria passando, porque um token válido nunca é
+bloqueado (para que ninguém trave a equipe de propósito). A proteção contra
+adivinhação é o tamanho e a aleatoriedade do token, por isso use
+`openssl rand -hex 32`, que tem 256 bits.
 
 ### Swap
 

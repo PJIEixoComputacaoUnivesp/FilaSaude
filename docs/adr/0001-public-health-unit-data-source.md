@@ -249,12 +249,17 @@ coordenadas dessa tabela pelo código CNES.
 - **Tentativas inválidas:** mais de 20 falhas em 10 minutos, numa janela global
   que dispensa o endereço do cliente (atrás de um proxy ele não é confiável),
   fazem as tentativas inválidas seguintes receberem 429. Um token válido nunca
-  é contado nem bloqueado, então não há como travar um administrador. As falhas
-  vão ao log de forma agregada, sem o token, e não ao banco, para que ninguém o
-  encha com tentativas.
+  é contado nem bloqueado, então não há como travar um administrador de
+  propósito. Por isso o limite **sinaliza** o abuso, mas não impede adivinhar:
+  quem acertasse um token continuaria passando. A proteção contra adivinhação é
+  o tamanho e a aleatoriedade dos tokens (256 bits com `openssl rand -hex 32`).
+  O limitador guarda no máximo 20 falhas, para que uma enxurrada de tokens
+  inválidos não cresça a memória. As falhas vão ao log de forma agregada, sem o
+  token, e não ao banco, para que ninguém o encha com tentativas.
 - **Validação na borda:** o código CNES tem 1 a 7 dígitos; a posição precisa
   estar no Brasil e dentro do município da unidade, com a mesma tolerância de
-  5 km das demais checagens; `method` (até 500 caracteres) é obrigatório. A
+  5 km das demais checagens; `method` (até 500 caracteres, com quebras de linha
+  permitidas) é obrigatório. A
   unidade é consultada no CNES na hora e precisa ser uma das listadas pelo
   produto. Para um município sem contorno no IBGE a posição não pode ser
   conferida, e o administrador é confiado.
@@ -263,8 +268,12 @@ coordenadas dessa tabela pelo código CNES.
   `unit_location_correction_events`, na mesma transação da mudança. A tabela só
   recebe inserções, e o repositório não tem um caminho que altere uma correção
   sem registrá-la, então uma remoção também deixa rastro. A leitura da linha
-  atual usa bloqueio, para que dois administradores no mesmo caso não gravem a
-  mesma posição anterior. O cache só é invalidado depois do commit.
+  atual vem depois de um lock advisory por unidade (`pg_advisory_xact_lock`), e
+  não de um lock de linha, que não segura nada quando a unidade ainda não tem
+  correção. Em 320 primeiras escritas simultâneas, o lock de linha falhou em 273
+  por violação da chave primária, e o lock advisory em nenhuma. O cache só é
+  invalidado depois do commit, e fica marcado como expirado, e não apagado, para
+  que a última resposta viva sirva de reserva se o CNES estiver fora do ar.
 - **Âncora:** a correção guarda o município, o logradouro, o número e a
   coordenada que o CNES tinha quando ela foi feita. Se o município ou o
   endereço mudarem, a unidade pode ter se mudado e a correção deixa de valer,
