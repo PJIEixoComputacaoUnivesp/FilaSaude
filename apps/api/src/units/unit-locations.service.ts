@@ -203,7 +203,9 @@ export class UnitLocationsService {
         loaded: true,
       };
     } catch (error: unknown) {
-      const reason = error instanceof Error ? error.message : 'unknown error';
+      // Connection failures can be errors with an empty message.
+      const reason =
+        error instanceof Error ? error.message || error.name : 'unknown error';
       this.logger.warn(
         `Manual corrections unavailable, so they were not applied: ${reason}`,
       );
