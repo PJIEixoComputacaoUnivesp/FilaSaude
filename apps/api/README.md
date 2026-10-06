@@ -32,6 +32,17 @@ municípios vêm da API de localidades do IBGE. O campo
 `metadata.dataOrigin` indica `live` ou `fallback`, e `metadata.isStale` informa
 quando a cópia de segurança está sendo exibida.
 
+Para unidades do município de São Paulo, a API tenta cruzar o registro com a
+camada oficial de urgência/emergência do GeoSampa. Uma correspondência única e
+forte por nome, CEP ou proximidade substitui somente as coordenadas. Cada item
+expõe `sources`, que indica quais campos vieram do CNES e quais vieram do
+GeoSampa. Falhas ou correspondências ambíguas preservam os dados do CNES.
+
+O conjunto federal “UPA 24h em funcionamento” foi avaliado como controle
+agregado por município. Como ele não identifica estabelecimentos por CNES, não
+é combinado aos registros individuais. A decisão e as licenças estão
+documentadas no ADR 0002.
+
 ## Verificações
 
 ```bash
