@@ -206,15 +206,17 @@ export ADMIN_API_TOKEN="..."
 curl -X PUT "$API/admin/location-corrections/5563704" \
   -H "Authorization: Bearer $ADMIN_API_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"latitude": -23.5343, "longitude": -46.8368, "verifiedBy": "Nome de quem verificou", "method": "Como foi verificada"}'
+  -d '{"latitude": -23.5343, "longitude": -46.8368, "verifiedBy": "login-do-github", "method": "Como foi verificada"}'
 
 # listar e remover
 curl -H "Authorization: Bearer $ADMIN_API_TOKEN" "$API/admin/location-corrections"
 curl -X DELETE -H "Authorization: Bearer $ADMIN_API_TOKEN" "$API/admin/location-corrections/5563704"
 ```
 
-A posição precisa estar dentro do município da unidade (tolerância de 5 km) e
-no Brasil. A resposta pública mostra apenas `precision: "manual"` e a data;
+Em `verifiedBy`, use o login do GitHub de quem verificou, e não o nome
+completo: o produto não recebe dados pessoais, e o campo é só um registro
+interno. A posição precisa estar dentro do município da unidade (tolerância de
+5 km) e no Brasil. A resposta pública mostra apenas `precision: "manual"` e a data;
 `verifiedBy` e `method` ficam só para os administradores. A correção vale
 enquanto o município e o endereço da unidade no CNES forem os de quando ela foi
 feita. Se algum mudar, ela deixa de valer e o motivo vai para o log.

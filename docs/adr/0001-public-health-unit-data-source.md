@@ -233,8 +233,8 @@ coordenadas dessa tabela pelo código CNES.
   licença (ver "Licença e referências").
 - **Validação na borda:** o código CNES tem 1 a 7 dígitos; a posição precisa
   estar no Brasil e dentro do município da unidade, com a mesma tolerância de
-  5 km das demais checagens; `verifiedBy` (até 80 caracteres) e `method` (até
-  500) são obrigatórios. A unidade é consultada no CNES na hora e precisa ser
+  5 km das demais checagens; `verifiedBy` (até 80 caracteres, de preferência o
+  login do GitHub, não o nome) e `method` (até 500) são obrigatórios. A unidade é consultada no CNES na hora e precisa ser
   uma das listadas pelo produto. Para um município sem contorno no IBGE a
   posição não pode ser conferida, e o administrador é confiado.
 - **Âncora:** a correção guarda o município, o logradouro, o número e a

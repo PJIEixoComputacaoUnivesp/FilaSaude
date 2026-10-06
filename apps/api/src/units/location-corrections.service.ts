@@ -120,9 +120,9 @@ export class LocationCorrectionsService {
 
     const saved = await this.corrections.save(entity);
     this.units.invalidate();
-    this.logger.log(
-      `Manual position of CNES ${unit.id} set by ${input.verifiedBy}`,
-    );
+    // The verifier stays out of the log: it is kept with the correction, and
+    // logs are less controlled than the database.
+    this.logger.log(`Manual position of CNES ${unit.id} set`);
     return {
       correction: toAdminCorrection(saved),
       boundaryChecked: distanceKm !== null,
