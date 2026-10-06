@@ -12,13 +12,18 @@ import { UnitsService } from './units.service.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HealthUnitEntity } from '../database/entities/health-unit.entity.js';
 import { UnitLocationCorrectionEntity } from '../database/entities/unit-location-correction.entity.js';
+import { UnitLocationCorrectionEventEntity } from '../database/entities/unit-location-correction-event.entity.js';
 import { HealthUnitRepository } from '../database/repositories/health-unit.repository.js';
 import { UnitLocationCorrectionRepository } from '../database/repositories/unit-location-correction.repository.js';
 
 @Module({
   imports: [
     AdminModule,
-    TypeOrmModule.forFeature([HealthUnitEntity, UnitLocationCorrectionEntity]),
+    TypeOrmModule.forFeature([
+      HealthUnitEntity,
+      UnitLocationCorrectionEntity,
+      UnitLocationCorrectionEventEntity,
+    ]),
   ],
   controllers: [UnitsController, LocationCorrectionsController],
   providers: [

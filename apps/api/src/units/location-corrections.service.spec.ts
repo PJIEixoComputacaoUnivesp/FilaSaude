@@ -53,14 +53,16 @@ function build({
   );
   const deleteByCnesCode = vi.fn().mockResolvedValue(true);
   const findAll = vi.fn().mockResolvedValue([]);
+  const findEvents = vi.fn().mockResolvedValue([]);
   const fetchUnit = vi.fn().mockResolvedValue(unit);
   const distanceToMunicipalityKm = vi.fn().mockResolvedValue(distance);
   const invalidate = vi.fn();
   const service = new LocationCorrectionsService(
     {
-      save,
-      deleteByCnesCode,
+      saveWithEvent: save,
+      removeWithEvent: deleteByCnesCode,
       findAll,
+      findEvents,
     } as unknown as UnitLocationCorrectionRepository,
     { fetchUnit } as unknown as CnesClient,
     { distanceToMunicipalityKm } as unknown as UnitLocationsService,
@@ -71,6 +73,7 @@ function build({
     save,
     deleteByCnesCode,
     findAll,
+    findEvents,
     fetchUnit,
     distanceToMunicipalityKm,
     invalidate,
@@ -120,6 +123,24 @@ describe('LocationCorrectionsService', () => {
       await service.register('0113360', spoofed, 'joao');
 
       expect(save.mock.calls[0]![0].verifiedBy).toBe('joao');
+    });
+
+    it('hands the authenticated administrator to the audit trail', async () => {
+      const { service, save } = build();
+
+      await service.register('0113360', input, 'joao');
+
+      expect(save).toHaveBeenCalledWith(expect.anything(), 'joao');
+    });
+
+    it('invalidates the cache only after the change is saved', async () => {
+      const { service, save, invalidate } = build();
+
+      await service.register('0113360', input, ACTOR);
+
+      expect(save.mock.invocationCallOrder[0]).toBeLessThan(
+        invalidate.mock.invocationCallOrder[0]!,
+      );
     });
 
     it('checks the position against the municipality of the unit', async () => {
@@ -234,12 +255,30 @@ describe('LocationCorrectionsService', () => {
   });
 
   describe('remove', () => {
+    it('hands the authenticated administrator to the audit trail', async () => {
+      const { service, deleteByCnesCode } = build();
+
+      await service.remove('0113360', 'joao');
+
+      expect(deleteByCnesCode).toHaveBeenCalledWith('0113360', 'joao');
+    });
+
+    it('invalidates the cache only after the removal is saved', async () => {
+      const { service, deleteByCnesCode, invalidate } = build();
+
+      await service.remove('0113360', ACTOR);
+
+      expect(deleteByCnesCode.mock.invocationCallOrder[0]).toBeLessThan(
+        invalidate.mock.invocationCallOrder[0]!,
+      );
+    });
+
     it('removes the correction and invalidates the cache', async () => {
       const { service, deleteByCnesCode, invalidate } = build();
 
       await service.remove('0113360', ACTOR);
 
-      expect(deleteByCnesCode).toHaveBeenCalledWith('0113360');
+      expect(deleteByCnesCode).toHaveBeenCalledWith('0113360', ACTOR);
       expect(invalidate).toHaveBeenCalledTimes(1);
     });
 
@@ -251,6 +290,60 @@ describe('LocationCorrectionsService', () => {
         NotFoundException,
       );
       expect(invalidate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('events', () => {
+    it('shows each change with who made it and the positions before and after', async () => {
+      const { service, findEvents } = build();
+      findEvents.mockResolvedValue([
+        {
+          id: 3,
+          cnesCode: '0113360',
+          action: 'remove',
+          actor: 'joao',
+          occurredAt: new Date('2026-10-08T12:00:00Z'),
+          method: null,
+          previousLatitude: -8.05,
+          previousLongitude: -34.9,
+          newLatitude: null,
+          newLongitude: null,
+        },
+        {
+          id: 2,
+          cnesCode: '0113360',
+          action: 'set',
+          actor: 'maria',
+          occurredAt: new Date('2026-10-07T15:00:00Z'),
+          method: 'Conferido no mapa oficial',
+          previousLatitude: null,
+          previousLongitude: null,
+          newLatitude: -8.05,
+          newLongitude: -34.9,
+        },
+      ]);
+
+      expect(await service.events('0113360')).toEqual([
+        {
+          id: 3,
+          action: 'remove',
+          actor: 'joao',
+          occurredAt: '2026-10-08T12:00:00.000Z',
+          method: null,
+          previous: { latitude: -8.05, longitude: -34.9 },
+          next: null,
+        },
+        {
+          id: 2,
+          action: 'set',
+          actor: 'maria',
+          occurredAt: '2026-10-07T15:00:00.000Z',
+          method: 'Conferido no mapa oficial',
+          previous: null,
+          next: { latitude: -8.05, longitude: -34.9 },
+        },
+      ]);
+      expect(findEvents).toHaveBeenCalledWith('0113360');
     });
   });
 

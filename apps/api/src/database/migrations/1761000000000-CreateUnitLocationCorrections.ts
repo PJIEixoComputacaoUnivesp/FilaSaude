@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner, Table } from 'typeorm';
+import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm';
 
 export class CreateUnitLocationCorrections1761000000000 implements MigrationInterface {
   name = 'CreateUnitLocationCorrections1761000000000';
@@ -44,9 +44,67 @@ export class CreateUnitLocationCorrections1761000000000 implements MigrationInte
         ],
       }),
     );
+
+    // Append-only history of every change to a correction.
+    await queryRunner.createTable(
+      new Table({
+        name: 'unit_location_correction_events',
+        columns: [
+          {
+            name: 'id',
+            type: 'int',
+            isPrimary: true,
+            isGenerated: true,
+            generationStrategy: 'identity',
+            generatedIdentity: 'ALWAYS',
+          },
+          { name: 'cnes_code', type: 'varchar', length: '7' },
+          { name: 'action', type: 'varchar', length: '8' },
+          { name: 'actor', type: 'varchar', length: '39' },
+          { name: 'occurred_at', type: 'timestamptz', default: 'now()' },
+          { name: 'method', type: 'text', isNullable: true },
+          {
+            name: 'previous_latitude',
+            type: 'numeric',
+            precision: 9,
+            scale: 6,
+            isNullable: true,
+          },
+          {
+            name: 'previous_longitude',
+            type: 'numeric',
+            precision: 9,
+            scale: 6,
+            isNullable: true,
+          },
+          {
+            name: 'new_latitude',
+            type: 'numeric',
+            precision: 9,
+            scale: 6,
+            isNullable: true,
+          },
+          {
+            name: 'new_longitude',
+            type: 'numeric',
+            precision: 9,
+            scale: 6,
+            isNullable: true,
+          },
+        ],
+      }),
+    );
+    await queryRunner.createIndex(
+      'unit_location_correction_events',
+      new TableIndex({
+        name: 'idx_unit_location_correction_events_cnes',
+        columnNames: ['cnes_code', 'occurred_at'],
+      }),
+    );
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.dropTable('unit_location_correction_events');
     await queryRunner.dropTable('unit_location_corrections');
   }
 }

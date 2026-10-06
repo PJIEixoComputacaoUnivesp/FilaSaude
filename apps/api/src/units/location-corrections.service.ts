@@ -6,6 +6,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { UnitLocationCorrectionEntity } from '../database/entities/unit-location-correction.entity.js';
+import type { UnitLocationCorrectionEventEntity } from '../database/entities/unit-location-correction-event.entity.js';
 import { UnitLocationCorrectionRepository } from '../database/repositories/unit-location-correction.repository.js';
 import { CnesClient } from './cnes.client.js';
 import type { CorrectionInput } from './location-correction.input.js';
@@ -30,6 +31,40 @@ export interface AdminCorrection {
     number: string | null;
     latitude: number | null;
     longitude: number | null;
+  };
+}
+
+/** One entry of the audit trail of a unit. */
+export interface AdminCorrectionEvent {
+  id: number;
+  action: 'set' | 'replace' | 'remove';
+  actor: string;
+  occurredAt: string;
+  method: string | null;
+  previous: { latitude: number; longitude: number } | null;
+  next: { latitude: number; longitude: number } | null;
+}
+
+function position(
+  latitude: number | null,
+  longitude: number | null,
+): { latitude: number; longitude: number } | null {
+  return latitude !== null && longitude !== null
+    ? { latitude, longitude }
+    : null;
+}
+
+function toAdminEvent(
+  event: UnitLocationCorrectionEventEntity,
+): AdminCorrectionEvent {
+  return {
+    id: event.id,
+    action: event.action,
+    actor: event.actor,
+    occurredAt: event.occurredAt.toISOString(),
+    method: event.method,
+    previous: position(event.previousLatitude, event.previousLongitude),
+    next: position(event.newLatitude, event.newLongitude),
   };
 }
 
@@ -66,6 +101,11 @@ export class LocationCorrectionsService {
 
   async list(): Promise<AdminCorrection[]> {
     return (await this.corrections.findAll()).map(toAdminCorrection);
+  }
+
+  /** The audit trail of a unit, newest first. */
+  async events(cnesCode: string): Promise<AdminCorrectionEvent[]> {
+    return (await this.corrections.findEvents(cnesCode)).map(toAdminEvent);
   }
 
   /**
@@ -119,7 +159,9 @@ export class LocationCorrectionsService {
     entity.anchorLatitude = unit.location.latitude;
     entity.anchorLongitude = unit.location.longitude;
 
-    const saved = await this.corrections.save(entity);
+    // Invalidate after the transaction commits: before it, a load could read
+    // the old row and cache it for hours under the new generation.
+    const saved = await this.corrections.saveWithEvent(entity, actor);
     this.units.invalidate();
     this.logger.log(`Manual position of CNES ${unit.id} set by ${actor}`);
     return {
@@ -129,7 +171,7 @@ export class LocationCorrectionsService {
   }
 
   async remove(cnesCode: string, actor: string): Promise<void> {
-    if (!(await this.corrections.deleteByCnesCode(cnesCode))) {
+    if (!(await this.corrections.removeWithEvent(cnesCode, actor))) {
       throw new NotFoundException('No manual position for this unit');
     }
     this.units.invalidate();

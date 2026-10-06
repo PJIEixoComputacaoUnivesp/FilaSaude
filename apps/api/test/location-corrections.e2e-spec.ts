@@ -21,6 +21,7 @@ describe('Location corrections (e2e)', () => {
   let app: INestApplication<Server>;
   const service = {
     list: vi.fn(),
+    events: vi.fn(),
     register: vi.fn(),
     remove: vi.fn(),
   };
@@ -46,6 +47,7 @@ describe('Location corrections (e2e)', () => {
   beforeEach(async () => {
     vi.stubEnv('ADMIN_API_TOKENS', TOKENS);
     service.list.mockReset().mockResolvedValue([]);
+    service.events.mockReset().mockResolvedValue([]);
     service.register.mockReset().mockResolvedValue({
       correction: { cnesCode: '0113360' },
       boundaryChecked: true,
@@ -62,6 +64,7 @@ describe('Location corrections (e2e)', () => {
   const routes = [
     ['GET', '/admin/me'],
     ['GET', '/admin/location-corrections'],
+    ['GET', '/admin/location-corrections/0113360/events'],
     ['PUT', '/admin/location-corrections/0113360'],
     ['DELETE', '/admin/location-corrections/0113360'],
   ] as const;
@@ -130,6 +133,27 @@ describe('Location corrections (e2e)', () => {
         .expect([{ cnesCode: '0113360' }]);
     });
 
+    it('shows the audit trail of a unit, with its code in 7 digits', async () => {
+      service.events.mockResolvedValue([
+        { id: 1, action: 'set', actor: 'maria' },
+      ]);
+
+      await call('GET', '/admin/location-corrections/113360/events')
+        .set('Authorization', asMaria)
+        .expect(200)
+        .expect([{ id: 1, action: 'set', actor: 'maria' }]);
+
+      expect(service.events).toHaveBeenCalledWith('0113360');
+    });
+
+    it('answers 400 for the events of an invalid code', async () => {
+      await call('GET', '/admin/location-corrections/abc/events')
+        .set('Authorization', asMaria)
+        .expect(400);
+
+      expect(service.events).not.toHaveBeenCalled();
+    });
+
     it('registers a correction with the code in its 7-digit form', async () => {
       await call('PUT', '/admin/location-corrections/113360')
         .set('Authorization', asMaria)
@@ -187,6 +211,7 @@ describe('Location corrections (e2e)', () => {
     it.each([
       ['GET', '/admin/me'],
       ['GET', '/admin/location-corrections'],
+      ['GET', '/admin/location-corrections/0113360/events'],
       ['PUT', '/admin/location-corrections/0113360'],
       ['DELETE', '/admin/location-corrections/0113360'],
     ])('asks not to cache the response of %s %s', async (method, path) => {

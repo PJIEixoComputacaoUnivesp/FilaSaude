@@ -17,6 +17,7 @@ import {
 } from './location-correction.input.js';
 import {
   type AdminCorrection,
+  type AdminCorrectionEvent,
   LocationCorrectionsService,
 } from './location-corrections.service.js';
 
@@ -30,6 +31,12 @@ export class LocationCorrectionsController {
   @Header('Cache-Control', 'no-store')
   list(): Promise<AdminCorrection[]> {
     return this.corrections.list();
+  }
+
+  @Get(':cnesCode/events')
+  @Header('Cache-Control', 'no-store')
+  events(@Param('cnesCode') cnesCode: string): Promise<AdminCorrectionEvent[]> {
+    return this.corrections.events(parseCnesCode(cnesCode));
   }
 
   @Put(':cnesCode')
