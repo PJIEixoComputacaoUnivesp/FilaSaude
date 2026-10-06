@@ -20,6 +20,12 @@ importers:
       lint-staged:
         specifier: ^17.5.1
         version: 17.5.1
+      oxlint:
+        specifier: ^1.81.0
+        version: 1.81.0
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
 
   apps/api:
     dependencies:
