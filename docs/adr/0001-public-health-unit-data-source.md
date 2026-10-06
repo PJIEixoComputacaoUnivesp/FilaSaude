@@ -120,6 +120,8 @@ Para cada unidade serão mantidos, no mínimo:
 - nome e tipo oficial da unidade;
 - logradouro, número, bairro, CEP, município e UF;
 - latitude e longitude, quando válidas;
+- correções manuais de posição, em tabela própria (ver "Correção manual por
+  administradores");
 - horário informado pela fonte, quando disponível;
 - URL e nome da fonte;
 - data de atualização do registro na fonte;
@@ -139,8 +141,10 @@ mínima, em cache por UF) com tolerância de 5 km, porque o contorno é
 simplificado. Quando a coordenada está fora, ou ausente, a posição é escolhida
 nesta ordem, e `location.precision` informa qual foi usada:
 
-1. dentro do município ou da tolerância: a coordenada atual do CNES (`source`);
-2. correção manual revisada pela equipe (`manual`, ainda não implementada);
+1. posição definida por um administrador (`manual`), sempre que existir, mesmo
+   sobre uma coordenada do CNES que esteja dentro do município (ver
+   "Correção manual por administradores");
+2. dentro do município ou da tolerância: a coordenada atual do CNES (`source`);
 3. o último ponto do histórico mensal do CNES que esteja dentro do município e
    tenha sido registrado para o mesmo endereço (`history`), com a competência
    em `location.referenceMonth`;
@@ -206,9 +210,53 @@ A visão nacional, servida pelo snapshot, passa pela mesma verificação, inclus
 pelo histórico. O fallback por UF, que só ocorre quando o CNES está fora do ar,
 não consulta o histórico, pois ele estaria indisponível também.
 
-Correções manuais e geocodificação pelo endereço (`manual` e `geocoded`) serão
-adicionadas com o job de ingestão e, quando existirem, também serão
-identificadas na interface.
+A geocodificação pelo endereço (`geocoded`) será adicionada com o job de
+ingestão e, quando existir, também será identificada na interface.
+
+#### Correção manual por administradores
+
+Um administrador pode definir a posição de uma unidade em tempo de execução,
+sem novo deploy, pelos endpoints `GET /admin/location-corrections` e
+`PUT`/`DELETE /admin/location-corrections/:cnesCode`. As correções ficam na
+tabela `unit_location_corrections` (migração, entidade e repositório no padrão
+do #70), e não em `health_units`, porque a ingestão diária reescreve as
+coordenadas dessa tabela pelo código CNES.
+
+- **Quem é administrador:** quem tem o token estático de `ADMIN_API_TOKEN`,
+  enviado como `Authorization: Bearer`. O projeto não tem contas de usuário nem
+  coleta dados pessoais, e contas seriam desproporcionais para esta função. A
+  comparação usa `timingSafeEqual` sobre digests SHA-256, o token é lido a cada
+  requisição e nunca vai para log ou resposta.
+- **Interruptor:** sem um token de pelo menos 32 caracteres configurado, as
+  rotas não existem (404). A função fica desligada até alguém criar o secret de
+  propósito, e isso só deve acontecer depois da confirmação do grupo sobre a
+  licença (ver "Licença e referências").
+- **Validação na borda:** o código CNES tem 1 a 7 dígitos; a posição precisa
+  estar no Brasil e dentro do município da unidade, com a mesma tolerância de
+  5 km das demais checagens; `verifiedBy` (até 80 caracteres) e `method` (até
+  500) são obrigatórios. A unidade é consultada no CNES na hora e precisa ser
+  uma das listadas pelo produto. Para um município sem contorno no IBGE a
+  posição não pode ser conferida, e o administrador é confiado.
+- **Âncora:** a correção guarda o município, o logradouro, o número e a
+  coordenada que o CNES tinha quando ela foi feita. Se o município ou o
+  endereço mudarem, a unidade pode ter se mudado e a correção deixa de valer,
+  com aviso no log. Se só a coordenada mudou, a correção continua valendo e o
+  fato vai para o log, para revisão: o administrador escolheu sobrepor o CNES,
+  e a coordenada pode ter sido corrigida ou apenas alterada. A visão nacional
+  vem do snapshot, que pode estar atrás do CNES, então uma correção feita
+  contra um endereço mais novo pode ficar de fora dela até o snapshot ser
+  atualizado.
+- **O que é público:** a resposta traz `precision: "manual"` e `correctedAt`
+  (data no fuso de Brasília), e a coordenada do CNES em `location.original`.
+  Quem verificou e como ficam só na visão do administrador.
+- **Cache e falhas:** cada escrita invalida o cache das unidades, inclusive as
+  cargas em andamento, para que a correção apareça na hora. Se o banco falhar,
+  a camada é pulada, a resposta pública continua e é reavaliada em 5 minutos.
+- **Limitações:** não há limite de tentativas por IP, e a segurança depende de
+  um token aleatório longo (`openssl rand -hex 32`) e do HTTPS do Caddy. Um
+  único token não identifica quem agiu, então `verifiedBy` é declarado pelo
+  administrador e não autenticado. A rotação exige trocar o secret e fazer um
+  novo deploy.
 
 ## Exibição e transparência
 
@@ -241,6 +289,9 @@ O FilaSaúde trata assim as operações aplicadas aos dados:
   nomes, nem trocar uma coordenada sem sinalizar. A correção manual e a
   geocodificação (`manual` e `geocoded`) criam valores que não são do CNES e só
   entram depois de confirmar uma autorização compatível, como descrito abaixo.
+  O `manual` já está implementado, mas permanece inativo em produção enquanto o
+  secret `ADMIN_API_TOKEN` não for criado, e esse é o momento em que a
+  confirmação do grupo precisa ter acontecido.
 
 Qualquer transformação que altere o conteúdo de um campo da fonte só pode ser
 adotada depois de confirmar uma autorização compatível; até lá, esse dado não

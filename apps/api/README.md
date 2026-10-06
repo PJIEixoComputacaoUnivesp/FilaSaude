@@ -44,13 +44,29 @@ informa de onde vem a posição:
 | `source`       | Coordenada atual do CNES.                                                                           |
 | `history`      | Ponto de uma publicação mensal anterior do CNES, dentro do município e para o mesmo endereço.       |
 | `municipality` | Centro do município, calculado do contorno do IBGE.                                                 |
+| `manual`       | Posição definida por um administrador, com a data em `location.correctedAt`.                        |
 
-Fora de `source`, `location.original` guarda a coordenada informada pelo CNES e,
-em `history`, `location.referenceMonth` traz a competência (`AAAA-MM`). A
-verificação vale também para as consultas `ALL`/`BR`, que vêm do snapshot. O
+Uma posição `manual` vale sempre que existir, mesmo sobre uma coordenada do CNES
+dentro do município. Fora de `source`, `location.original` guarda a coordenada
+informada pelo CNES e, em `history`, `location.referenceMonth` traz a competência
+(`AAAA-MM`). A verificação vale também para as consultas `ALL`/`BR`, que vêm do snapshot. O
 fallback por UF, usado quando o CNES está indisponível, não consulta o
 histórico. Os detalhes e as limitações estão no
 [ADR 0001](../../docs/adr/0001-public-health-unit-data-source.md).
+
+### Correção manual da posição (administradores)
+
+| Endpoint                                       | Descrição                                      |
+| ---------------------------------------------- | ---------------------------------------------- |
+| `GET /admin/location-corrections`              | Lista as correções, com quem verificou e como. |
+| `PUT /admin/location-corrections/:cnesCode`    | Define ou substitui a posição de uma unidade.  |
+| `DELETE /admin/location-corrections/:cnesCode` | Remove a correção.                             |
+
+Exigem `Authorization: Bearer <ADMIN_API_TOKEN>`. Sem um token de pelo menos 32
+caracteres configurado, as rotas não existem (404). O corpo do `PUT` é
+`{ "latitude", "longitude", "verifiedBy", "method" }`, e a posição precisa estar
+dentro do município da unidade. Para ligar a função em produção e ver exemplos,
+veja o [guia de deploy](../../docs/deployment.md#correções-manuais-de-posição).
 
 ## Verificações
 
