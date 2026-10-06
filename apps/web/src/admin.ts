@@ -272,11 +272,25 @@ export function coordinateError(
   return null;
 }
 
+/** Line breaks and tabs are text; other control characters are not accepted. */
+function hasControlCharacters(text: string): boolean {
+  return [...text].some((character) => {
+    const code = character.charCodeAt(0);
+    return (
+      (code < 0x20 && code !== 0x0a && code !== 0x0d && code !== 0x09) ||
+      code === 0x7f
+    );
+  });
+}
+
 export function methodError(text: string): string | null {
   const length = text.trim().length;
   if (length === 0) return "Descreva como a posição foi verificada.";
   if (length > METHOD_MAX_LENGTH) {
     return `Use no máximo ${METHOD_MAX_LENGTH} caracteres.`;
+  }
+  if (hasControlCharacters(text)) {
+    return "O texto tem caracteres especiais que não são aceitos. Use só letras, números e pontuação.";
   }
   return null;
 }

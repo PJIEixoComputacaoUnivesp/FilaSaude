@@ -295,7 +295,7 @@ function CorrectionForm({
           kind: "success",
           // The national view comes from a snapshot that may not hold the unit.
           message: known
-            ? `Posição salva para ${known.name}. Ela já aparece como corrigida manualmente.`
+            ? `Posição salva para ${known.name}. A lista abaixo avisa se a correção não estiver sendo aplicada.`
             : `Posição salva para a unidade ${code}. Ela aparece como corrigida manualmente na consulta por estado; a visão nacional só mostra as unidades da lista local.`,
         });
         setLatitude("");
@@ -531,6 +531,7 @@ function CorrectionForm({
 function CorrectionRow({
   correction,
   unit,
+  unitsReady,
   token,
   onRemoved,
   onShowHistory,
@@ -538,11 +539,17 @@ function CorrectionRow({
 }: {
   correction: Correction;
   unit: HealthUnit | undefined;
+  /** False while the unit list reloads, when what it says is about to change. */
+  unitsReady: boolean;
   token: string;
   onRemoved: (message: string, cnesCode: string) => void;
   onShowHistory: (cnesCode: string) => void;
   onSessionLost: () => void;
 }) {
+  // The server applies a correction only while the unit has the municipality and
+  // address it had when the correction was made, and the national list can be
+  // older than CNES. Saved is not the same as shown.
+  const notApplied = unitsReady && !!unit && unit.location.precision !== "manual";
   const [confirming, setConfirming] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -593,6 +600,17 @@ function CorrectionRow({
       <p className="mt-1 whitespace-pre-line wrap-anywhere text-sm text-slate-600">
         {correction.method}
       </p>
+      {notApplied && (
+        <p
+          className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+          role="status"
+        >
+          <strong>Salva, mas ainda não aparece na visão nacional.</strong> O
+          endereço desta unidade no CNES pode ter mudado desde a última
+          atualização da lista, e nesse caso a correção não é aplicada. Se
+          isso persistir, defina a posição de novo.
+        </p>
+      )}
 
       {confirming ? (
         <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
@@ -651,6 +669,7 @@ function CorrectionRow({
 function CorrectionsList({
   load,
   units,
+  unitsReady,
   token,
   headingRef,
   onRetry,
@@ -660,6 +679,7 @@ function CorrectionsList({
 }: {
   load: Load<Correction[]>;
   units: Map<string, HealthUnit>;
+  unitsReady: boolean;
   token: string;
   headingRef: React.Ref<HTMLHeadingElement>;
   onRetry: () => void;
@@ -710,6 +730,7 @@ function CorrectionsList({
                 key={correction.cnesCode}
                 correction={correction}
                 unit={units.get(correction.cnesCode)}
+                unitsReady={unitsReady}
                 token={token}
                 onRemoved={onRemoved}
                 onShowHistory={onShowHistory}
@@ -748,6 +769,9 @@ function HistoryPanel({
   const [formError, setFormError] = useState<string | null>(null);
   const textId = useId();
   const headingRef = useRef<HTMLHeadingElement>(null);
+  // Each consultation gets a number, and only the latest may show its answer:
+  // a slow response for one unit must not appear under the heading of another.
+  const latest = useRef(0);
 
   const consult = useCallback(
     (value: string) => {
@@ -759,14 +783,19 @@ function HistoryPanel({
       setFormError(null);
       setShownCode(normalized);
       setLoad({ status: "loading" });
+      const sequence = ++latest.current;
       listCorrectionEvents(token, normalized)
-        .then((data) => setLoad({ status: "success", data }))
+        .then((data) => {
+          if (sequence === latest.current) setLoad({ status: "success", data });
+        })
         .catch((failure: unknown) => {
           const kind = failure instanceof AdminApiError ? failure.kind : "unexpected";
+          // A rejected token is true whichever consultation found out.
           if (kind === "unauthorized") {
             onSessionLost();
             return;
           }
+          if (sequence !== latest.current) return;
           setLoad({ status: "error", message: adminErrorMessage(kind, "read") });
         });
     },
@@ -982,6 +1011,7 @@ function Console({
       <CorrectionsList
         load={corrections}
         units={unitsById}
+        unitsReady={unitsState.status === "success"}
         token={token}
         headingRef={listHeadingRef}
         onRetry={() => {

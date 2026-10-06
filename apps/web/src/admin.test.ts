@@ -116,6 +116,18 @@ describe("form rules", () => {
     expect(methodError("x".repeat(501))).not.toBeNull();
   });
 
+  it("accepts a multi-line method, which the text area allows", () => {
+    expect(methodError("Primeira linha\nSegunda linha")).toBeNull();
+    expect(methodError("a\r\nb")).toBeNull();
+    expect(methodError("a\tb")).toBeNull();
+  });
+
+  it("refuses control characters other than line breaks and tabs", () => {
+    expect(methodError("a\u0007b")).toContain("caracteres especiais");
+    expect(methodError("a\u0000b")).not.toBeNull();
+    expect(methodError("a\u007fb")).not.toBeNull();
+  });
+
   it.each([
     ["5563704", "5563704"],
     ["113360", "0113360"],

@@ -36,15 +36,28 @@ function ClickToPick({ onPick }: { onPick: (position: Coordinate) => void }) {
   return null;
 }
 
-/** Brings a position typed or pasted into the fields into view. */
+const SETTLE_MS = 700;
+
+/**
+ * Brings a position typed or pasted into the fields into view, once it has
+ * settled. While typing "-46,8" the longitude passes through "-4" and "-46",
+ * each a valid number somewhere else in Brazil, and following every one would
+ * make the map jump around.
+ */
 function ShowProposed({ proposed }: { proposed: Coordinate | null }) {
   const map = useMap();
+  const latitude = proposed?.latitude;
+  const longitude = proposed?.longitude;
   useEffect(() => {
-    if (!proposed) return;
-    const point: [number, number] = [proposed.latitude, proposed.longitude];
-    // A click is already inside the view, so only a far jump moves the map.
-    if (!map.getBounds().contains(point)) map.panTo(point);
-  }, [map, proposed]);
+    if (latitude === undefined || longitude === undefined) return;
+    const timer = setTimeout(() => {
+      // A click is already inside the view, so only a far jump moves the map.
+      if (!map.getBounds().contains([latitude, longitude])) {
+        map.panTo([latitude, longitude]);
+      }
+    }, SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [map, latitude, longitude]);
   return null;
 }
 
