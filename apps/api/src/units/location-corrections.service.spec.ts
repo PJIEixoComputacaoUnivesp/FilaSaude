@@ -1,0 +1,282 @@
+import {
+  NotFoundException,
+  ServiceUnavailableException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
+import { UnitLocationCorrectionEntity } from '../database/entities/unit-location-correction.entity.js';
+import type { UnitLocationCorrectionRepository } from '../database/repositories/unit-location-correction.repository.js';
+import type { CnesClient } from './cnes.client.js';
+import { LocationCorrectionsService } from './location-corrections.service.js';
+import type { UnitLocationsService } from './unit-locations.service.js';
+import type { HealthUnit } from './units.types.js';
+import type { UnitsService } from './units.service.js';
+
+const cnesUnit: HealthUnit = {
+  id: '0113360',
+  name: 'UPA Teste',
+  unitType: 'PRONTO ATENDIMENTO',
+  address: {
+    street: 'RUA TESTE',
+    number: '100',
+    district: null,
+    postalCode: null,
+    municipalityCode: '261160',
+    city: 'Recife',
+    state: 'PE',
+  },
+  location: {
+    latitude: -8.9,
+    longitude: -35.1,
+    precision: 'source',
+    original: null,
+    referenceMonth: null,
+    correctedAt: null,
+  },
+  serviceHours: null,
+  lastUpdatedAt: '2026-09-20',
+};
+
+const input = {
+  latitude: -8.05,
+  longitude: -34.9,
+  verifiedBy: 'Maria Souza',
+  method: 'Conferido no mapa oficial',
+};
+
+function build({
+  unit = cnesUnit as HealthUnit | null,
+  distance = 0 as number | null,
+}: { unit?: HealthUnit | null; distance?: number | null } = {}) {
+  const save = vi.fn((entity: UnitLocationCorrectionEntity) =>
+    Promise.resolve(entity),
+  );
+  const deleteByCnesCode = vi.fn().mockResolvedValue(true);
+  const findAll = vi.fn().mockResolvedValue([]);
+  const fetchUnit = vi.fn().mockResolvedValue(unit);
+  const distanceToMunicipalityKm = vi.fn().mockResolvedValue(distance);
+  const invalidate = vi.fn();
+  const service = new LocationCorrectionsService(
+    {
+      save,
+      deleteByCnesCode,
+      findAll,
+    } as unknown as UnitLocationCorrectionRepository,
+    { fetchUnit } as unknown as CnesClient,
+    { distanceToMunicipalityKm } as unknown as UnitLocationsService,
+    { invalidate } as unknown as UnitsService,
+  );
+  return {
+    service,
+    save,
+    deleteByCnesCode,
+    findAll,
+    fetchUnit,
+    distanceToMunicipalityKm,
+    invalidate,
+  };
+}
+
+describe('LocationCorrectionsService', () => {
+  describe('register', () => {
+    it('saves the position anchored to the CNES state of the unit', async () => {
+      const { service, save, invalidate } = build();
+
+      const { correction, boundaryChecked } = await service.register(
+        '0113360',
+        input,
+      );
+
+      const saved = save.mock.calls[0]![0];
+      expect(saved).toMatchObject({
+        cnesCode: '0113360',
+        latitude: -8.05,
+        longitude: -34.9,
+        verifiedBy: 'Maria Souza',
+        method: 'Conferido no mapa oficial',
+        anchorMunicipalityCode: '261160',
+        anchorStreet: 'RUA TESTE',
+        anchorNumber: '100',
+        anchorLatitude: -8.9,
+        anchorLongitude: -35.1,
+      });
+      expect(saved.correctedAt).toBeInstanceOf(Date);
+      expect(correction.anchor).toEqual({
+        municipalityCode: '261160',
+        street: 'RUA TESTE',
+        number: '100',
+        latitude: -8.9,
+        longitude: -35.1,
+      });
+      expect(boundaryChecked).toBe(true);
+      expect(invalidate).toHaveBeenCalledTimes(1);
+    });
+
+    it('checks the position against the municipality of the unit', async () => {
+      const { service, distanceToMunicipalityKm } = build();
+
+      await service.register('0113360', input);
+
+      expect(distanceToMunicipalityKm).toHaveBeenCalledWith(cnesUnit, {
+        latitude: -8.05,
+        longitude: -34.9,
+        verifiedBy: 'Maria Souza',
+        method: 'Conferido no mapa oficial',
+      });
+    });
+
+    it('accepts a position within the border tolerance', async () => {
+      const { service, save } = build({ distance: 4.9 });
+
+      await service.register('0113360', input);
+
+      expect(save).toHaveBeenCalledTimes(1);
+    });
+
+    it('rejects a position outside the municipality, without saving or invalidating', async () => {
+      const { service, save, invalidate } = build({ distance: 5.1 });
+
+      await expect(service.register('0113360', input)).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+      expect(save).not.toHaveBeenCalled();
+      expect(invalidate).not.toHaveBeenCalled();
+    });
+
+    it('trusts the administrator when the municipality has no boundary yet', async () => {
+      const { service, save } = build({ distance: null });
+
+      const { boundaryChecked } = await service.register('0113360', input);
+
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(boundaryChecked).toBe(false);
+    });
+
+    it('anchors a unit that has no street or coordinate in CNES', async () => {
+      const bare: HealthUnit = {
+        ...cnesUnit,
+        address: { ...cnesUnit.address, street: null, number: null },
+        location: { ...cnesUnit.location, latitude: null, longitude: null },
+      };
+      const { service, save } = build({ unit: bare });
+
+      await service.register('0113360', input);
+
+      expect(save.mock.calls[0]![0]).toMatchObject({
+        anchorStreet: null,
+        anchorNumber: null,
+        anchorLatitude: null,
+        anchorLongitude: null,
+      });
+    });
+
+    it('stores the code in the 7-digit form the units use', async () => {
+      const { service, save } = build();
+
+      await service.register('113360', input);
+
+      expect(save.mock.calls[0]![0].cnesCode).toBe('0113360');
+    });
+
+    it('reports an unknown unit', async () => {
+      const { service, save } = build({ unit: null });
+
+      await expect(service.register('9999999', input)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(save).not.toHaveBeenCalled();
+    });
+
+    it('reports CNES being unavailable without exposing why', async () => {
+      const { service, fetchUnit, save, invalidate } = build();
+      fetchUnit.mockRejectedValue(
+        new Error('connect ECONNREFUSED 10.0.0.1:443'),
+      );
+
+      const error = await service.register('0113360', input).catch((e) => e);
+
+      expect(error).toBeInstanceOf(ServiceUnavailableException);
+      expect(error.message).not.toContain('ECONNREFUSED');
+      expect(save).not.toHaveBeenCalled();
+      expect(invalidate).not.toHaveBeenCalled();
+    });
+
+    it('reports the boundaries being unavailable', async () => {
+      const { service, distanceToMunicipalityKm, save } = build();
+      distanceToMunicipalityKm.mockRejectedValue(new Error('IBGE timeout'));
+
+      await expect(service.register('0113360', input)).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+      expect(save).not.toHaveBeenCalled();
+    });
+
+    it('does not invalidate the cache when the save fails', async () => {
+      const { service, save, invalidate } = build();
+      save.mockRejectedValue(new Error('database is down'));
+
+      await expect(service.register('0113360', input)).rejects.toThrow(
+        'database is down',
+      );
+      expect(invalidate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('remove', () => {
+    it('removes the correction and invalidates the cache', async () => {
+      const { service, deleteByCnesCode, invalidate } = build();
+
+      await service.remove('0113360');
+
+      expect(deleteByCnesCode).toHaveBeenCalledWith('0113360');
+      expect(invalidate).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports a unit that has no correction', async () => {
+      const { service, deleteByCnesCode, invalidate } = build();
+      deleteByCnesCode.mockResolvedValue(false);
+
+      await expect(service.remove('0113360')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(invalidate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('list', () => {
+    it('shows an administrator who and how, with the date as ISO', async () => {
+      const { service, findAll } = build();
+      const row = Object.assign(new UnitLocationCorrectionEntity(), {
+        cnesCode: '0113360',
+        latitude: -8.05,
+        longitude: -34.9,
+        verifiedBy: 'Maria Souza',
+        method: 'Conferido no mapa oficial',
+        correctedAt: new Date('2026-10-07T15:00:00Z'),
+        anchorMunicipalityCode: '261160',
+        anchorStreet: 'RUA TESTE',
+        anchorNumber: '100',
+        anchorLatitude: -8.9,
+        anchorLongitude: -35.1,
+      });
+      findAll.mockResolvedValue([row]);
+
+      expect(await service.list()).toEqual([
+        {
+          cnesCode: '0113360',
+          latitude: -8.05,
+          longitude: -34.9,
+          verifiedBy: 'Maria Souza',
+          method: 'Conferido no mapa oficial',
+          correctedAt: '2026-10-07T15:00:00.000Z',
+          anchor: {
+            municipalityCode: '261160',
+            street: 'RUA TESTE',
+            number: '100',
+            latitude: -8.9,
+            longitude: -35.1,
+          },
+        },
+      ]);
+    });
+  });
+});
