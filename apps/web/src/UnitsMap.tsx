@@ -160,9 +160,9 @@ export function UnitsMap({
                   <p className="my-2 text-xs font-medium text-amber-800">
                     Posição registrada no CNES em{" "}
                     {formatReferenceMonth(unit.location.referenceMonth)}. A
-                    coordenada atual do cadastro está fora do município, então
-                    mostramos o último ponto válido informado para este mesmo
-                    endereço.
+                    coordenada atual do cadastro está ausente ou fora do
+                    município, então mostramos o último ponto válido informado
+                    para este mesmo endereço.
                   </p>
                 )}
               {unit.location.precision === "municipality" && (
