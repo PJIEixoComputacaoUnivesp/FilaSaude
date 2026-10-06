@@ -230,6 +230,28 @@ describe('UnitsService', () => {
       expect(fetchUnits).toHaveBeenCalledTimes(2);
     });
 
+    it('keeps the last live response as the stale fallback when CNES fails right after', async () => {
+      const fetchUnits = vi
+        .fn()
+        .mockResolvedValueOnce([liveUnit])
+        .mockRejectedValueOnce(new Error('unavailable'));
+      const service = new UnitsService(
+        { fetchUnits } as unknown as CnesClient,
+        passthrough,
+      );
+      const live = await service.findAll('RJ');
+
+      service.invalidate();
+      const afterFailure = await service.findAll('RJ');
+
+      // The last live data, marked stale, and not the embedded snapshot.
+      expect(afterFailure.data).toEqual(live.data);
+      expect(afterFailure.metadata).toMatchObject({
+        dataOrigin: 'live',
+        isStale: true,
+      });
+    });
+
     it('also drops the national response', async () => {
       const apply = vi.fn((units: HealthUnit[]) =>
         Promise.resolve({ units, validated: true, historyComplete: true }),

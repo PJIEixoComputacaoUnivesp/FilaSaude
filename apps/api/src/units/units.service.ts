@@ -90,12 +90,14 @@ export class UnitsService {
   ) {}
 
   /**
-   * Drops every cached and in-flight response, so that a change to the
-   * positions (a manual correction) shows on the next request.
+   * Expires every cached response and forgets the in-flight ones, so that a
+   * change to the positions (a manual correction) shows on the next request.
    */
   invalidate(): void {
     this.generation++;
-    this.cache.clear();
+    // Expired, not dropped: if CNES is unreachable at that moment, the last
+    // live response is a better stale fallback than the embedded snapshot.
+    for (const entry of this.cache.values()) entry.expiresAt = 0;
     this.pending.clear();
   }
 
