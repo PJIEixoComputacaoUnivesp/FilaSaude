@@ -188,8 +188,13 @@ certa. Enquanto a ingestão não existe (ver “Implementação transitória”)
 histórico é consultado durante a requisição, só para as unidades com coordenada
 inválida, com um prazo único de 10 s para a fase, concorrência 5 e cache de
 24 h das linhas por unidade. Se falhar, a unidade cai no centro do município e a
-resposta é reavaliada em 5 minutos. Essa consulta passa para o job de ingestão
-(#23).
+resposta é reavaliada em 1 hora (em 5 minutos quando o contorno do IBGE é que
+falhou). Essa consulta passa para o job de ingestão (#23).
+
+Município sem contorno no IBGE: a malha tem 5.570 municípios e não inclui os
+criados mais recentemente, como Boa Esperança do Norte (MT, 5101837). Para
+essas unidades não há como validar a coordenada, que permanece a do CNES, e o
+fato é registrado no log. Em 2026-10-06 era o caso de 1 unidade.
 
 A data exibida junto de uma posição `history` é a competência de origem, e não
 a `data_atualizacao` do registro atual.
