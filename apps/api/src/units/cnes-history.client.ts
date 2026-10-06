@@ -5,6 +5,9 @@ const CNES_HISTORY_URL =
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 5;
 const REQUEST_TIMEOUT_MS = 10_000;
+// The service lets a fetch outlive the deadline of whoever started it, so the
+// fetch needs a bound of its own.
+const TOTAL_TIMEOUT_MS = 20_000;
 
 /** One monthly CNES release of an establishment. */
 export interface CnesHistoryEntry {
@@ -73,11 +76,13 @@ export class CnesHistoryClient {
     signal?: AbortSignal,
   ): Promise<CnesHistoryEntry[]> {
     const entries: CnesHistoryEntry[] = [];
+    const total = AbortSignal.timeout(TOTAL_TIMEOUT_MS);
+    const bound = signal ? AbortSignal.any([signal, total]) : total;
 
     // As in the establishments endpoint, offset is a record index and not
     // the page number described in the Swagger.
     for (let page = 0; page < MAX_PAGES; page++) {
-      const records = await this.fetchPage(unitId, page * PAGE_SIZE, signal);
+      const records = await this.fetchPage(unitId, page * PAGE_SIZE, bound);
       for (const record of records) {
         // The API silently ignores filters it does not know, so a response
         // may hold other establishments; keep only the one requested.

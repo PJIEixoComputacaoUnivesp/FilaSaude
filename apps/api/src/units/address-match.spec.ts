@@ -13,14 +13,25 @@ describe('address matching', () => {
   });
 
   it('treats the variants of "no number" alike', () => {
-    for (const value of ['S/N', 's n', 'SN', '', '  ', null, 'Sem número']) {
+    for (const value of [
+      'S/N',
+      's n',
+      'S/N.',
+      'SN',
+      '',
+      '  ',
+      null,
+      'Sem número',
+      '0',
+      '000',
+    ]) {
       expect(normalizeNumber(value)).toBe('SN');
     }
   });
 
   it('ignores leading zeros in numbers', () => {
     expect(normalizeNumber('01')).toBe('1');
-    expect(normalizeNumber('0')).toBe('0');
+    expect(normalizeNumber('10')).toBe('10');
     expect(normalizeNumber('100-A')).toBe('100A');
   });
 

@@ -17,10 +17,14 @@ export function normalizeStreet(value: string | null): string {
   return normalizeText(value);
 }
 
-/** Treats "S/N", "SN", blank and "sem número" alike; "01" equals "1". */
+/**
+ * Treats "S/N", "SN", blank, "sem número" and "0" alike, since CNES uses all
+ * of them for a building without a number; "01" equals "1".
+ */
 export function normalizeNumber(value: string | null): string {
   const text = normalizeText(value).replace(/ /g, '');
-  if (text === '' || text === 'SN' || text === 'SEMNUMERO') return 'SN';
+  if (text === '' || /^0+$/.test(text) || text === 'SN' || text === 'SEMNUMERO')
+    return 'SN';
   return text.replace(/^0+(?=\d)/, '');
 }
 
