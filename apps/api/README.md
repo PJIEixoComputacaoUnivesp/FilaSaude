@@ -56,17 +56,22 @@ histórico. Os detalhes e as limitações estão no
 
 ### Correção manual da posição (administradores)
 
-| Endpoint                                       | Descrição                                      |
-| ---------------------------------------------- | ---------------------------------------------- |
-| `GET /admin/location-corrections`              | Lista as correções, com quem verificou e como. |
-| `PUT /admin/location-corrections/:cnesCode`    | Define ou substitui a posição de uma unidade.  |
-| `DELETE /admin/location-corrections/:cnesCode` | Remove a correção.                             |
+| Endpoint                                              | Descrição                                      |
+| ----------------------------------------------------- | ---------------------------------------------- |
+| `GET /admin/me`                                       | Login do dono do token.                        |
+| `GET /admin/location-corrections`                     | Lista as correções, com quem verificou e como. |
+| `GET /admin/location-corrections/:cnesCode/events`    | Histórico de alterações de uma unidade.        |
+| `PUT /admin/location-corrections/:cnesCode`           | Define ou substitui a posição de uma unidade.  |
+| `DELETE /admin/location-corrections/:cnesCode`        | Remove a correção.                             |
 
-Exigem `Authorization: Bearer <ADMIN_API_TOKEN>`. Sem um token de pelo menos 32
-caracteres configurado, as rotas não existem (404). O corpo do `PUT` é
-`{ "latitude", "longitude", "verifiedBy", "method" }`, e a posição precisa estar
-dentro do município da unidade. Para ligar a função em produção e ver exemplos,
-veja o [guia de deploy](../../docs/deployment.md#correções-manuais-de-posição).
+Exigem `Authorization: Bearer <token>`, com o token pessoal de cada administrador
+listado em `ADMIN_API_TOKENS` (`login:token`, separados por vírgula). Sem uma
+lista válida configurada, as rotas não existem (404). Quem fez a alteração vem do
+token, e não do corpo: o corpo do `PUT` é `{ "latitude", "longitude", "method" }`,
+e a posição precisa estar dentro do município da unidade. As respostas pedem
+`Cache-Control: no-store`. Para ligar a função em produção, usar a página `/admin`
+do site e ver exemplos, veja o
+[guia de deploy](../../docs/deployment.md#correções-manuais-de-posição).
 
 ## Verificações
 

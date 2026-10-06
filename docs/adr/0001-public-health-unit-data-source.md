@@ -216,27 +216,55 @@ ingestão e, quando existir, também será identificada na interface.
 #### Correção manual por administradores
 
 Um administrador pode definir a posição de uma unidade em tempo de execução,
-sem novo deploy, pelos endpoints `GET /admin/location-corrections` e
+sem novo deploy, pela página `/admin` do site (fora do menu) ou pelos endpoints
+`GET /admin/me`, `GET /admin/location-corrections`,
+`GET /admin/location-corrections/:cnesCode/events` e
 `PUT`/`DELETE /admin/location-corrections/:cnesCode`. As correções ficam na
 tabela `unit_location_corrections` (migração, entidade e repositório no padrão
 do #70), e não em `health_units`, porque a ingestão diária reescreve as
 coordenadas dessa tabela pelo código CNES.
 
-- **Quem é administrador:** quem tem o token estático de `ADMIN_API_TOKEN`,
-  enviado como `Authorization: Bearer`. O projeto não tem contas de usuário nem
-  coleta dados pessoais, e contas seriam desproporcionais para esta função. A
-  comparação usa `timingSafeEqual` sobre digests SHA-256, o token é lido a cada
-  requisição e nunca vai para log ou resposta.
-- **Interruptor:** sem um token de pelo menos 32 caracteres configurado, as
-  rotas não existem (404). A função fica desligada até alguém criar o secret de
-  propósito, e isso só deve acontecer depois da confirmação do grupo sobre a
-  licença (ver "Licença e referências").
+- **Quem é administrador:** quem tem um token em `ADMIN_API_TOKENS`, uma lista
+  de entradas `login:token`, uma por pessoa, enviado como
+  `Authorization: Bearer`. O login é o do GitHub. Há um único nível de acesso e
+  nenhuma rota ou tela que crie, altere ou remova administradores: eles existem
+  só por esse secret, o que evita o risco de vários níveis de administrador em
+  que um nível baixo mexa nas credenciais de um alto. O projeto não tem contas de
+  usuário nem coleta dados pessoais, e contas seriam desproporcionais para esta
+  função. A comparação usa `timingSafeEqual` sobre digests SHA-256 contra todas
+  as entradas, sem sair no primeiro acerto, e o token nunca vai para log ou
+  resposta.
+- **Identidade e revogação:** quem fez cada alteração vem do token, e não de um
+  campo que o chamador escreve, então ninguém atribui uma correção a outra
+  pessoa. Revogar alguém é remover a entrada do secret e fazer um novo deploy, e
+  a lista é o inventário de quem tem acesso. A rotação de um token também exige
+  trocar o secret e fazer um novo deploy.
+- **Interruptor:** sem uma lista válida configurada, as rotas não existem (404).
+  Uma entrada malformada (sem login, token com menos de 32 caracteres ou com
+  `:`, login ou token repetido) mantém todas as rotas desligadas, e o log
+  aponta a posição da entrada e nunca o valor. A função fica desligada até
+  alguém criar o secret de propósito. O grupo confirma o uso de posições que não
+  vêm do CNES caso a caso, no momento em que um administrador faz cada correção
+  (ver "Licença e referências").
+- **Tentativas inválidas:** mais de 20 falhas em 10 minutos, numa janela global
+  que dispensa o endereço do cliente (atrás de um proxy ele não é confiável),
+  fazem as tentativas inválidas seguintes receberem 429. Um token válido nunca
+  é contado nem bloqueado, então não há como travar um administrador. As falhas
+  vão ao log de forma agregada, sem o token, e não ao banco, para que ninguém o
+  encha com tentativas.
 - **Validação na borda:** o código CNES tem 1 a 7 dígitos; a posição precisa
   estar no Brasil e dentro do município da unidade, com a mesma tolerância de
-  5 km das demais checagens; `verifiedBy` (até 80 caracteres, de preferência o
-  login do GitHub, não o nome) e `method` (até 500) são obrigatórios. A unidade é consultada no CNES na hora e precisa ser
-  uma das listadas pelo produto. Para um município sem contorno no IBGE a
-  posição não pode ser conferida, e o administrador é confiado.
+  5 km das demais checagens; `method` (até 500 caracteres) é obrigatório. A
+  unidade é consultada no CNES na hora e precisa ser uma das listadas pelo
+  produto. Para um município sem contorno no IBGE a posição não pode ser
+  conferida, e o administrador é confiado.
+- **Auditoria:** cada definição, substituição e remoção grava quem fez, quando,
+  o método e a posição anterior e a nova, na tabela
+  `unit_location_correction_events`, na mesma transação da mudança. A tabela só
+  recebe inserções, e o repositório não tem um caminho que altere uma correção
+  sem registrá-la, então uma remoção também deixa rastro. A leitura da linha
+  atual usa bloqueio, para que dois administradores no mesmo caso não gravem a
+  mesma posição anterior. O cache só é invalidado depois do commit.
 - **Âncora:** a correção guarda o município, o logradouro, o número e a
   coordenada que o CNES tinha quando ela foi feita. Se o município ou o
   endereço mudarem, a unidade pode ter se mudado e a correção deixa de valer,
@@ -248,15 +276,22 @@ coordenadas dessa tabela pelo código CNES.
   atualizado.
 - **O que é público:** a resposta traz `precision: "manual"` e `correctedAt`
   (data no fuso de Brasília), e a coordenada do CNES em `location.original`.
-  Quem verificou e como ficam só na visão do administrador.
+  Quem verificou e como ficam só na visão do administrador. As respostas de
+  administração pedem `Cache-Control: no-store`.
 - **Cache e falhas:** cada escrita invalida o cache das unidades, inclusive as
-  cargas em andamento, para que a correção apareça na hora. Se o banco falhar,
-  a camada é pulada, a resposta pública continua e é reavaliada em 5 minutos.
-- **Limitações:** não há limite de tentativas por IP, e a segurança depende de
-  um token aleatório longo (`openssl rand -hex 32`) e do HTTPS do Caddy. Um
-  único token não identifica quem agiu, então `verifiedBy` é declarado pelo
-  administrador e não autenticado. A rotação exige trocar o secret e fazer um
-  novo deploy.
+  cargas em andamento, para que a correção apareça na hora. Se o banco falhar
+  depois de a API subir, a camada é pulada, a resposta pública continua e é
+  reavaliada em 5 minutos. A API não sobe sem o banco, o que já era assim desde
+  o #70.
+- **A página:** o token fica só na memória da aba (nunca em `localStorage`,
+  cookie ou URL) e é pedido de novo ao recarregar; a página usa `noindex`. Um
+  mapa permite marcar a posição com um clique, e os campos de latitude e
+  longitude continuam como caminho por teclado, pois clicar num mapa não o é.
+  As mensagens de erro são em português e nunca repetem o texto da API.
+- **Limitações:** a segurança depende de tokens aleatórios longos
+  (`openssl rand -hex 32`), entregues só a cada pessoa, e do HTTPS do Caddy. Não
+  há bloqueio por pessoa nem alerta além do log agregado, e não há segundo
+  administrador que aprove uma correção.
 
 ## Exibição e transparência
 
@@ -290,8 +325,9 @@ O FilaSaúde trata assim as operações aplicadas aos dados:
   geocodificação (`manual` e `geocoded`) criam valores que não são do CNES e só
   entram depois de confirmar uma autorização compatível, como descrito abaixo.
   O `manual` já está implementado, mas permanece inativo em produção enquanto o
-  secret `ADMIN_API_TOKEN` não for criado, e esse é o momento em que a
-  confirmação do grupo precisa ter acontecido.
+  secret `ADMIN_API_TOKENS` não for criado. O grupo confirma o uso dessas
+  posições caso a caso, no momento em que um administrador faz cada correção,
+  por ser um trabalho manual, e cada uma fica registrada com quem a fez.
 
 Qualquer transformação que altere o conteúdo de um campo da fonte só pode ser
 adotada depois de confirmar uma autorização compatível; até lá, esse dado não
