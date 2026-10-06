@@ -33,6 +33,21 @@ interface HistoricalPoint {
   referenceMonth: string;
 }
 
+/**
+ * Settles like `promise`, or rejects as soon as `signal` aborts. The promise
+ * itself keeps running for any other waiter and still fills the cache.
+ */
+function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    if (signal.aborted) return onAbort();
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise
+      .then(resolve, reject)
+      .finally(() => signal.removeEventListener('abort', onAbort));
+  });
+}
+
 @Injectable()
 export class UnitLocationsService {
   private readonly logger = new Logger(UnitLocationsService.name);
@@ -66,8 +81,8 @@ export class UnitLocationsService {
    * registered for the same address (`history`), then the municipality
    * center (`municipality`). Units are never dropped.
    *
-   * When boundaries cannot be loaded the units are returned untouched and
-   * `validated` is false. When the history cannot be fully loaded the
+   * Units of a state whose boundaries cannot be loaded are returned untouched
+   * and `validated` is false. When the history cannot be fully loaded the
    * affected units fall back to the municipality center and `historyComplete`
    * is false. Either way the caller should check again sooner than usual.
    * `history: false` skips the history lookup, for when the CNES host is
@@ -82,25 +97,32 @@ export class UnitLocationsService {
     historyComplete: boolean;
   }> {
     const states = [...new Set(units.map((unit) => unit.address.state))];
-    let boundaries: MunicipalityBoundaries[];
-    try {
-      boundaries = await Promise.all(
-        states.map((state) => this.boundariesOf(state)),
-      );
-    } catch (error: unknown) {
-      const reason = error instanceof Error ? error.message : 'unknown error';
-      this.logger.warn(`Municipality boundaries unavailable: ${reason}`);
-      return { units: [...units], validated: false, historyComplete: true };
-    }
+    const results = await Promise.allSettled(
+      states.map((state) => this.boundariesOf(state)),
+    );
 
+    // One state failing must not leave the others unchecked.
     const byMunicipality = new Map<string, Polygon[]>();
-    for (const stateBoundaries of boundaries) {
-      for (const [code, area] of stateBoundaries)
-        byMunicipality.set(code, area);
-    }
+    const failedStates = new Set<string>();
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        for (const [code, area] of result.value) byMunicipality.set(code, area);
+      } else {
+        failedStates.add(states[index]!);
+        const reason =
+          result.reason instanceof Error
+            ? result.reason.message
+            : 'unknown error';
+        this.logger.warn(
+          `Municipality boundaries unavailable for ${states[index]}: ${reason}`,
+        );
+      }
+    });
 
     const checks = units.map((unit) =>
-      this.check(unit, byMunicipality.get(unit.address.municipalityCode)),
+      failedStates.has(unit.address.state)
+        ? null
+        : this.check(unit, byMunicipality.get(unit.address.municipalityCode)),
     );
     const misplaced = checks.filter((check) => check !== null);
     const { histories, complete } =
@@ -113,7 +135,7 @@ export class UnitLocationsService {
         const check = checks[index];
         return check ? this.relocate(check, histories.get(unit.id)) : unit;
       }),
-      validated: true,
+      validated: failedStates.size === 0,
       historyComplete: complete,
     };
   }
@@ -248,10 +270,13 @@ export class UnitLocationsService {
       return Promise.resolve(cached.entries);
     }
 
+    // The shared fetch must not use this caller's deadline: when that caller
+    // gives up, every other caller waiting on the same request would fail too.
+    // The client already bounds each page with its own timeout.
     let request = this.historyPending.get(id);
     if (!request) {
       request = this.historyClient
-        .fetch(id, signal)
+        .fetch(id)
         .then((entries) => {
           this.historyCache.set(id, {
             expiresAt: Date.now() + HISTORY_TTL_MS,
@@ -262,7 +287,7 @@ export class UnitLocationsService {
         .finally(() => this.historyPending.delete(id));
       this.historyPending.set(id, request);
     }
-    return request;
+    return untilAborted(request, signal);
   }
 
   private async boundariesOf(state: string): Promise<MunicipalityBoundaries> {

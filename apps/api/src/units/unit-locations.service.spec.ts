@@ -2,7 +2,7 @@ import type {
   CnesHistoryClient,
   CnesHistoryEntry,
 } from './cnes-history.client.js';
-import type { Polygon } from './geometry.js';
+import { distanceToAreaKm, type Polygon } from './geometry.js';
 import type { MunicipalityBoundariesClient } from './municipality-boundaries.client.js';
 import { UnitLocationsService } from './unit-locations.service.js';
 import type { HealthUnit } from './units.types.js';
@@ -143,12 +143,15 @@ describe('UnitLocationsService', () => {
       vi.fn(() => Promise.resolve(new Map([['350000', [lShape]]]))),
     );
     const { units } = await service.apply([unit(50, 50)]);
-    const { latitude, longitude } = units[0]!.location;
+    const { latitude, longitude, precision } = units[0]!.location;
 
-    const inArm =
-      (latitude! <= 1 && longitude! >= 0) ||
-      (longitude! <= 1 && latitude! >= 0);
-    expect(inArm).toBe(true);
+    expect(precision).toBe('municipality');
+    expect(
+      distanceToAreaKm([lShape], {
+        latitude: latitude!,
+        longitude: longitude!,
+      }),
+    ).toBe(0);
   });
 
   it('keeps units untouched when the boundaries are unavailable', async () => {
@@ -159,6 +162,22 @@ describe('UnitLocationsService', () => {
 
     expect(validated).toBe(false);
     expect(units).toEqual([input]);
+  });
+
+  it('still checks the states whose boundaries loaded when another one fails', async () => {
+    const fetch = vi.fn((state: string) =>
+      state === 'RJ' ? Promise.reject(new Error('offline')) : boundaries(),
+    );
+    const inSp = unit(-24.9, -46.9);
+    const inRj = {
+      ...unit(-24.9, -46.9, { state: 'RJ', municipalityCode: '330000' }),
+      id: '0000002',
+    };
+    const { units, validated } = await serviceWith(fetch).apply([inSp, inRj]);
+
+    expect(validated).toBe(false);
+    expect(units[0]!.location.precision).toBe('municipality');
+    expect(units[1]).toBe(inRj);
   });
 
   it('keeps a unit untouched when its municipality has no boundary yet', async () => {
@@ -246,7 +265,7 @@ describe('UnitLocationsService', () => {
       });
     });
 
-    it('compares the address ignoring accents, case and postal code', async () => {
+    it('compares the street and number ignoring accents, case and leading zeros', async () => {
       const { units } = await withHistory([
         release('2025-06', -23.85, -46.85, {
           street: 'RUA JOAO',
@@ -297,11 +316,52 @@ describe('UnitLocationsService', () => {
       expect(history).not.toHaveBeenCalled();
     });
 
-    it('queries by the unit code and shares one deadline signal', async () => {
+    it('queries the history by the unit code alone', async () => {
       const history = vi.fn(noHistory);
       await serviceWith(vi.fn(boundaries), history).apply([misplaced()]);
 
-      expect(history).toHaveBeenCalledWith('5563704', expect.any(AbortSignal));
+      // No signal: the fetch is shared, so it cannot follow one caller's deadline.
+      expect(history).toHaveBeenCalledWith('5563704');
+    });
+
+    it("does not let one caller's deadline fail another waiting on the same history", async () => {
+      const deadlines = [new AbortController(), new AbortController()];
+      const timeout = vi
+        .spyOn(AbortSignal, 'timeout')
+        .mockReturnValueOnce(deadlines[0]!.signal)
+        .mockReturnValueOnce(deadlines[1]!.signal);
+      try {
+        let resolveHistory: (entries: CnesHistoryEntry[]) => void = () =>
+          undefined;
+        // Like the real client, the fetch fails when a signal it was given aborts.
+        const history = vi.fn(
+          (_id: string, signal?: AbortSignal) =>
+            new Promise<CnesHistoryEntry[]>((resolve, reject) => {
+              resolveHistory = resolve;
+              signal?.addEventListener('abort', () => reject(signal.reason), {
+                once: true,
+              });
+            }),
+        );
+        const service = serviceWith(vi.fn(boundaries), history);
+
+        const first = service.apply([misplaced()]);
+        const second = service.apply([misplaced()]);
+        await vi.waitFor(() => expect(history).toHaveBeenCalledTimes(1));
+
+        deadlines[0]!.abort(new Error('deadline'));
+        const gaveUp = await first;
+        resolveHistory([release('2025-06', -23.85, -46.85)]);
+        const completed = await second;
+
+        expect(gaveUp.historyComplete).toBe(false);
+        expect(gaveUp.units[0]!.location.precision).toBe('municipality');
+        expect(completed.historyComplete).toBe(true);
+        expect(completed.units[0]!.location.precision).toBe('history');
+        expect(history).toHaveBeenCalledTimes(1);
+      } finally {
+        timeout.mockRestore();
+      }
     });
 
     it('falls back to the municipality center and reports it when the history fails', async () => {
