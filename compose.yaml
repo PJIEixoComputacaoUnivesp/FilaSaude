@@ -8,6 +8,11 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-filasaude}
+      DB_USER: ${POSTGRES_USER:-filasaude}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-filasaude}
     ports:
       - "3000:3000"
     healthcheck:
@@ -25,6 +30,9 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    depends_on:
+      postgres:
+        condition: service_healthy
   web:
     build:
       context: .
