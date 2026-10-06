@@ -20,6 +20,7 @@ function managerWith(overrides: Record<string, unknown> = {}) {
     findOne: vi.fn().mockResolvedValue(null),
     save: vi.fn((entity: unknown) => Promise.resolve(entity)),
     insert: vi.fn().mockResolvedValue(undefined),
+    query: vi.fn().mockResolvedValue(undefined),
     delete: vi.fn().mockResolvedValue(undefined),
     find: vi.fn().mockResolvedValue([]),
     transaction: vi.fn(),
@@ -112,7 +113,23 @@ describe('UnitLocationCorrectionRepository', () => {
       );
     });
 
-    it('locks the row it reads, so two administrators cannot record the same previous position', async () => {
+    it('serializes writers of the same unit with an advisory lock, even when no row exists yet', async () => {
+      const manager = managerWith();
+
+      await repositoryOn(manager).saveWithEvent(correction(), 'maria');
+
+      expect(manager.query).toHaveBeenCalledWith(
+        'SELECT pg_advisory_xact_lock(hashtext($1))',
+        ['5563704'],
+      );
+      // The lock is taken before the current row is read, or two creators
+      // would both read "no row".
+      expect(manager.query.mock.invocationCallOrder[0]).toBeLessThan(
+        manager.findOne.mock.invocationCallOrder[0]!,
+      );
+    });
+
+    it('reads the current row without a row lock, which would lock nothing when it is missing', async () => {
       const manager = managerWith();
 
       await repositoryOn(manager).saveWithEvent(correction(), 'maria');
@@ -121,7 +138,6 @@ describe('UnitLocationCorrectionRepository', () => {
         UnitLocationCorrectionEntity,
         {
           where: { cnesCode: '5563704' },
-          lock: { mode: 'pessimistic_write' },
         },
       );
     });
@@ -176,6 +192,22 @@ describe('UnitLocationCorrectionRepository', () => {
           newLatitude: null,
           newLongitude: null,
         },
+      );
+    });
+
+    it('takes the same advisory lock before looking for the correction', async () => {
+      const manager = managerWith({
+        findOne: vi.fn().mockResolvedValue(correction()),
+      });
+
+      await repositoryOn(manager).removeWithEvent('5563704', 'joao');
+
+      expect(manager.query).toHaveBeenCalledWith(
+        'SELECT pg_advisory_xact_lock(hashtext($1))',
+        ['5563704'],
+      );
+      expect(manager.query.mock.invocationCallOrder[0]).toBeLessThan(
+        manager.findOne.mock.invocationCallOrder[0]!,
       );
     });
 

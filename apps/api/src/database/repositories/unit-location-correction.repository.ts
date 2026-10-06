@@ -28,6 +28,22 @@ export class UnitLocationCorrectionRepository {
     return this.repository.findOneBy({ cnesCode });
   }
 
+  /**
+   * Holds an advisory lock on the unit until the transaction ends. A row lock
+   * would not do: when the unit has no correction yet there is no row, so two
+   * administrators creating the first one would not wait for each other, and
+   * one would fail on the primary key. Different units hash to the same lock
+   * only by chance, which merely makes them wait.
+   */
+  private async lockUnit(
+    manager: { query: (sql: string, params: unknown[]) => Promise<unknown> },
+    cnesCode: string,
+  ): Promise<void> {
+    await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+      cnesCode,
+    ]);
+  }
+
   /** The most recent events of a unit, newest first. */
   findEvents(cnesCode: string): Promise<UnitLocationCorrectionEventEntity[]> {
     return this.repository.manager.find(UnitLocationCorrectionEventEntity, {
@@ -43,11 +59,9 @@ export class UnitLocationCorrectionRepository {
     actor: string,
   ): Promise<UnitLocationCorrectionEntity> {
     return this.repository.manager.transaction(async (manager) => {
-      // The lock keeps two administrators editing the same unit from
-      // recording the same "previous" position.
+      await this.lockUnit(manager, correction.cnesCode);
       const previous = await manager.findOne(UnitLocationCorrectionEntity, {
         where: { cnesCode: correction.cnesCode },
-        lock: { mode: 'pessimistic_write' },
       });
       const saved = await manager.save(correction);
       await manager.insert(UnitLocationCorrectionEventEntity, {
@@ -67,9 +81,9 @@ export class UnitLocationCorrectionRepository {
   /** Removes a correction and records who did it. False when there was none. */
   removeWithEvent(cnesCode: string, actor: string): Promise<boolean> {
     return this.repository.manager.transaction(async (manager) => {
+      await this.lockUnit(manager, cnesCode);
       const previous = await manager.findOne(UnitLocationCorrectionEntity, {
         where: { cnesCode },
-        lock: { mode: 'pessimistic_write' },
       });
       if (!previous) return false;
 
