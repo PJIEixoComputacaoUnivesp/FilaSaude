@@ -29,7 +29,7 @@ const liveUnit: HealthUnit = {
 
 const passthrough = {
   apply: vi.fn((units: HealthUnit[]) =>
-    Promise.resolve({ units, validated: true }),
+    Promise.resolve({ units, validated: true, historyComplete: true }),
   ),
 } as unknown as UnitLocationsService;
 
@@ -92,6 +92,31 @@ describe('UnitsService', () => {
         isStale: true,
         retrievedAt: live.metadata.retrievedAt,
       });
+      expect(fetchUnits).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('rechecks sooner when the history could not be fully loaded', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchUnits = vi.fn().mockResolvedValue([liveUnit]);
+      const client = { fetchUnits } as unknown as CnesClient;
+      const incomplete = {
+        apply: vi.fn((units: HealthUnit[]) =>
+          Promise.resolve({ units, validated: true, historyComplete: false }),
+        ),
+      } as unknown as UnitLocationsService;
+      const service = new UnitsService(client, incomplete);
+
+      await service.findAll('RJ');
+      vi.advanceTimersByTime(30 * 60 * 1000);
+      await service.findAll('RJ');
+      expect(fetchUnits).toHaveBeenCalledTimes(1);
+
+      vi.advanceTimersByTime(31 * 60 * 1000);
+      await service.findAll('RJ');
       expect(fetchUnits).toHaveBeenCalledTimes(2);
     } finally {
       vi.useRealTimers();

@@ -161,6 +161,18 @@ describe('UnitLocationsService', () => {
     expect(units).toEqual([input]);
   });
 
+  it('keeps a unit untouched when its municipality has no boundary yet', async () => {
+    // A municipality newer than the IBGE boundaries, like Boa Esperança do Norte.
+    const input = unit(-24.9, -46.9, { municipalityCode: '510183' });
+    const history = vi.fn(noHistory);
+    const { units } = await serviceWith(vi.fn(boundaries), history).apply([
+      input,
+    ]);
+
+    expect(units[0]).toBe(input);
+    expect(history).not.toHaveBeenCalled();
+  });
+
   it('caches boundaries by state', async () => {
     const fetch = vi.fn(boundaries);
     const service = serviceWith(fetch);
@@ -182,13 +194,14 @@ describe('UnitLocationsService', () => {
 
     it('uses the latest earlier coordinate registered for the same address', async () => {
       // Like the UPA Bruno Covas, whose point broke in a later release.
-      const { units, validated } = await withHistory([
+      const { units, validated, historyComplete } = await withHistory([
         release('2025-06', -23.85, -46.85),
         release('2025-11', -23.9, -46.9),
         release('2025-12', -24.9, -46.9),
       ]).apply([misplaced()]);
 
       expect(validated).toBe(true);
+      expect(historyComplete).toBe(true);
       expect(units[0]!.location).toEqual({
         latitude: -23.9,
         longitude: -46.9,
@@ -291,13 +304,14 @@ describe('UnitLocationsService', () => {
       expect(history).toHaveBeenCalledWith('5563704', expect.any(AbortSignal));
     });
 
-    it('falls back to the municipality center and retries soon when the history fails', async () => {
-      const { units, validated } = await serviceWith(
+    it('falls back to the municipality center and reports it when the history fails', async () => {
+      const { units, validated, historyComplete } = await serviceWith(
         vi.fn(boundaries),
         vi.fn().mockRejectedValue(new Error('offline')),
       ).apply([misplaced()]);
 
-      expect(validated).toBe(false);
+      expect(validated).toBe(true);
+      expect(historyComplete).toBe(false);
       expect(units[0]!.location.precision).toBe('municipality');
     });
 
@@ -307,7 +321,7 @@ describe('UnitLocationsService', () => {
           ? Promise.reject(new Error('offline'))
           : Promise.resolve([release('2025-06', -23.85, -46.85)]),
       );
-      const { units, validated } = await serviceWith(
+      const { units, historyComplete } = await serviceWith(
         vi.fn(boundaries),
         history,
       ).apply([
@@ -315,7 +329,7 @@ describe('UnitLocationsService', () => {
         { ...misplaced(), id: '0000002' },
       ]);
 
-      expect(validated).toBe(false);
+      expect(historyComplete).toBe(false);
       expect(units.map(({ location }) => location.precision)).toEqual([
         'history',
         'municipality',

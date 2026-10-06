@@ -66,16 +66,21 @@ export class UnitLocationsService {
    * registered for the same address (`history`), then the municipality
    * center (`municipality`). Units are never dropped.
    *
-   * When boundaries cannot be loaded the units are returned untouched, and
-   * when the history cannot be fully loaded the affected units fall back to
-   * the municipality center; both set `validated` to false so the caller
-   * retries soon. `history: false` skips the history lookup, for when the
-   * CNES host is already known to be unavailable.
+   * When boundaries cannot be loaded the units are returned untouched and
+   * `validated` is false. When the history cannot be fully loaded the
+   * affected units fall back to the municipality center and `historyComplete`
+   * is false. Either way the caller should check again sooner than usual.
+   * `history: false` skips the history lookup, for when the CNES host is
+   * already known to be unavailable.
    */
   async apply(
     units: readonly HealthUnit[],
     options: { history?: boolean } = {},
-  ): Promise<{ units: HealthUnit[]; validated: boolean }> {
+  ): Promise<{
+    units: HealthUnit[];
+    validated: boolean;
+    historyComplete: boolean;
+  }> {
     const states = [...new Set(units.map((unit) => unit.address.state))];
     let boundaries: MunicipalityBoundaries[];
     try {
@@ -85,7 +90,7 @@ export class UnitLocationsService {
     } catch (error: unknown) {
       const reason = error instanceof Error ? error.message : 'unknown error';
       this.logger.warn(`Municipality boundaries unavailable: ${reason}`);
-      return { units: [...units], validated: false };
+      return { units: [...units], validated: false, historyComplete: true };
     }
 
     const byMunicipality = new Map<string, Polygon[]>();
@@ -108,15 +113,22 @@ export class UnitLocationsService {
         const check = checks[index];
         return check ? this.relocate(check, histories.get(unit.id)) : unit;
       }),
-      validated: complete,
+      validated: true,
+      historyComplete: complete,
     };
   }
 
   /** Returns what to relocate, or null when the coordinate can be kept. */
   private check(unit: HealthUnit, area: Polygon[] | undefined) {
     // Without a boundary there is nothing to compare against, so the CNES
-    // coordinate stays as the source declared it.
-    if (!area) return null;
+    // coordinate stays as the source declared it. This happens for a
+    // municipality newer than the IBGE boundaries.
+    if (!area) {
+      this.logger.warn(
+        `CNES ${unit.id}: no IBGE boundary for municipality ${unit.address.municipalityCode}; keeping the CNES coordinate unchecked`,
+      );
+      return null;
+    }
 
     const { latitude, longitude } = unit.location;
     const original =

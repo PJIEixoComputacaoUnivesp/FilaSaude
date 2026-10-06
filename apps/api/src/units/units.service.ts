@@ -8,6 +8,10 @@ import type { HealthUnit, UnitsResponse } from './units.types.js';
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 // Units whose coordinates could not be validated are checked again soon.
 const UNVALIDATED_CACHE_TTL_MS = 5 * 60 * 1000;
+// A failed history lookup only affects the few units with an invalid
+// coordinate, which keep the municipality center meanwhile, so retrying it
+// does not justify refetching the whole list every few minutes.
+const INCOMPLETE_HISTORY_CACHE_TTL_MS = 60 * 60 * 1000;
 const NATIONAL_KEY = 'BR';
 const FALLBACK_RETRIEVED_AT = '2026-09-24T00:00:00-03:00';
 export const CNES_SOURCE_URL =
@@ -19,6 +23,16 @@ function latestUpdate(units: readonly HealthUnit[]): string {
       unit.lastUpdatedAt > latest ? unit.lastUpdatedAt : latest,
     '',
   );
+}
+
+function cacheTtl(located: {
+  validated: boolean;
+  historyComplete: boolean;
+}): number {
+  if (!located.validated) return UNVALIDATED_CACHE_TTL_MS;
+  return located.historyComplete
+    ? CACHE_TTL_MS
+    : INCOMPLETE_HISTORY_CACHE_TTL_MS;
 }
 
 function fallbackUnits(): HealthUnit[] {
@@ -100,9 +114,7 @@ export class UnitsService {
         new Date().toISOString(),
       );
       this.cache.set(key, {
-        expiresAt:
-          Date.now() +
-          (located.validated ? CACHE_TTL_MS : UNVALIDATED_CACHE_TTL_MS),
+        expiresAt: Date.now() + cacheTtl(located),
         response,
       });
       return response;

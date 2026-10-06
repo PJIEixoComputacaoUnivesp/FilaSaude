@@ -50,7 +50,7 @@ describe('AppController (e2e)', () => {
       .overrideProvider(UnitLocationsService)
       .useValue({
         apply: vi.fn((units: HealthUnit[]) =>
-          Promise.resolve({ units, validated: true }),
+          Promise.resolve({ units, validated: true, historyComplete: true }),
         ),
       })
       .compile();
