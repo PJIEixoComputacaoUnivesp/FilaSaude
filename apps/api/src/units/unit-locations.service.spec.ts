@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import type {
   CnesHistoryClient,
   CnesHistoryEntry,
@@ -178,6 +179,28 @@ describe('UnitLocationsService', () => {
     expect(validated).toBe(false);
     expect(units[0]!.location.precision).toBe('municipality');
     expect(units[1]).toBe(inRj);
+  });
+
+  it('reports the units without a boundary in a single warning', async () => {
+    const warn = vi
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation(() => undefined);
+    try {
+      const inputs = ['0000001', '0000002'].map((id) => ({
+        ...unit(-24.9, -46.9, { municipalityCode: '510183' }),
+        id,
+      }));
+      await serviceWith(vi.fn(boundaries)).apply(inputs);
+
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /2 unit\(s\) in municipality 510183.*0000001, 0000002/,
+        ),
+      );
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('keeps a unit untouched when its municipality has no boundary yet', async () => {

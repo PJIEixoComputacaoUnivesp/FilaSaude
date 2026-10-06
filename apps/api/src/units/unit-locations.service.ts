@@ -119,6 +119,17 @@ export class UnitLocationsService {
       }
     });
 
+    const withoutBoundary = units.filter(
+      (unit) =>
+        !failedStates.has(unit.address.state) &&
+        !byMunicipality.has(unit.address.municipalityCode),
+    );
+    if (withoutBoundary.length > 0) {
+      this.logger.warn(
+        `No IBGE boundary for ${withoutBoundary.length} unit(s) in municipality ${[...new Set(withoutBoundary.map((unit) => unit.address.municipalityCode))].join(', ')}; keeping their CNES coordinates unchecked: ${withoutBoundary.map((unit) => unit.id).join(', ')}`,
+      );
+    }
+
     const checks = units.map((unit) =>
       failedStates.has(unit.address.state)
         ? null
@@ -145,12 +156,7 @@ export class UnitLocationsService {
     // Without a boundary there is nothing to compare against, so the CNES
     // coordinate stays as the source declared it. This happens for a
     // municipality newer than the IBGE boundaries.
-    if (!area) {
-      this.logger.warn(
-        `CNES ${unit.id}: no IBGE boundary for municipality ${unit.address.municipalityCode}; keeping the CNES coordinate unchecked`,
-      );
-      return null;
-    }
+    if (!area) return null;
 
     const { latitude, longitude } = unit.location;
     const original =
