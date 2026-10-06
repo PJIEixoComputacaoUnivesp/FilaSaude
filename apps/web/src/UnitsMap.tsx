@@ -27,6 +27,20 @@ interface BoundaryFeature {
 }
 const boundaryOptions: L.PolylineOptions = { smoothFactor: 0 };
 
+function LocationSource({ unit }: { unit: HealthUnit }) {
+  const source = unit.sources.find((item) => item.fields.includes("location"));
+  if (!source) return <>fonte pública · atualização não informada</>;
+
+  return (
+    <>
+      {source.name} ·{" "}
+      {source.lastUpdatedAt
+        ? `atualizado em ${formatSourceDate(source.lastUpdatedAt)}`
+        : "atualização não informada pela fonte"}
+    </>
+  );
+}
+
 const BRAZIL_BOUNDS: LatLngBoundsExpression = [
   [-34, -74],
   [6, -34],
@@ -257,7 +271,7 @@ export function UnitsMap({ units, className = "", overlayRef, isCountryWide }: U
                 </p>
               )}
               <p className="mb-0 text-xs text-slate-500">
-                CNES · atualizado em {formatSourceDate(unit.lastUpdatedAt)}
+                Localização: <LocationSource unit={unit} />
               </p>
             </div>
           </Popup>

@@ -12,6 +12,16 @@ export interface UnitLocation {
   longitude: number | null;
 }
 
+export type UnitSourceField =
+  'identity' | 'address' | 'location' | 'serviceHours';
+
+export interface UnitSource {
+  name: string;
+  url: string;
+  fields: UnitSourceField[];
+  lastUpdatedAt: string | null;
+}
+
 export interface HealthUnit {
   id: string;
   name: string;
@@ -23,6 +33,7 @@ export interface HealthUnit {
   location: UnitLocation;
   serviceHours: string | null;
   lastUpdatedAt: string;
+  sources: UnitSource[];
 }
 
 export interface UnitsMetadata {

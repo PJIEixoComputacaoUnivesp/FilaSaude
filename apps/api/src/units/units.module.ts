@@ -6,12 +6,14 @@ import { UnitsService } from './units.service.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HealthUnitEntity } from '../database/entities/health-unit.entity.js';
 import { HealthUnitRepository } from '../database/repositories/health-unit.repository.js';
+import { GeoSampaClient } from './geosampa.client.js';
 
 @Module({
   imports: [TypeOrmModule.forFeature([HealthUnitEntity])],
   controllers: [UnitsController],
   providers: [
     CnesClient,
+    GeoSampaClient,
     MunicipalitiesClient,
     UnitsService,
     HealthUnitRepository,

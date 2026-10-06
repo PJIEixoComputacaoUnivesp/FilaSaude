@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import snapshot from './units.snapshot.json' with { type: 'json' };
 import { CnesClient } from './cnes.client.js';
+import { GeoSampaClient } from './geosampa.client.js';
 import {
   NationalStateCode,
   parseState,
@@ -12,6 +13,8 @@ const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const FALLBACK_RETRIEVED_AT = '2026-09-24T00:00:00-03:00';
 export const CNES_SOURCE_URL =
   'https://apidadosabertos.saude.gov.br/cnes/estabelecimentos';
+const CNES_DATASET_URL =
+  'https://dadosabertos.saude.gov.br/dataset/cnes-cadastro-nacional-de-estabelecimentos-de-saude';
 
 function latestUpdate(units: readonly HealthUnit[]): string {
   return units.reduce(
@@ -42,6 +45,14 @@ function fallbackUnits(stateAbbr?: string): HealthUnit[] {
     },
     serviceHours: unit.serviceHours ?? null,
     lastUpdatedAt: unit.lastUpdatedAt,
+    sources: [
+      {
+        name: 'Cadastro Nacional de Estabelecimentos de Saúde (CNES)',
+        url: CNES_DATASET_URL,
+        fields: ['identity', 'address', 'location', 'serviceHours'],
+        lastUpdatedAt: unit.lastUpdatedAt,
+      },
+    ],
   }));
 
   if (!stateAbbr || stateAbbr === NationalStateCode.Brazil) {
@@ -59,7 +70,10 @@ export class UnitsService {
   >();
   private readonly pending = new Map<string, Promise<UnitsResponse>>();
 
-  constructor(private readonly cnesClient: CnesClient) {}
+  constructor(
+    private readonly cnesClient: CnesClient,
+    private readonly geoSampaClient: GeoSampaClient,
+  ) {}
 
   async findAll(stateValue?: string): Promise<UnitsResponse> {
     const state = parseState(stateValue);
@@ -97,9 +111,21 @@ export class UnitsService {
     cached?: { expiresAt: number; response: UnitsResponse },
   ): Promise<UnitsResponse> {
     try {
-      const units = await this.cnesClient.fetchUnits(state);
+      let units = await this.cnesClient.fetchUnits(state);
       if (units.length === 0) {
         throw new Error('CNES returned no public urgent care units');
+      }
+
+      if (state.abbreviation === 'SP') {
+        try {
+          units = await this.geoSampaClient.enrichLocations(units);
+        } catch (error: unknown) {
+          const reason =
+            error instanceof Error ? error.message : 'unknown error';
+          this.logger.warn(
+            `GeoSampa enrichment failed; keeping CNES locations: ${reason}`,
+          );
+        }
       }
 
       const response = this.buildResponse(

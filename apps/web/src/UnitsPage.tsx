@@ -27,11 +27,9 @@ function DataNotice({ metadata }: { metadata: UnitsResponse["metadata"] }) {
 
 function UnitCard({
   unit,
-  source,
   headingRef,
 }: {
   unit: HealthUnit;
-  source: UnitsResponse["metadata"]["source"];
   headingRef?: Ref<HTMLHeadingElement>;
 }) {
   return (
@@ -73,18 +71,28 @@ function UnitCard({
         </div>
       </dl>
 
-      <p className="mt-4 border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-500 sm:mt-5 sm:pt-4">
-        Fonte:{" "}
-        <a
-          className="underline hover:text-fila-blue"
-          href={source.url}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {source.name}
-        </a>
-        {" · "}atualizado em {formatSourceDate(unit.lastUpdatedAt)}
-      </p>
+      <ul className="mt-4 space-y-1 border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-500 sm:mt-5 sm:pt-4">
+        {unit.sources.map((source) => (
+          <li key={`${source.name}-${source.fields.join("-")}`}>
+            {source.fields.length === 1 && source.fields[0] === "location"
+              ? "Localização"
+              : "Cadastro"}
+            :{" "}
+            <a
+              className="underline hover:text-fila-blue"
+              href={source.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {source.name}
+            </a>
+            {source.lastUpdatedAt && (
+              <> · atualizado em {formatSourceDate(source.lastUpdatedAt)}</>
+            )}
+            {!source.lastUpdatedAt && " · atualização não informada pela fonte"}
+          </li>
+        ))}
+      </ul>
     </article>
   );
 }
@@ -205,7 +213,6 @@ export function UnitsPage() {
                   <UnitCard
                     key={unit.id}
                     unit={unit}
-                    source={state.response.metadata.source}
                     headingRef={
                       index === focusIndex ? focusHeadingRef : undefined
                     }

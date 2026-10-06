@@ -5,6 +5,8 @@ import type { HealthUnit } from './units.types.js';
 
 const CNES_API_URL =
   'https://apidadosabertos.saude.gov.br/cnes/estabelecimentos';
+const CNES_DATASET_URL =
+  'https://dadosabertos.saude.gov.br/dataset/cnes-cadastro-nacional-de-estabelecimentos-de-saude';
 const PAGE_SIZE = 20;
 const MAX_PAGES = 300;
 const PAGE_BATCH_SIZE = 5;
@@ -85,6 +87,8 @@ function normalizeUnit(
   const state = stateAbbreviation(numericId(record, 'codigo_uf'));
   if (!state) throw new Error('CNES returned an unknown state');
 
+  const lastUpdatedAt = requiredString(record, 'data_atualizacao');
+
   return {
     id: numericId(record, 'codigo_cnes').padStart(7, '0'),
     name: requiredString(record, 'nome_fantasia'),
@@ -110,7 +114,15 @@ function normalizeUnit(
       ),
     },
     serviceHours: optionalString(record, 'descricao_turno_atendimento'),
-    lastUpdatedAt: requiredString(record, 'data_atualizacao'),
+    lastUpdatedAt,
+    sources: [
+      {
+        name: 'Cadastro Nacional de Estabelecimentos de Saúde (CNES)',
+        url: CNES_DATASET_URL,
+        fields: ['identity', 'address', 'location', 'serviceHours'],
+        lastUpdatedAt,
+      },
+    ],
   };
 }
 

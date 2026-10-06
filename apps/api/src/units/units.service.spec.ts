@@ -1,4 +1,5 @@
 import { CnesClient } from './cnes.client.js';
+import { GeoSampaClient } from './geosampa.client.js';
 import { UnitsService } from './units.service.js';
 import type { HealthUnit } from './units.types.js';
 
@@ -17,13 +18,28 @@ const liveUnit: HealthUnit = {
   location: { latitude: -23.55, longitude: -46.63 },
   serviceHours: 'ATENDIMENTO CONTINUO DE 24 HORAS/DIA',
   lastUpdatedAt: '2026-09-20',
+  sources: [
+    {
+      name: 'Cadastro Nacional de Estabelecimentos de Saúde (CNES)',
+      url: 'https://example.com/cnes',
+      fields: ['identity', 'address', 'location', 'serviceHours'],
+      lastUpdatedAt: '2026-09-20',
+    },
+  ],
 };
+
+function createGeoSampaClient() {
+  return {
+    enrichLocations: vi.fn().mockImplementation((units) => units),
+  } as unknown as GeoSampaClient;
+}
 
 describe('UnitsService', () => {
   it('returns and caches live CNES data', async () => {
     const fetchUnits = vi.fn().mockResolvedValue([liveUnit]);
     const client = { fetchUnits } as unknown as CnesClient;
-    const service = new UnitsService(client);
+    const geoSampaClient = createGeoSampaClient();
+    const service = new UnitsService(client, geoSampaClient);
 
     const first = await service.findAll('SP');
     const second = await service.findAll('sp');
@@ -38,6 +54,7 @@ describe('UnitsService', () => {
     });
     expect(second).toBe(first);
     expect(fetchUnits).toHaveBeenCalledTimes(1);
+    expect(geoSampaClient.enrichLocations).toHaveBeenCalledWith([liveUnit]);
   });
 
   it('shares an in-flight CNES request for the same state', async () => {
@@ -49,7 +66,7 @@ describe('UnitsService', () => {
         }),
     );
     const client = { fetchUnits } as unknown as CnesClient;
-    const service = new UnitsService(client);
+    const service = new UnitsService(client, createGeoSampaClient());
 
     const first = service.findAll('SP');
     const second = service.findAll('SP');
@@ -65,7 +82,7 @@ describe('UnitsService', () => {
     const client = {
       fetchUnits: vi.fn().mockRejectedValue(new Error('unavailable')),
     } as unknown as CnesClient;
-    const service = new UnitsService(client);
+    const service = new UnitsService(client, createGeoSampaClient());
 
     const response = await service.findAll('SP');
 
@@ -84,7 +101,7 @@ describe('UnitsService', () => {
         .mockResolvedValueOnce([liveUnit])
         .mockRejectedValueOnce(new Error('unavailable'));
       const client = { fetchUnits } as unknown as CnesClient;
-      const service = new UnitsService(client);
+      const service = new UnitsService(client, createGeoSampaClient());
 
       const live = await service.findAll('RJ');
       vi.advanceTimersByTime(7 * 60 * 60 * 1000);
@@ -105,7 +122,7 @@ describe('UnitsService', () => {
   it('rejects an invalid state before calling CNES', async () => {
     const fetchUnits = vi.fn();
     const client = { fetchUnits } as unknown as CnesClient;
-    const service = new UnitsService(client);
+    const service = new UnitsService(client, createGeoSampaClient());
 
     await expect(service.findAll('XX')).rejects.toThrow(
       'Invalid Brazilian state abbreviation',
@@ -116,12 +133,29 @@ describe('UnitsService', () => {
   it('returns all country units for ALL/BR', async () => {
     const fetchUnits = vi.fn();
     const client = { fetchUnits } as unknown as CnesClient;
-    const service = new UnitsService(client);
+    const geoSampaClient = createGeoSampaClient();
+    const service = new UnitsService(client, geoSampaClient);
 
     const response = await service.findAll('ALL');
     expect(response.data.length).toBeGreaterThan(1000);
     expect(response.metadata.state).toBe('BR');
     expect(response.metadata.dataOrigin).toBe('fallback');
     expect(fetchUnits).not.toHaveBeenCalled();
+    expect(geoSampaClient.enrichLocations).not.toHaveBeenCalled();
+  });
+
+  it('keeps CNES locations when GeoSampa is unavailable', async () => {
+    const client = {
+      fetchUnits: vi.fn().mockResolvedValue([liveUnit]),
+    } as unknown as CnesClient;
+    const geoSampaClient = {
+      enrichLocations: vi.fn().mockRejectedValue(new Error('unavailable')),
+    } as unknown as GeoSampaClient;
+    const service = new UnitsService(client, geoSampaClient);
+
+    const response = await service.findAll('SP');
+
+    expect(response.data).toEqual([liveUnit]);
+    expect(response.metadata.dataOrigin).toBe('live');
   });
 });
