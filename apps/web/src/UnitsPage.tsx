@@ -70,10 +70,10 @@ function UnitCard({
             {unit.location.latitude === null || unit.location.longitude === null
               ? "Coordenadas não informadas na fonte pública"
               : unit.location.precision === "municipality"
-                ? "Aproximada: centro do município"
+                ? "Aproximada: centro do município (contorno do IBGE)"
                 : unit.location.precision === "history" &&
                     unit.location.referenceMonth
-                  ? `Posição registrada no CNES em ${formatReferenceMonth(unit.location.referenceMonth)}`
+                  ? `Posição do CNES de ${formatReferenceMonth(unit.location.referenceMonth)} (a coordenada atual não é utilizável)`
                   : "Disponível"}
           </dd>
         </div>

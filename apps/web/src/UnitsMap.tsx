@@ -28,7 +28,9 @@ const preciseMarker = {
   opacity: 1,
   weight: 2,
 };
-// A hollow ring tells the position is not the unit's own coordinate.
+// A hollow ring tells the position is only the municipality center. A
+// `history` point keeps the solid marker: it is still a CNES coordinate
+// registered for the unit's own address, and the popup says where it is from.
 const approximateMarker = {
   color: markerColor,
   fillColor: "white",
@@ -280,14 +282,15 @@ export function UnitsMap({ units, className = "", overlayRef, isCountryWide }: U
                     Posição registrada no CNES em{" "}
                     {formatReferenceMonth(unit.location.referenceMonth)}. A
                     coordenada atual do cadastro está ausente ou fora do
-                    município, então mostramos o último ponto válido informado
-                    para este mesmo endereço.
+                    município, então mostramos o ponto mais recente dentro do
+                    município informado para este mesmo endereço.
                   </p>
                 )}
               {unit.location.precision === "municipality" && (
                 <p className="my-2 text-xs font-medium text-amber-800">
-                  Localização aproximada: centro do município. O cadastro do
-                  CNES não traz uma posição válida para esta unidade.
+                  Localização aproximada: centro do município (contorno do
+                  IBGE). O cadastro do CNES não traz uma posição válida para
+                  esta unidade.
                 </p>
               )}
               <p className="mb-0 text-xs text-slate-500">
