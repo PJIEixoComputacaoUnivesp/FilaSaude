@@ -22,10 +22,13 @@ export interface HealthUnit {
      * `history`: the current CNES coordinate was unusable, so the point is the
      * latest earlier CNES coordinate for the same address (see `referenceMonth`).
      * `municipality`: no usable point exists, so it is the municipality center.
+     * `manual`: an administrator set the position (see `correctedAt`).
      */
-    precision: "source" | "history" | "municipality";
+    precision: "source" | "history" | "municipality" | "manual";
     /** CNES monthly release (`YYYY-MM`) a `history` point comes from. */
     referenceMonth: string | null;
+    /** Date (`YYYY-MM-DD`) an administrator set a `manual` position. */
+    correctedAt: string | null;
   };
   serviceHours: string | null;
   lastUpdatedAt: string;
@@ -73,7 +76,9 @@ function isUnit(value: unknown): value is HealthUnit {
       value.location.precision === "source" ||
       value.location.precision === "municipality" ||
       (value.location.precision === "history" &&
-        typeof value.location.referenceMonth === "string")) &&
+        typeof value.location.referenceMonth === "string") ||
+      (value.location.precision === "manual" &&
+        typeof value.location.correctedAt === "string")) &&
     typeof value.address.city === "string" &&
     typeof value.address.state === "string" &&
     typeof value.lastUpdatedAt === "string"

@@ -276,6 +276,13 @@ export function UnitsMap({ units, className = "", overlayRef, isCountryWide }: U
                   {unit.serviceHours}
                 </p>
               )}
+              {unit.location.precision === "manual" &&
+                unit.location.correctedAt && (
+                  <p className="my-2 text-xs font-medium text-amber-800">
+                    Posição corrigida manualmente em{" "}
+                    {formatSourceDate(unit.location.correctedAt)}.
+                  </p>
+                )}
               {unit.location.precision === "history" &&
                 unit.location.referenceMonth && (
                   <p className="my-2 text-xs font-medium text-amber-800">
