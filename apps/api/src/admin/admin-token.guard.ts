@@ -33,7 +33,6 @@ import { FailureLimiter } from './failure-limiter.js';
 export class AdminTokenGuard implements CanActivate {
   private readonly logger = new Logger(AdminTokenGuard.name);
   private parsed?: { raw: string | undefined; value: ParsedAdminTokens | null };
-  private blockedLogged = false;
 
   constructor(private readonly limiter: FailureLimiter) {}
 
@@ -46,9 +45,10 @@ export class AdminTokenGuard implements CanActivate {
       admin?: { login: string };
     }>();
     const authorization = request.headers.authorization;
+    // The scheme name is case-insensitive (RFC 7235).
     const supplied =
-      typeof authorization === 'string' && authorization.startsWith('Bearer ')
-        ? authorization.slice('Bearer '.length)
+      typeof authorization === 'string'
+        ? (/^Bearer\s+(\S+)\s*$/i.exec(authorization)?.[1] ?? '')
         : '';
 
     const admin = this.authenticate(configured.admins, supplied);
@@ -83,15 +83,15 @@ export class AdminTokenGuard implements CanActivate {
   /**
    * Failures are logged in aggregate, the first of a window and the one that
    * reaches the limit, so an attacker cannot flood the log. They are never
-   * written to the database for the same reason.
+   * written to the database for the same reason. The state lives in the
+   * limiter, which is shared, because Nest builds one guard per module that
+   * uses it.
    */
   private recordFailure(): void {
     const count = this.limiter.record();
     if (count === 1) {
       this.logger.warn('Admin request with an invalid token');
-      this.blockedLogged = false;
-    } else if (count >= this.limiter.limit && !this.blockedLogged) {
-      this.blockedLogged = true;
+    } else if (this.limiter.announceBlock()) {
       this.logger.warn(
         `${count} failed admin attempts in the window; invalid attempts are now refused`,
       );
@@ -106,7 +106,12 @@ export class AdminTokenGuard implements CanActivate {
 
     const value = parseAdminTokens(raw);
     this.parsed = { raw, value };
-    if (value && 'error' in value) {
+    // Keyed by a digest, so the value itself is never kept as a key.
+    if (
+      value &&
+      'error' in value &&
+      this.limiter.firstTime(`config:${digestOf(raw ?? '').toString('hex')}`)
+    ) {
       this.logger.warn(
         `ADMIN_API_TOKENS is invalid, so the admin endpoints stay disabled: ${value.error}`,
       );

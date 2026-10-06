@@ -56,6 +56,28 @@ describe('AdminTokenGuard', () => {
     expect(joao.admin).toEqual({ login: 'joao' });
   });
 
+  it.each(['Bearer', 'bearer', 'BEARER', 'bEaReR'])(
+    'accepts the %s scheme, which is case-insensitive',
+    (scheme) => {
+      vi.stubEnv('ADMIN_API_TOKENS', LIST);
+      const request = { headers: { authorization: `${scheme} ${MARIA}` } };
+
+      expect(guard().canActivate(contextWith(request))).toBe(true);
+      expect(request).toMatchObject({ admin: { login: 'maria' } });
+    },
+  );
+
+  it('does not count a differently-cased scheme as a failure', () => {
+    vi.stubEnv('ADMIN_API_TOKENS', LIST);
+    const limiter = new FailureLimiter();
+
+    guard(limiter).canActivate(
+      contextWith({ headers: { authorization: `bearer ${MARIA}` } }),
+    );
+
+    expect(limiter.size).toBe(0);
+  });
+
   it('never attributes a token to another administrator', () => {
     vi.stubEnv('ADMIN_API_TOKENS', LIST);
     const request = bearer(JOAO);
@@ -135,6 +157,42 @@ describe('AdminTokenGuard', () => {
       UnauthorizedException,
     );
     expect(instance.canActivate(contextWith(bearer(MARIA)))).toBe(true);
+  });
+
+  describe('guards that share a limiter', () => {
+    // Nest builds one guard per module that uses it.
+    it('warns once about a malformed list, not once per guard', () => {
+      vi.stubEnv('ADMIN_API_TOKENS', `maria:${MARIA},joao:short`);
+      const limiter = new FailureLimiter();
+      const [first, second] = [guard(limiter), guard(limiter)];
+
+      for (const instance of [first, second, first, second]) {
+        expect(() => instance.canActivate(contextWith(bearer(MARIA)))).toThrow(
+          NotFoundException,
+        );
+      }
+
+      expect(warn).toHaveBeenCalledTimes(1);
+    });
+
+    it('announces the start of a block once, whichever guard sees it', () => {
+      vi.stubEnv('ADMIN_API_TOKENS', LIST);
+      const limiter = new FailureLimiter();
+      const [first, second] = [guard(limiter), guard(limiter)];
+
+      for (let i = 0; i < limiter.limit + 10; i++) {
+        try {
+          (i % 2 ? first : second).canActivate(
+            contextWith(bearer('q'.repeat(48))),
+          );
+        } catch {
+          // expected
+        }
+      }
+
+      // The first failure and the start of the block.
+      expect(warn).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('failed attempts', () => {
