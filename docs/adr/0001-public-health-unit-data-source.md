@@ -239,7 +239,9 @@ coordenadas dessa tabela pelo código CNES.
   pessoa. Revogar alguém é remover a entrada do secret e fazer um novo deploy, e
   a lista é o inventário de quem tem acesso. A rotação de um token também exige
   trocar o secret e fazer um novo deploy.
-- **Interruptor:** sem uma lista válida configurada, as rotas não existem (404).
+- **Interruptor:** sem uma lista válida configurada, as rotas não existem (404,
+  com `error: "AdminDisabled"` no corpo, para a página distinguir "desligada" de
+  "unidade inexistente").
   Uma entrada malformada (sem login, token com menos de 32 caracteres ou com
   `:`, login ou token repetido) mantém todas as rotas desligadas, e o log
   aponta a posição da entrada e nunca o valor. A função fica desligada até
@@ -248,8 +250,10 @@ coordenadas dessa tabela pelo código CNES.
   (ver "Licença e referências").
 - **Tentativas inválidas:** mais de 20 falhas em 10 minutos, numa janela global
   que dispensa o endereço do cliente (atrás de um proxy ele não é confiável),
-  fazem as tentativas inválidas seguintes receberem 429. Um token válido nunca
-  é contado nem bloqueado, então não há como travar um administrador de
+  fazem as tentativas inválidas seguintes receberem 429. Só conta como tentativa
+  um pedido que traz um token: um pedido sem token não adivinha nada, e contá-lo
+  deixaria qualquer requisição anônima gastar a janela. Um token válido nunca é
+  contado nem bloqueado, então não há como travar um administrador de
   propósito. Por isso o limite **sinaliza** o abuso, mas não impede adivinhar:
   quem acertasse um token continuaria passando. A proteção contra adivinhação é
   o tamanho e a aleatoriedade dos tokens (256 bits com `openssl rand -hex 32`).
@@ -273,7 +277,9 @@ coordenadas dessa tabela pelo código CNES.
   correção. Em 320 primeiras escritas simultâneas, o lock de linha falhou em 273
   por violação da chave primária, e o lock advisory em nenhuma. O cache só é
   invalidado depois do commit, e só o da UF da unidade e o da visão nacional,
-  pois refazer uma UF no CNES leva dezenas de segundos. As entradas são
+  pois refazer uma UF no CNES leva dezenas de segundos. A geração que descarta
+  uma carga em andamento também é por chave, senão uma correção em uma UF faria
+  uma carga lenta de outra UF não ser guardada. As entradas são
   descartadas, e não mantidas como reserva: se o CNES estiver fora do ar logo
   depois de uma remoção, o snapshot embutido passa pelas correções atuais, e uma
   resposta antiga continuaria mostrando a posição removida. A auditoria é
