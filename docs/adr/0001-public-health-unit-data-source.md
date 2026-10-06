@@ -107,8 +107,10 @@ arquivos do conjunto como alternativa.
 A primeira entrega (PR #36) ainda não tem PostgreSQL nem job. Nela, a API
 consulta o CNES durante a requisição, com cache em memória de seis horas por UF.
 Se a consulta falhar, ela usa a última resposta válida marcada como
-desatualizada e, para SP, um snapshot incorporado. Essa abordagem é temporária e
-será substituída pela ingestão descrita acima nas issues #22 e #23.
+desatualizada e, na falta dela, o snapshot incorporado da UF. O mesmo snapshot
+atende sozinho a visão nacional (`ALL` e `BR`), sem consultar o CNES. Essa
+abordagem é temporária e será substituída pela ingestão descrita acima nas
+issues #22 e #23.
 
 ## Dados persistidos
 
@@ -196,8 +198,13 @@ criados mais recentemente, como Boa Esperança do Norte (MT, 5101837). Para
 essas unidades não há como validar a coordenada, que permanece a do CNES, e o
 fato é registrado no log. Em 2026-10-06 era o caso de 1 unidade.
 
-A data exibida junto de uma posição `history` é a competência de origem, e não
-a `data_atualizacao` do registro atual.
+Junto de uma posição `history`, a interface mostra a competência de origem do
+ponto, além da `data_atualizacao` do registro atual, que continua sendo a data
+do cadastro exibido.
+
+A visão nacional, servida pelo snapshot, passa pela mesma verificação, inclusive
+pelo histórico. O fallback por UF, que só ocorre quando o CNES está fora do ar,
+não consulta o histórico, pois ele estaria indisponível também.
 
 Correções manuais e geocodificação pelo endereço (`manual` e `geocoded`) serão
 adicionadas com o job de ingestão e, quando existirem, também serão
@@ -226,7 +233,10 @@ O FilaSaúde trata assim as operações aplicadas aos dados:
   próprio CNES, de uma competência anterior e para o mesmo endereço (`history`),
   e usar o centro do município calculado do contorno do IBGE (`municipality`).
   O primeiro é um valor da fonte sem alteração; o segundo não vem do CNES. Nos
-  dois, a coordenada informada é preservada em `location.original`.
+  dois, a coordenada informada é preservada em `location.original`. O
+  `municipality` foi adotado na Etapa 1 por ser sempre sinalizado e preservar o
+  original, mas, por não vir do CNES, essa classificação precisa ser confirmada
+  pelo grupo junto com a de `manual` e `geocoded`.
 - **Não são feitas:** corrigir, completar ou inferir endereços, horários ou
   nomes, nem trocar uma coordenada sem sinalizar. A correção manual e a
   geocodificação (`manual` e `geocoded`) criam valores que não são do CNES e só
