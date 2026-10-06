@@ -2,30 +2,47 @@ import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { BrazilianStateSelect } from "./BrazilianStateSelect";
 import { UnitsMap } from "./UnitsMap";
+import { NationalStateCode } from "./brazilianStates";
 import { formatAddress, formatSourceDate } from "./units";
 import { useUnits } from "./useUnits";
 
 export function MapPage() {
-  const [stateCode, setStateCode] = useState("SP");
-  const { state, retry } = useUnits(stateCode);
+  const [selectedState, setSelectedState] = useState<string>(
+    NationalStateCode.All,
+  );
+  const { state, retry } = useUnits(NationalStateCode.All);
   const [query, setQuery] = useState("");
+  const panelRef = useRef<HTMLElement>(null);
+
   const filteredUnits = useMemo(() => {
     if (state.status !== "success") return [];
+    let list = state.response.data;
+
+    if (selectedState !== NationalStateCode.All) {
+      list = list.filter((unit) => unit.address.state === selectedState);
+    }
+
     const normalized = query.trim().toLocaleLowerCase("pt-BR");
-    if (!normalized) return state.response.data;
-    return state.response.data.filter((unit) =>
-      `${unit.name} ${formatAddress(unit.address)}`
-        .toLocaleLowerCase("pt-BR")
-        .includes(normalized),
-    );
-  }, [query, state]);
+    if (normalized) {
+      list = list.filter((unit) =>
+        `${unit.name} ${formatAddress(unit.address)}`
+          .toLocaleLowerCase("pt-BR")
+          .includes(normalized),
+      );
+    }
+
+    return list;
+  }, [query, selectedState, state]);
+
   const mapUnits = state.status === "success" ? filteredUnits : [];
-  const panelRef = useRef<HTMLElement>(null);
+  const isCountryWide =
+    selectedState === NationalStateCode.All && !query.trim();
 
   return (
     <main className="relative min-h-[28rem] w-full flex-1">
       <UnitsMap
         units={mapUnits}
+        isCountryWide={isCountryWide}
         overlayRef={panelRef}
         className="absolute inset-0"
       />
@@ -37,9 +54,10 @@ export function MapPage() {
       >
         <div className="grid grid-cols-[minmax(0,7rem)_1fr] gap-2 sm:grid-cols-1 sm:gap-3">
           <BrazilianStateSelect
-            value={stateCode}
-            onChange={setStateCode}
+            value={selectedState}
+            onChange={setSelectedState}
             compact
+            allOptionLabel="Todas as UFs"
           />
           <label className="block">
             <span className="mb-1 block text-xs font-semibold text-slate-800 sm:mb-2 sm:text-sm">

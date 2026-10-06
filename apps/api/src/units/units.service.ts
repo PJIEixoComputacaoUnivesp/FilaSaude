@@ -2,7 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import snapshot from './units.snapshot.json' with { type: 'json' };
 import { CnesClient } from './cnes.client.js';
 import { UnitLocationsService } from './unit-locations.service.js';
-import { parseState, type BrazilianState } from './states.js';
+import {
+  NationalStateCode,
+  parseState,
+  type BrazilianState,
+} from './states.js';
 import type { HealthUnit, UnitsResponse } from './units.types.js';
 
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
@@ -12,7 +16,6 @@ const UNVALIDATED_CACHE_TTL_MS = 5 * 60 * 1000;
 // coordinate, which keep the municipality center meanwhile, so retrying it
 // does not justify refetching the whole list every few minutes.
 const INCOMPLETE_HISTORY_CACHE_TTL_MS = 60 * 60 * 1000;
-const NATIONAL_KEY = 'BR';
 const FALLBACK_RETRIEVED_AT = '2026-09-24T00:00:00-03:00';
 export const CNES_SOURCE_URL =
   'https://apidadosabertos.saude.gov.br/cnes/estabelecimentos';
@@ -35,8 +38,8 @@ function cacheTtl(located: {
     : INCOMPLETE_HISTORY_CACHE_TTL_MS;
 }
 
-function fallbackUnits(): HealthUnit[] {
-  return snapshot.map((unit) => ({
+function fallbackUnits(stateAbbr?: string): HealthUnit[] {
+  const units: HealthUnit[] = snapshot.map((unit) => ({
     id: unit.id,
     name: unit.name,
     unitType: unit.unitType as HealthUnit['unitType'],
@@ -61,6 +64,11 @@ function fallbackUnits(): HealthUnit[] {
     serviceHours: unit.serviceHours ?? null,
     lastUpdatedAt: unit.lastUpdatedAt,
   }));
+
+  if (!stateAbbr || stateAbbr === NationalStateCode.Brazil) {
+    return units;
+  }
+  return units.filter((unit) => unit.address.state === stateAbbr);
 }
 
 @Injectable()
@@ -77,28 +85,53 @@ export class UnitsService {
     private readonly locations: UnitLocationsService,
   ) {}
 
-  /** Lists the units of one state, or of the whole country without a state. */
   async findAll(stateValue?: string): Promise<UnitsResponse> {
-    const state = stateValue === undefined ? null : parseState(stateValue);
-    const key = state?.abbreviation ?? NATIONAL_KEY;
-    const cached = this.cache.get(key);
+    const state = parseState(stateValue);
+    const cached = this.cache.get(state.abbreviation);
     if (cached && cached.expiresAt > Date.now()) return cached.response;
 
-    // Concurrent requests for the same key share a single CNES fetch.
-    let request = this.pending.get(key);
+    // Concurrent requests for the same key share a single load.
+    let request = this.pending.get(state.abbreviation);
     if (!request) {
-      request = this.load(key, state, cached?.response).finally(() =>
-        this.pending.delete(key),
-      );
-      this.pending.set(key, request);
+      request = (
+        state.abbreviation === NationalStateCode.Brazil
+          ? this.loadNational(state)
+          : this.loadLive(state, cached)
+      ).finally(() => {
+        this.pending.delete(state.abbreviation);
+      });
+      this.pending.set(state.abbreviation, request);
     }
+
     return request;
   }
 
-  private async load(
-    key: string,
-    state: BrazilianState | null,
-    previous: UnitsResponse | undefined,
+  /**
+   * The national view is served from the embedded snapshot, which keeps the
+   * CNES coordinates as they were collected. Their position is still checked
+   * against the municipality, like any other response, so that a misplaced
+   * unit does not appear outside it.
+   */
+  private async loadNational(state: BrazilianState): Promise<UnitsResponse> {
+    const located = await this.locations.apply(
+      fallbackUnits(NationalStateCode.Brazil),
+    );
+    const response = this.buildResponse(
+      located.units,
+      state,
+      'fallback',
+      FALLBACK_RETRIEVED_AT,
+    );
+    this.cache.set(state.abbreviation, {
+      expiresAt: Date.now() + cacheTtl(located),
+      response,
+    });
+    return response;
+  }
+
+  private async loadLive(
+    state: BrazilianState,
+    cached?: { expiresAt: number; response: UnitsResponse },
   ): Promise<UnitsResponse> {
     try {
       const units = await this.cnesClient.fetchUnits(state);
@@ -109,43 +142,55 @@ export class UnitsService {
       const located = await this.locations.apply(units);
       const response = this.buildResponse(
         located.units,
-        key,
+        state,
         'live',
         new Date().toISOString(),
       );
-      this.cache.set(key, {
+      this.cache.set(state.abbreviation, {
         expiresAt: Date.now() + cacheTtl(located),
         response,
       });
       return response;
     } catch (error: unknown) {
       const reason = error instanceof Error ? error.message : 'unknown error';
-      this.logger.warn(`CNES request failed for ${key}: ${reason}`);
+      this.logger.warn(
+        `CNES request failed for ${state.abbreviation}: ${reason}`,
+      );
 
-      if (previous) {
-        this.logger.warn(`Using the last live CNES response for ${key}`);
+      if (cached) {
+        this.logger.warn(
+          `Using the last live CNES response for ${state.abbreviation}`,
+        );
         return {
-          ...previous,
-          metadata: { ...previous.metadata, isStale: true },
+          ...cached.response,
+          metadata: { ...cached.response.metadata, isStale: true },
         };
       }
 
-      if (key !== 'SP') throw error;
+      const fallback = fallbackUnits(state.abbreviation);
+      if (fallback.length > 0) {
+        this.logger.warn(
+          `Using the CNES fallback snapshot for ${state.abbreviation}`,
+        );
+        // CNES is already unreachable, so its history would be as well.
+        const located = await this.locations.apply(fallback, {
+          history: false,
+        });
+        return this.buildResponse(
+          located.units,
+          state,
+          'fallback',
+          FALLBACK_RETRIEVED_AT,
+        );
+      }
 
-      this.logger.warn('Using the CNES fallback snapshot for SP');
-      // CNES is already unreachable, so its history would be as well.
-      return this.buildResponse(
-        (await this.locations.apply(fallbackUnits(), { history: false })).units,
-        key,
-        'fallback',
-        FALLBACK_RETRIEVED_AT,
-      );
+      throw error;
     }
   }
 
   private buildResponse(
     units: HealthUnit[],
-    key: string,
+    state: BrazilianState,
     dataOrigin: 'live' | 'fallback',
     retrievedAt: string,
   ): UnitsResponse {
@@ -153,7 +198,7 @@ export class UnitsService {
       data: units,
       metadata: {
         count: units.length,
-        state: key,
+        state: state.abbreviation,
         dataOrigin,
         isStale: dataOrigin === 'fallback',
         retrievedAt,

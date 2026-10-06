@@ -6,23 +6,39 @@ type UnitsState =
   | { status: "success"; stateCode: string; response: UnitsResponse }
   | { status: "error"; stateCode: string; message: string };
 
+const unitsCache = new Map<string, UnitsResponse>();
+
 export function useUnits(stateCode: string) {
-  const [state, setState] = useState<UnitsState>({
-    status: "loading",
-    stateCode,
-  });
+  const cached = unitsCache.get(stateCode);
+  const [state, setState] = useState<UnitsState>(
+    cached
+      ? { status: "success", stateCode, response: cached }
+      : { status: "loading", stateCode },
+  );
   const [attempt, setAttempt] = useState(0);
 
   const retry = useCallback(() => {
+    unitsCache.delete(stateCode);
     setState({ status: "loading", stateCode });
     setAttempt((current) => current + 1);
   }, [stateCode]);
 
   useEffect(() => {
+    const cached = unitsCache.get(stateCode);
+    if (cached) {
+      // Sync the hook with its module-level cache when the selected UF changes.
+      // oxlint-disable-next-line react/set-state-in-effect
+      setState({ status: "success", stateCode, response: cached });
+      return;
+    }
+
     const controller = new AbortController();
 
     fetchUnits(stateCode, controller.signal)
-      .then((response) => setState({ status: "success", stateCode, response }))
+      .then((response) => {
+        unitsCache.set(stateCode, response);
+        setState({ status: "success", stateCode, response });
+      })
       .catch((error: unknown) => {
         if (!controller.signal.aborted) {
           setState({

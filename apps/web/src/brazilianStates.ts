@@ -28,7 +28,18 @@ export const brazilianStates = [
   { abbreviation: "TO", name: "Tocantins" },
 ] as const;
 
+export const NationalStateCode = {
+  All: "ALL",
+  Brazil: "BR",
+} as const;
+
 export function stateName(abbreviation: string): string {
+  if (
+    abbreviation === NationalStateCode.All ||
+    abbreviation === NationalStateCode.Brazil
+  ) {
+    return "Todas as UFs";
+  }
   return (
     brazilianStates.find((state) => state.abbreviation === abbreviation)
       ?.name ?? abbreviation

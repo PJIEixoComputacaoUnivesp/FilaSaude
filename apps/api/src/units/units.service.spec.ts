@@ -54,6 +54,27 @@ describe('UnitsService', () => {
     expect(fetchUnits).toHaveBeenCalledTimes(1);
   });
 
+  it('shares an in-flight CNES request for the same state', async () => {
+    let resolveFetch: ((units: HealthUnit[]) => void) | undefined;
+    const fetchUnits = vi.fn().mockImplementation(
+      () =>
+        new Promise<HealthUnit[]>((resolve) => {
+          resolveFetch = resolve;
+        }),
+    );
+    const client = { fetchUnits } as unknown as CnesClient;
+    const service = new UnitsService(client, passthrough);
+
+    const first = service.findAll('SP');
+    const second = service.findAll('SP');
+
+    expect(fetchUnits).toHaveBeenCalledTimes(1);
+    resolveFetch?.([liveUnit]);
+    const [firstResponse, secondResponse] = await Promise.all([first, second]);
+
+    expect(secondResponse).toBe(firstResponse);
+  });
+
   it('returns the snapshot when CNES is unavailable', async () => {
     const client = {
       fetchUnits: vi.fn().mockRejectedValue(new Error('unavailable')),
@@ -123,35 +144,6 @@ describe('UnitsService', () => {
     }
   });
 
-  it('returns national data without a state', async () => {
-    const fetchUnits = vi.fn().mockResolvedValue([liveUnit]);
-    const client = { fetchUnits } as unknown as CnesClient;
-    const service = new UnitsService(client, passthrough);
-
-    const response = await service.findAll();
-
-    expect(fetchUnits).toHaveBeenCalledWith(null);
-    expect(response.metadata).toMatchObject({ state: 'BR', count: 1 });
-  });
-
-  it('shares a single CNES fetch between concurrent requests', async () => {
-    let resolveFetch: (units: HealthUnit[]) => void = () => undefined;
-    const fetchUnits = vi.fn().mockReturnValue(
-      new Promise<HealthUnit[]>((resolve) => {
-        resolveFetch = resolve;
-      }),
-    );
-    const client = { fetchUnits } as unknown as CnesClient;
-    const service = new UnitsService(client, passthrough);
-
-    const first = service.findAll();
-    const second = service.findAll();
-    resolveFetch([liveUnit]);
-
-    expect(await second).toBe(await first);
-    expect(fetchUnits).toHaveBeenCalledTimes(1);
-  });
-
   it('rejects an invalid state before calling CNES', async () => {
     const fetchUnits = vi.fn();
     const client = { fetchUnits } as unknown as CnesClient;
@@ -160,6 +152,18 @@ describe('UnitsService', () => {
     await expect(service.findAll('XX')).rejects.toThrow(
       'Invalid Brazilian state abbreviation',
     );
+    expect(fetchUnits).not.toHaveBeenCalled();
+  });
+
+  it('returns all country units for ALL/BR', async () => {
+    const fetchUnits = vi.fn();
+    const client = { fetchUnits } as unknown as CnesClient;
+    const service = new UnitsService(client, passthrough);
+
+    const response = await service.findAll('ALL');
+    expect(response.data.length).toBeGreaterThan(1000);
+    expect(response.metadata.state).toBe('BR');
+    expect(response.metadata.dataOrigin).toBe('fallback');
     expect(fetchUnits).not.toHaveBeenCalled();
   });
 });
