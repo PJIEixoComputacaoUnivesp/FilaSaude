@@ -12,12 +12,15 @@
     "build": "pnpm --recursive --if-present build",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "dev": "pnpm --parallel --filter './apps/*' dev",
-    "lint": "pnpm --recursive --if-present lint",
+    "lint": "pnpm --recursive --if-present lint && pnpm --filter @filasaude/web exec oxlint $PWD/e2e $PWD/playwright.config.ts",
     "prepare": "husky",
     "test": "pnpm --recursive --if-present test",
-    "typecheck": "pnpm --recursive --if-present typecheck"
+    "test:e2e": "playwright test",
+    "typecheck": "pnpm --recursive --if-present typecheck && pnpm --filter @filasaude/web exec tsc -p $PWD/e2e/tsconfig.json"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^24.13.3",
     "husky": "^9.1.7",
     "lint-staged": "^17.5.1"
   },
