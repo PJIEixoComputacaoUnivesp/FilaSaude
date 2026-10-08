@@ -14,9 +14,24 @@ const unitsResponse = {
         city: "São Paulo",
         state: "SP",
       },
-      location: { latitude: -23.596, longitude: -46.643 },
+      location: {
+        latitude: -23.596,
+        longitude: -46.643,
+        precision: "source",
+        original: null,
+        referenceMonth: null,
+        correctedAt: null,
+      },
       serviceHours: "Atendimento contínuo de 24 horas por dia",
       lastUpdatedAt: "2026-09-20",
+      sources: [
+        {
+          name: "Cadastro Nacional de Estabelecimentos de Saúde (CNES)",
+          url: "https://cnes.datasus.gov.br/",
+          fields: ["identity", "address", "location", "serviceHours"],
+          lastUpdatedAt: "2026-09-20",
+        },
+      ],
     },
     {
       id: "7654321",
@@ -30,9 +45,24 @@ const unitsResponse = {
         city: "Osasco",
         state: "SP",
       },
-      location: { latitude: -23.532, longitude: -46.792 },
+      location: {
+        latitude: -23.532,
+        longitude: -46.792,
+        precision: "source",
+        original: null,
+        referenceMonth: null,
+        correctedAt: null,
+      },
       serviceHours: null,
       lastUpdatedAt: "2026-09-18",
+      sources: [
+        {
+          name: "Cadastro Nacional de Estabelecimentos de Saúde (CNES)",
+          url: "https://cnes.datasus.gov.br/",
+          fields: ["identity", "address", "location", "serviceHours"],
+          lastUpdatedAt: "2026-09-18",
+        },
+      ],
     },
   ],
   metadata: {
