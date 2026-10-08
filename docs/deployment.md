@@ -68,6 +68,7 @@ adicione os secrets:
 | `DROPLET_KNOWN_HOSTS` | Linha de host key confiável do servidor |
 | `APP_DOMAIN` | Domínio completo, sem protocolo, ou `http://IP` sem domínio |
 | `POSTGRES_PASSWORD` | Senha do PostgreSQL de produção (`openssl rand -hex 32`) |
+| `ADMIN_API_TOKENS` | Opcional. Liga a administração das posições. Uma entrada `login:token` por administrador, separadas por vírgula (ver "Correções manuais de posição") |
 
 Crie também duas variáveis de Actions:
 
@@ -184,6 +185,84 @@ serviço tem recursos limitados para caber em um Droplet de 1 GB:
 Adicione o secret `POSTGRES_PASSWORD` ao environment `production` antes do
 próximo deploy. Gere a senha com `openssl rand -hex 32`. `POSTGRES_DB` e
 `POSTGRES_USER` usam `filasaude` por padrão.
+
+### Correções manuais de posição
+
+Quando o cadastro do CNES traz uma coordenada errada, um administrador define a
+posição da unidade em tempo de execução, sem novo deploy, pela página `/admin`
+do site (não aparece no menu) ou pela API. A função fica **desligada** enquanto o
+secret `ADMIN_API_TOKENS` não existir ou estiver malformado: nesse caso as rotas
+`/admin/*` respondem 404 e o motivo vai para o log. O grupo confirma o uso de
+posições que não vêm do CNES caso a caso, no momento em que um administrador faz
+cada correção (ver "Licença e referências" no ADR 0001).
+
+**Quem é administrador.** Quem tem um token na lista, e cada pessoa tem o seu.
+Há um único nível de acesso e nenhuma rota ou tela que cadastre administradores:
+eles existem só por esse secret. As alterações ficam registradas em nome do
+login do token, e não de um nome digitado.
+
+Formato: `login:token,login:token`. O login é o login do GitHub (letras, números e
+hífen, até 39 caracteres). O token tem no mínimo 32 caracteres, sem `:` nem `,`;
+use hexadecimal (`openssl rand -hex 32`), pois o valor é gravado no `.env` do
+servidor. Uma entrada com erro, ou com login ou token repetido, desliga todas as
+rotas, e o log aponta a posição da entrada, nunca o valor.
+
+```bash
+# gere um token por pessoa e monte a lista para colar no secret
+printf 'maria-souza:%s,joao:%s' "$(openssl rand -hex 32)" "$(openssl rand -hex 32)"
+```
+
+**Entrada e saída de pessoas.** Entregue cada token só à própria pessoa, nunca em
+chat aberto. Para revogar o acesso de alguém, remova a entrada do secret e faça
+um deploy: o novo `.env` substitui o anterior e o token deixa de valer. A lista
+é o inventário de quem pode corrigir posições, então mantenha-a atualizada.
+
+**Usando a página.** Abra `https://SEU_DOMINIO/admin`, informe o seu token (ele
+fica só na memória da aba e é pedido de novo ao recarregar), escolha a unidade
+pela busca ou pelo código CNES, clique no mapa para marcar a posição correta (ou
+cole "latitude, longitude" copiados de um mapa, ou digite os valores) e descreva
+como a posição foi verificada. A mesma página lista as correções em vigor, remove
+uma correção (com confirmação) e mostra o histórico de alterações de uma unidade.
+
+**Usando a API.** O token vai no header `Authorization: Bearer`:
+
+```bash
+export API=https://SEU_DOMINIO/api
+export ADMIN_TOKEN="o-seu-token"
+
+# quem sou eu (valida o token)
+curl -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/me"
+
+# definir ou substituir a posição da unidade com CNES 5563704
+curl -X PUT "$API/admin/location-corrections/5563704" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"latitude": -23.5343, "longitude": -46.8368, "method": "Como foi verificada"}'
+
+# listar, ver o histórico de uma unidade e remover
+curl -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/location-corrections"
+curl -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/location-corrections/5563704/events"
+curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" "$API/admin/location-corrections/5563704"
+```
+
+Quem verificou não vai no corpo: vem do token. A posição precisa estar dentro do
+município da unidade (tolerância de 5 km) e no Brasil. A resposta pública mostra
+apenas `precision: "manual"` e a data, e o login e o método ficam só para os
+administradores. A correção vale enquanto o município e o endereço da unidade no
+CNES forem os de quando ela foi feita. Se algum mudar, ela deixa de valer e o
+motivo vai para o log.
+
+**Histórico.** Cada definição, substituição e remoção grava quem fez, quando, o
+método e a posição anterior e a nova, na tabela `unit_location_correction_events`,
+só com inserções. Uma remoção também fica registrada.
+
+**Tentativas inválidas.** Depois de 20 tentativas com token inválido em 10
+minutos, as novas tentativas inválidas recebem 429, e o log avisa uma vez,
+sem o token. Isso sinaliza o abuso, mas **não impede adivinhar** um token: quem
+acertasse o valor continuaria passando, porque um token válido nunca é
+bloqueado (para que ninguém trave a equipe de propósito). A proteção contra
+adivinhação é o tamanho e a aleatoriedade do token, por isso use
+`openssl rand -hex 32`, que tem 256 bits.
 
 ### Swap
 

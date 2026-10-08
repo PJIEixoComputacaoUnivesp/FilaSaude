@@ -3,6 +3,8 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DataSource } from 'typeorm';
 import { HealthUnitEntity } from './entities/health-unit.entity.js';
+import { UnitLocationCorrectionEntity } from './entities/unit-location-correction.entity.js';
+import { UnitLocationCorrectionEventEntity } from './entities/unit-location-correction-event.entity.js';
 
 const databaseDirectory = dirname(fileURLToPath(import.meta.url));
 
@@ -22,7 +24,11 @@ export const databaseOptions = {
   username: environmentValue('DB_USER', 'filasaude'),
   password: environmentValue('DB_PASSWORD', 'filasaude'),
   database: environmentValue('DB_NAME', 'filasaude'),
-  entities: [HealthUnitEntity],
+  entities: [
+    HealthUnitEntity,
+    UnitLocationCorrectionEntity,
+    UnitLocationCorrectionEventEntity,
+  ],
   migrations: [resolve(databaseDirectory, 'migrations/*.js')],
   synchronize: false,
 };

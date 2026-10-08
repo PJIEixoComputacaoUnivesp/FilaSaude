@@ -8,6 +8,11 @@ type UnitsState =
 
 const unitsCache = new Map<string, UnitsResponse>();
 
+/** Forgets what was fetched, so the next read shows the current positions. */
+export function clearUnitsCache(): void {
+  unitsCache.clear();
+}
+
 export function useUnits(stateCode: string) {
   const cached = unitsCache.get(stateCode);
   const [state, setState] = useState<UnitsState>(

@@ -6,6 +6,7 @@ import request from 'supertest';
 import { AppModule } from './../src/app.module.js';
 import { CnesClient } from './../src/units/cnes.client.js';
 import { GeoSampaClient } from './../src/units/geosampa.client.js';
+import { UnitLocationsService } from './../src/units/unit-locations.service.js';
 import type { HealthUnit } from './../src/units/units.types.js';
 
 const testUnit: HealthUnit = {
@@ -17,10 +18,18 @@ const testUnit: HealthUnit = {
     number: '10',
     district: 'Centro',
     postalCode: '01001000',
+    municipalityCode: '355030',
     city: 'São Paulo',
     state: 'SP',
   },
-  location: { latitude: -23.55, longitude: -46.63 },
+  location: {
+    latitude: -23.55,
+    longitude: -46.63,
+    precision: 'source',
+    original: null,
+    referenceMonth: null,
+    correctedAt: null,
+  },
   serviceHours: 'ATENDIMENTO CONTINUO DE 24 HORAS/DIA',
   lastUpdatedAt: '2026-09-20',
   sources: [
@@ -50,6 +59,12 @@ describe('AppController (e2e)', () => {
       .useValue({ fetchUnits: vi.fn().mockResolvedValue([testUnit]) })
       .overrideProvider(GeoSampaClient)
       .useValue({ enrichLocations: vi.fn().mockResolvedValue([testUnit]) })
+      .overrideProvider(UnitLocationsService)
+      .useValue({
+        apply: vi.fn((units: HealthUnit[]) =>
+          Promise.resolve({ units, validated: true, historyComplete: true }),
+        ),
+      })
       .compile();
 
     app = moduleFixture.createNestApplication();

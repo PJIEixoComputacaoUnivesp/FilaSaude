@@ -11,10 +11,18 @@ function unit(overrides: Partial<HealthUnit> = {}): HealthUnit {
       number: '774',
       district: 'Capão Redondo',
       postalCode: '05866000',
+      municipalityCode: '355030',
       city: 'São Paulo',
       state: 'SP',
     },
-    location: { latitude: -23.6420677, longitude: -46.7532547 },
+    location: {
+      latitude: -23.6420677,
+      longitude: -46.7532547,
+      precision: 'source',
+      original: null,
+      referenceMonth: null,
+      correctedAt: null,
+    },
     serviceHours: null,
     lastUpdatedAt: '2026-09-20',
     sources: [
@@ -62,6 +70,10 @@ describe('GeoSampaClient', () => {
     expect(enriched.location).toEqual({
       latitude: -23.67512701,
       longitude: -46.773638,
+      precision: 'source',
+      original: null,
+      referenceMonth: null,
+      correctedAt: null,
     });
     expect(enriched.sources).toEqual([
       expect.objectContaining({
@@ -94,7 +106,11 @@ describe('GeoSampaClient', () => {
     const source = unit({
       name: 'UPA CAMPO LIMPO DR FERNANDO PRO',
       address: { ...unit().address, postalCode: '05846420' },
-      location: { latitude: -23.65, longitude: -46.768 },
+      location: {
+        ...unit().location,
+        latitude: -23.65,
+        longitude: -46.768,
+      },
     });
 
     const [enriched] = await new GeoSampaClient().enrichLocations([source]);
@@ -153,13 +169,21 @@ describe('GeoSampaClient', () => {
     const ambiguous = unit({
       name: 'UNIDADE ALFA BETA',
       address: { ...unit().address, postalCode: '01001-003' },
-      location: { latitude: -23.65, longitude: -46.768 },
+      location: {
+        ...unit().location,
+        latitude: -23.65,
+        longitude: -46.768,
+      },
     });
     const apparentlyUnique = unit({
       id: '7654321',
       name: 'UNIDADE ALFA',
       address: { ...unit().address, postalCode: '01001-004' },
-      location: { latitude: -23.65, longitude: -46.768 },
+      location: {
+        ...unit().location,
+        latitude: -23.65,
+        longitude: -46.768,
+      },
     });
 
     const result = await new GeoSampaClient().enrichLocations([
@@ -181,6 +205,28 @@ describe('GeoSampaClient', () => {
     );
     const source = unit({
       address: { ...unit().address, city: 'Osasco' },
+    });
+
+    const [result] = await new GeoSampaClient().enrichLocations([source]);
+
+    expect(result).toBe(source);
+  });
+
+  it('preserves a manual position', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          Response.json({ type: 'FeatureCollection', features: [feature()] }),
+        ),
+    );
+    const source = unit({
+      location: {
+        ...unit().location,
+        precision: 'manual',
+        correctedAt: '2026-10-08',
+      },
     });
 
     const [result] = await new GeoSampaClient().enrichLocations([source]);

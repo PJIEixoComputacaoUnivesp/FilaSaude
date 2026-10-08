@@ -1,6 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { CNES_CODE_PATTERN } from './cnes-code.js';
 import { MunicipalitiesClient } from './municipalities.client.js';
-import { stateAbbreviation, type BrazilianState } from './states.js';
+import {
+  parseState,
+  stateAbbreviation,
+  type BrazilianState,
+} from './states.js';
 import type { HealthUnit } from './units.types.js';
 
 const CNES_API_URL =
@@ -18,6 +23,14 @@ const unitTypes = new Map<number, HealthUnit['unitType']>([
   [21, 'PRONTO SOCORRO ESPECIALIZADO'],
   [73, 'PRONTO ATENDIMENTO'],
 ]);
+
+/**
+ * The establishment is not one the product lists: a type other than 20, 21 and
+ * 73, or a municipality or state it does not know. Kept apart from a malformed
+ * record, which is a failure of the source and must not look like a missing
+ * unit.
+ */
+export class OutOfScopeError extends Error {}
 
 type JsonRecord = Record<string, unknown>;
 
@@ -79,13 +92,16 @@ function normalizeUnit(
   const unitType = unitTypes.get(
     Number(numericId(record, 'codigo_tipo_unidade')),
   );
-  if (!unitType) throw new Error('CNES returned an unknown unit type');
+  if (!unitType)
+    throw new OutOfScopeError('CNES returned an unknown unit type');
 
   const city = municipalities.get(numericId(record, 'codigo_municipio'));
-  if (!city) throw new Error('CNES returned an unknown municipality');
+  if (!city) {
+    throw new OutOfScopeError('CNES returned an unknown municipality');
+  }
 
   const state = stateAbbreviation(numericId(record, 'codigo_uf'));
-  if (!state) throw new Error('CNES returned an unknown state');
+  if (!state) throw new OutOfScopeError('CNES returned an unknown state');
 
   const lastUpdatedAt = requiredString(record, 'data_atualizacao');
 
@@ -98,6 +114,7 @@ function normalizeUnit(
       number: optionalString(record, 'numero_estabelecimento'),
       district: optionalString(record, 'bairro_estabelecimento'),
       postalCode: optionalString(record, 'codigo_cep_estabelecimento'),
+      municipalityCode: numericId(record, 'codigo_municipio'),
       city,
       state,
     },
@@ -112,6 +129,10 @@ function normalizeUnit(
         'longitude_estabelecimento_decimo_grau',
         180,
       ),
+      precision: 'source',
+      original: null,
+      referenceMonth: null,
+      correctedAt: null,
     },
     serviceHours: optionalString(record, 'descricao_turno_atendimento'),
     lastUpdatedAt,
@@ -152,6 +173,46 @@ export class CnesClient {
     return [...new Map(units.map((unit) => [unit.id, unit])).values()].sort(
       (left, right) => left.name.localeCompare(right.name, 'pt-BR'),
     );
+  }
+
+  /**
+   * Fetches one establishment by CNES code, or null when it does not exist or
+   * is not one of the urgent care units the product lists. The endpoint
+   * accepts the code with or without leading zeros.
+   */
+  async fetchUnit(cnesCode: string): Promise<HealthUnit | null> {
+    if (!CNES_CODE_PATTERN.test(cnesCode)) throw new Error('Invalid CNES code');
+
+    const response = await fetch(`${CNES_API_URL}/${cnesCode}`, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      throw new Error(`CNES request failed with status ${response.status}`);
+    }
+
+    const record: unknown = await response.json();
+    if (!isRecord(record))
+      throw new Error('CNES returned an unexpected response');
+
+    const abbreviation = stateAbbreviation(numericId(record, 'codigo_uf'));
+    if (!abbreviation) return null;
+    const municipalities = await this.municipalitiesClient.fetchNames(
+      parseState(abbreviation),
+    );
+    try {
+      const unit = normalizeUnit(record, municipalities);
+      // A correction is stored under the code in the record, so it must be the
+      // code the administrator asked for.
+      if (unit && Number(unit.id) !== Number(cnesCode)) {
+        throw new Error('CNES returned a different establishment');
+      }
+      return unit;
+    } catch (error: unknown) {
+      if (error instanceof OutOfScopeError) return null;
+      throw error;
+    }
   }
 
   /**

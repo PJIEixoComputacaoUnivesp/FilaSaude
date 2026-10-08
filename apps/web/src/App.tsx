@@ -7,6 +7,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { AboutPage } from "./AboutPage";
+import { AdminPage } from "./AdminPage";
 import { Logo } from "./Logo";
 import { MapPage } from "./MapPage";
 import { UnitsPage } from "./UnitsPage";
@@ -191,6 +192,8 @@ export default function App() {
           <Route path="/units" element={<UnitsPage />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/about" element={<AboutPage />} />
+          {/* Not in the navigation: only the team is meant to find it. */}
+          <Route path="/admin" element={<AdminPage />} />
         </Routes>
       </div>
     </BrowserRouter>

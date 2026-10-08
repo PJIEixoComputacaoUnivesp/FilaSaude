@@ -118,13 +118,14 @@ function isMatch(unit: HealthUnit, candidate: GeoSampaUnit): boolean {
   const samePostalCode =
     normalizePostalCode(unit.address.postalCode) !== null &&
     normalizePostalCode(unit.address.postalCode) === candidate.postalCode;
+  const reference = unit.location.original ?? unit.location;
   const distance =
-    unit.location.latitude === null || unit.location.longitude === null
+    reference.latitude === null || reference.longitude === null
       ? Number.POSITIVE_INFINITY
       : distanceMeters(
           {
-            latitude: unit.location.latitude,
-            longitude: unit.location.longitude,
+            latitude: reference.latitude,
+            longitude: reference.longitude,
           },
           candidate,
         );
@@ -149,7 +150,7 @@ export class GeoSampaClient {
   async enrichLocations(units: readonly HealthUnit[]): Promise<HealthUnit[]> {
     const candidates = await this.fetchUnits();
     const matchesByUnit = units.map((unit) =>
-      unit.address.city === 'São Paulo'
+      unit.address.city === 'São Paulo' && unit.location.precision !== 'manual'
         ? matchingCandidates(unit, candidates)
         : [],
     );
@@ -177,6 +178,10 @@ export class GeoSampaClient {
         location: {
           latitude: match.latitude,
           longitude: match.longitude,
+          precision: 'source',
+          original: null,
+          referenceMonth: null,
+          correctedAt: null,
         },
         sources: [
           { ...cnesSource, fields: cnesFields },

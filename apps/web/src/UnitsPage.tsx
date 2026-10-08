@@ -4,6 +4,7 @@ import { UnitSources } from "./UnitSources";
 import { stateName } from "./brazilianStates";
 import {
   formatAddress,
+  formatPosition,
   formatSourceDate,
   type HealthUnit,
   type UnitsResponse,
@@ -65,9 +66,7 @@ function UnitCard({
         <div>
           <dt className="font-semibold text-slate-900">Localização no mapa</dt>
           <dd>
-            {unit.location.latitude === null || unit.location.longitude === null
-              ? "Coordenadas não informadas na fonte pública"
-              : "Disponível"}
+            {formatPosition(unit)}
           </dd>
         </div>
       </dl>
