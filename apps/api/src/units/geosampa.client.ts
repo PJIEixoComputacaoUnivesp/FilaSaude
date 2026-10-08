@@ -137,29 +137,35 @@ function isMatch(unit: HealthUnit, candidate: GeoSampaUnit): boolean {
   );
 }
 
-function matchUnit(
+function matchingCandidates(
   unit: HealthUnit,
   candidates: readonly GeoSampaUnit[],
-): GeoSampaUnit | null {
-  const matches = candidates.filter((candidate) => isMatch(unit, candidate));
-  return matches.length === 1 ? matches[0] : null;
+): GeoSampaUnit[] {
+  return candidates.filter((candidate) => isMatch(unit, candidate));
 }
 
 @Injectable()
 export class GeoSampaClient {
   async enrichLocations(units: readonly HealthUnit[]): Promise<HealthUnit[]> {
     const candidates = await this.fetchUnits();
-    const matches = units.map((unit) =>
-      unit.address.city === 'São Paulo' ? matchUnit(unit, candidates) : null,
+    const matchesByUnit = units.map((unit) =>
+      unit.address.city === 'São Paulo'
+        ? matchingCandidates(unit, candidates)
+        : [],
     );
     const matchCounts = new Map<GeoSampaUnit, number>();
-    for (const match of matches) {
-      if (match) matchCounts.set(match, (matchCounts.get(match) ?? 0) + 1);
+    for (const matches of matchesByUnit) {
+      for (const match of matches) {
+        matchCounts.set(match, (matchCounts.get(match) ?? 0) + 1);
+      }
     }
 
     return units.map((unit, index) => {
-      const match = matches[index];
-      if (!match || matchCounts.get(match) !== 1) return unit;
+      const matches = matchesByUnit[index];
+      if (matches.length !== 1) return unit;
+
+      const match = matches[0];
+      if (matchCounts.get(match) !== 1) return unit;
 
       const cnesSource = unit.sources[0];
       const cnesFields = cnesSource.fields.filter(

@@ -137,6 +137,39 @@ describe('GeoSampaClient', () => {
     expect(result).toEqual([first, second]);
   });
 
+  it('does not assign a candidate shared with an ambiguously matched unit', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        Response.json({
+          type: 'FeatureCollection',
+          features: [
+            feature('UNIDADE ALFA', '01001-001', [-46.768, -23.65]),
+            feature('UNIDADE BETA', '01001-002', [-46.7681, -23.6501]),
+          ],
+        }),
+      ),
+    );
+    const ambiguous = unit({
+      name: 'UNIDADE ALFA BETA',
+      address: { ...unit().address, postalCode: '01001-003' },
+      location: { latitude: -23.65, longitude: -46.768 },
+    });
+    const apparentlyUnique = unit({
+      id: '7654321',
+      name: 'UNIDADE ALFA',
+      address: { ...unit().address, postalCode: '01001-004' },
+      location: { latitude: -23.65, longitude: -46.768 },
+    });
+
+    const result = await new GeoSampaClient().enrichLocations([
+      ambiguous,
+      apparentlyUnique,
+    ]);
+
+    expect(result).toEqual([ambiguous, apparentlyUnique]);
+  });
+
   it('ignores units outside the city of São Paulo', async () => {
     vi.stubGlobal(
       'fetch',
