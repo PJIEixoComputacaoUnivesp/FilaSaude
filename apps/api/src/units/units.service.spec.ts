@@ -1,5 +1,6 @@
 import { CnesClient } from './cnes.client.js';
 import { UnitsService } from './units.service.js';
+import type { UnitLocationsService } from './unit-locations.service.js';
 import type { HealthUnit } from './units.types.js';
 
 const liveUnit: HealthUnit = {
@@ -11,19 +12,32 @@ const liveUnit: HealthUnit = {
     number: '10',
     district: 'Centro',
     postalCode: '01001000',
+    municipalityCode: '355030',
     city: 'São Paulo',
     state: 'SP',
   },
-  location: { latitude: -23.55, longitude: -46.63 },
+  location: {
+    latitude: -23.55,
+    longitude: -46.63,
+    precision: 'source',
+    original: null,
+    referenceMonth: null,
+  },
   serviceHours: 'ATENDIMENTO CONTINUO DE 24 HORAS/DIA',
   lastUpdatedAt: '2026-09-20',
 };
+
+const passthrough = {
+  apply: vi.fn((units: HealthUnit[]) =>
+    Promise.resolve({ units, validated: true, historyComplete: true }),
+  ),
+} as unknown as UnitLocationsService;
 
 describe('UnitsService', () => {
   it('returns and caches live CNES data', async () => {
     const fetchUnits = vi.fn().mockResolvedValue([liveUnit]);
     const client = { fetchUnits } as unknown as CnesClient;
-    const service = new UnitsService(client);
+    const service = new UnitsService(client, passthrough);
 
     const first = await service.findAll('SP');
     const second = await service.findAll('sp');
@@ -49,7 +63,7 @@ describe('UnitsService', () => {
         }),
     );
     const client = { fetchUnits } as unknown as CnesClient;
-    const service = new UnitsService(client);
+    const service = new UnitsService(client, passthrough);
 
     const first = service.findAll('SP');
     const second = service.findAll('SP');
@@ -65,7 +79,7 @@ describe('UnitsService', () => {
     const client = {
       fetchUnits: vi.fn().mockRejectedValue(new Error('unavailable')),
     } as unknown as CnesClient;
-    const service = new UnitsService(client);
+    const service = new UnitsService(client, passthrough);
 
     const response = await service.findAll('SP');
 
@@ -73,6 +87,9 @@ describe('UnitsService', () => {
     expect(response.metadata).toMatchObject({
       dataOrigin: 'fallback',
       isStale: true,
+    });
+    expect(passthrough.apply).toHaveBeenLastCalledWith(expect.any(Array), {
+      history: false,
     });
   });
 
@@ -84,7 +101,7 @@ describe('UnitsService', () => {
         .mockResolvedValueOnce([liveUnit])
         .mockRejectedValueOnce(new Error('unavailable'));
       const client = { fetchUnits } as unknown as CnesClient;
-      const service = new UnitsService(client);
+      const service = new UnitsService(client, passthrough);
 
       const live = await service.findAll('RJ');
       vi.advanceTimersByTime(7 * 60 * 60 * 1000);
@@ -102,10 +119,35 @@ describe('UnitsService', () => {
     }
   });
 
+  it('rechecks sooner when the history could not be fully loaded', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchUnits = vi.fn().mockResolvedValue([liveUnit]);
+      const client = { fetchUnits } as unknown as CnesClient;
+      const incomplete = {
+        apply: vi.fn((units: HealthUnit[]) =>
+          Promise.resolve({ units, validated: true, historyComplete: false }),
+        ),
+      } as unknown as UnitLocationsService;
+      const service = new UnitsService(client, incomplete);
+
+      await service.findAll('RJ');
+      vi.advanceTimersByTime(30 * 60 * 1000);
+      await service.findAll('RJ');
+      expect(fetchUnits).toHaveBeenCalledTimes(1);
+
+      vi.advanceTimersByTime(31 * 60 * 1000);
+      await service.findAll('RJ');
+      expect(fetchUnits).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('rejects an invalid state before calling CNES', async () => {
     const fetchUnits = vi.fn();
     const client = { fetchUnits } as unknown as CnesClient;
-    const service = new UnitsService(client);
+    const service = new UnitsService(client, passthrough);
 
     await expect(service.findAll('XX')).rejects.toThrow(
       'Invalid Brazilian state abbreviation',
@@ -116,12 +158,110 @@ describe('UnitsService', () => {
   it('returns all country units for ALL/BR', async () => {
     const fetchUnits = vi.fn();
     const client = { fetchUnits } as unknown as CnesClient;
-    const service = new UnitsService(client);
+    const service = new UnitsService(client, passthrough);
 
     const response = await service.findAll('ALL');
     expect(response.data.length).toBeGreaterThan(1000);
     expect(response.metadata.state).toBe('BR');
     expect(response.metadata.dataOrigin).toBe('fallback');
     expect(fetchUnits).not.toHaveBeenCalled();
+  });
+
+  describe('national snapshot', () => {
+    const noClient = { fetchUnits: vi.fn() } as unknown as CnesClient;
+
+    it('checks the position of the snapshot units against their municipality', async () => {
+      const apply = vi.fn((units: HealthUnit[]) =>
+        Promise.resolve({
+          units: units.map((unit, index) =>
+            index === 0
+              ? {
+                  ...unit,
+                  location: {
+                    ...unit.location,
+                    precision: 'municipality' as const,
+                  },
+                }
+              : unit,
+          ),
+          validated: true,
+          historyComplete: true,
+        }),
+      );
+      const service = new UnitsService(noClient, {
+        apply,
+      } as unknown as UnitLocationsService);
+
+      const response = await service.findAll('BR');
+
+      // History stays enabled: the CNES host is not known to be down here.
+      expect(apply).toHaveBeenCalledWith(expect.any(Array));
+      expect(apply.mock.calls[0]).toHaveLength(1);
+      expect(response.data[0]!.location.precision).toBe('municipality');
+      expect(response.metadata.dataOrigin).toBe('fallback');
+    });
+
+    it('gives every snapshot unit the code of its municipality', async () => {
+      const apply = vi.fn((units: HealthUnit[]) =>
+        Promise.resolve({ units, validated: true, historyComplete: true }),
+      );
+      const service = new UnitsService(noClient, {
+        apply,
+      } as unknown as UnitLocationsService);
+
+      const { data } = await service.findAll('BR');
+
+      expect(data.length).toBeGreaterThan(1000);
+      expect(
+        data.filter((unit) => !/^\d{6}$/.test(unit.address.municipalityCode)),
+      ).toEqual([]);
+    });
+
+    it('shares one check between concurrent requests', async () => {
+      const apply = vi.fn((units: HealthUnit[]) =>
+        Promise.resolve({ units, validated: true, historyComplete: true }),
+      );
+      const service = new UnitsService(noClient, {
+        apply,
+      } as unknown as UnitLocationsService);
+
+      const [first, second] = await Promise.all([
+        service.findAll('BR'),
+        service.findAll('ALL'),
+      ]);
+
+      expect(second).toBe(first);
+      expect(apply).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['everything loaded', true, true, 6 * 60],
+      ['the history could not be fully loaded', true, false, 60],
+      ['the municipality boundaries are unavailable', false, true, 5],
+    ])(
+      'rechecks at the right time when %s',
+      async (_label, validated, historyComplete, minutes) => {
+        vi.useFakeTimers();
+        try {
+          const apply = vi.fn((units: HealthUnit[]) =>
+            Promise.resolve({ units, validated, historyComplete }),
+          );
+          const service = new UnitsService(noClient, {
+            apply,
+          } as unknown as UnitLocationsService);
+
+          await service.findAll('BR');
+          vi.advanceTimersByTime((minutes - 1) * 60 * 1000);
+          await service.findAll('BR');
+          expect(apply).toHaveBeenCalledTimes(1);
+
+          vi.advanceTimersByTime(2 * 60 * 1000);
+          await service.findAll('BR');
+          expect(apply).toHaveBeenCalledTimes(2);
+        } finally {
+          vi.useRealTimers();
+        }
+      },
+    );
   });
 });

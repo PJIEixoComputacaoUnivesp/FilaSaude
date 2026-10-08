@@ -32,6 +32,26 @@ municípios vêm da API de localidades do IBGE. O campo
 `metadata.dataOrigin` indica `live` ou `fallback`, e `metadata.isStale` informa
 quando a cópia de segurança está sendo exibida.
 
+### Posição das unidades
+
+O CNES é autodeclarado e algumas coordenadas apontam para fora do município. A
+API compara a coordenada de cada unidade com o contorno do município no IBGE
+(tolerância de 5 km) e nunca remove uma unidade por isso. `location.precision`
+informa de onde vem a posição:
+
+| `precision`    | Origem                                                                                              |
+| -------------- | --------------------------------------------------------------------------------------------------- |
+| `source`       | Coordenada atual do CNES.                                                                           |
+| `history`      | Ponto de uma publicação mensal anterior do CNES, dentro do município e para o mesmo endereço.       |
+| `municipality` | Centro do município, calculado do contorno do IBGE.                                                 |
+
+Fora de `source`, `location.original` guarda a coordenada informada pelo CNES e,
+em `history`, `location.referenceMonth` traz a competência (`AAAA-MM`). A
+verificação vale também para as consultas `ALL`/`BR`, que vêm do snapshot. O
+fallback por UF, usado quando o CNES está indisponível, não consulta o
+histórico. Os detalhes e as limitações estão no
+[ADR 0001](../../docs/adr/0001-public-health-unit-data-source.md).
+
 ## Verificações
 
 ```bash

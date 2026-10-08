@@ -56,7 +56,21 @@ describe('CnesClient', () => {
 
     const [unit] = await client.fetchUnits(parseState('SP'));
 
-    expect(unit.location).toEqual({ latitude: -23.55, longitude: -46.63 });
+    expect(unit.location).toEqual({
+      latitude: -23.55,
+      longitude: -46.63,
+      precision: 'source',
+      original: null,
+      referenceMonth: null,
+    });
+  });
+
+  it('exposes the 6-digit municipality code that links the unit to its boundary', async () => {
+    mockCnes([establishment(-23.55, -46.63)]);
+
+    const [unit] = await client.fetchUnits(parseState('SP'));
+
+    expect(unit.address.municipalityCode).toBe('355030');
   });
 
   it('discards coordinates outside the valid range', async () => {
@@ -64,7 +78,13 @@ describe('CnesClient', () => {
 
     const [unit] = await client.fetchUnits(parseState('SP'));
 
-    expect(unit.location).toEqual({ latitude: null, longitude: null });
+    expect(unit.location).toEqual({
+      latitude: null,
+      longitude: null,
+      precision: 'source',
+      original: null,
+      referenceMonth: null,
+    });
   });
 
   it('fetches the whole country without a state filter', async () => {

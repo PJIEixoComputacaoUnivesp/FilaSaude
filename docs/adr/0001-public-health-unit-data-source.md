@@ -107,8 +107,10 @@ arquivos do conjunto como alternativa.
 A primeira entrega (PR #36) ainda não tem PostgreSQL nem job. Nela, a API
 consulta o CNES durante a requisição, com cache em memória de seis horas por UF.
 Se a consulta falhar, ela usa a última resposta válida marcada como
-desatualizada e, para SP, um snapshot incorporado. Essa abordagem é temporária e
-será substituída pela ingestão descrita acima nas issues #22 e #23.
+desatualizada e, na falta dela, o snapshot incorporado da UF. O mesmo snapshot
+atende sozinho a visão nacional (`ALL` e `BR`), sem consultar o CNES. Essa
+abordagem é temporária e será substituída pela ingestão descrita acima nas
+issues #22 e #23.
 
 ## Dados persistidos
 
@@ -124,8 +126,89 @@ Para cada unidade serão mantidos, no mínimo:
 - data da última ingestão pelo FilaSaúde.
 
 Campos ausentes permanecerão nulos. Coordenadas inválidas não serão corrigidas
-por inferência; serão rejeitadas ou sinalizadas para não produzir localização
-enganosa.
+por inferência silenciosa; toda posição que não vem do CNES é sinalizada para
+não produzir localização enganosa.
+
+### Coordenadas fora do município
+
+O CNES é autodeclarado e algumas coordenadas apontam para fora do município
+declarado. Em 2026-10-06, 73 das 1.793 unidades estavam fora do contorno e 34
+(cerca de 1,9%) a mais de 5 km dele. Nenhuma unidade é removida por isso. A API
+compara a coordenada com o contorno do município no IBGE (malhas v3, qualidade
+mínima, em cache por UF) com tolerância de 5 km, porque o contorno é
+simplificado. Quando a coordenada está fora, ou ausente, a posição é escolhida
+nesta ordem, e `location.precision` informa qual foi usada:
+
+1. dentro do município ou da tolerância: a coordenada atual do CNES (`source`);
+2. correção manual revisada pela equipe (`manual`, ainda não implementada);
+3. o último ponto do histórico mensal do CNES que esteja dentro do município e
+   tenha sido registrado para o mesmo endereço (`history`), com a competência
+   em `location.referenceMonth`;
+4. geocodificação pelo endereço (`geocoded`, ainda não implementada);
+5. o centro do município calculado do contorno do IBGE (`municipality`).
+
+Em todos os casos diferentes de `source`, a coordenada informada pelo CNES fica
+em `location.original` e a unidade é registrada no log. A interface mostra um
+aviso no popup e, para `municipality`, um marcador vazado com o texto
+“localização aproximada: centro do município”.
+
+#### Histórico mensal do CNES
+
+O endpoint `GET /assistencia-a-saude/cnes-estabelecimentos` guarda uma linha por
+estabelecimento e por competência mensal (2008 a 2026-07 na medição). O erro
+costuma ser uma edição recente: a UPA Bruno Covas tinha a coordenada correta até
+2025-11 e passou ao erro de 1,0 grau em 2025-12. Um ponto do próprio CNES, de
+uma competência anterior, é mais fiel à fonte do que o centro do município.
+
+A regra de “mesmo endereço” exige logradouro e número iguais aos atuais,
+ignorando maiúsculas, acentos, pontuação e CEP (o CNES refina o CEP sem que a
+unidade mude de lugar). “S/N”, “SN” e número ausente são equivalentes, e “01”
+equivale a “1”. Sem logradouro não há correspondência.
+
+Não há limite de idade para o ponto. A primeira proposta era 24 meses, mas a
+idade não mede mudança de endereço: na medição, 3 das 11 unidades recuperáveis
+dentro de 24 meses tinham outro endereço hoje, enquanto vários pontos mais
+antigos pertencem ao mesmo endereço. A igualdade do endereço foi adotada no
+lugar do limite, e a competência é sempre exibida. Na medição de 2026-10-06, das
+34 unidades a mais de 5 km, 18 foram recuperadas pelo histórico e 16 ficaram no
+centro do município.
+
+Cuidados com esse endpoint:
+
+- consultar com o código CNES de 7 dígitos, com zero à esquerda: `0113360`
+  encontra a unidade e `113360` não retorna nada;
+- a API ignora filtros que não conhece, então cada linha é conferida contra o
+  código pedido;
+- `offset` é o índice do registro, como no endpoint de estabelecimentos, e
+  `limit` aceita até 1000;
+- a competência mais recente pode estar um mês atrás de
+  `/cnes/estabelecimentos`, que é atualizado diariamente.
+
+Limitações: “dentro do município” é a única verificação geométrica, e um ponto
+do mesmo endereço também é autodeclarado, então não prova que a posição esteja
+certa. Enquanto a ingestão não existe (ver “Implementação transitória”), o
+histórico é consultado durante a requisição, só para as unidades com coordenada
+inválida, com um prazo único de 10 s para a fase, concorrência 5 e cache de
+24 h das linhas por unidade. Se falhar, a unidade cai no centro do município e a
+resposta é reavaliada em 1 hora (em 5 minutos quando o contorno do IBGE é que
+falhou). Essa consulta passa para o job de ingestão (#23).
+
+Município sem contorno no IBGE: a malha tem 5.570 municípios e não inclui os
+criados mais recentemente, como Boa Esperança do Norte (MT, 5101837). Para
+essas unidades não há como validar a coordenada, que permanece a do CNES, e o
+fato é registrado no log. Em 2026-10-06 era o caso de 1 unidade.
+
+Junto de uma posição `history`, a interface mostra a competência de origem do
+ponto, além da `data_atualizacao` do registro atual, que continua sendo a data
+do cadastro exibido.
+
+A visão nacional, servida pelo snapshot, passa pela mesma verificação, inclusive
+pelo histórico. O fallback por UF, que só ocorre quando o CNES está fora do ar,
+não consulta o histórico, pois ele estaria indisponível também.
+
+Correções manuais e geocodificação pelo endereço (`manual` e `geocoded`) serão
+adicionadas com o job de ingestão e, quando existirem, também serão
+identificadas na interface.
 
 ## Exibição e transparência
 
@@ -146,9 +229,18 @@ O FilaSaúde trata assim as operações aplicadas aos dados:
   converter formato (JSON para tabela e resposta da API) e trocar o código IBGE
   do município pelo nome oficial fornecido pelo próprio IBGE. Os valores dos
   campos exibidos são os da fonte.
-- **Não são feitas:** corrigir, completar ou inferir endereços, coordenadas,
-  horários ou nomes. Um valor inválido é descartado (exibido como ausente), não
-  substituído por outro.
+- **Substituem uma coordenada inválida, sempre com aviso:** usar outro valor do
+  próprio CNES, de uma competência anterior e para o mesmo endereço (`history`),
+  e usar o centro do município calculado do contorno do IBGE (`municipality`).
+  O primeiro é um valor da fonte sem alteração; o segundo não vem do CNES. Nos
+  dois, a coordenada informada é preservada em `location.original`. O
+  `municipality` foi adotado na Etapa 1 por ser sempre sinalizado e preservar o
+  original, mas, por não vir do CNES, essa classificação precisa ser confirmada
+  pelo grupo junto com a de `manual` e `geocoded`.
+- **Não são feitas:** corrigir, completar ou inferir endereços, horários ou
+  nomes, nem trocar uma coordenada sem sinalizar. A correção manual e a
+  geocodificação (`manual` e `geocoded`) criam valores que não são do CNES e só
+  entram depois de confirmar uma autorização compatível, como descrito abaixo.
 
 Qualquer transformação que altere o conteúdo de um campo da fonte só pode ser
 adotada depois de confirmar uma autorização compatível; até lá, esse dado não
@@ -169,6 +261,8 @@ A atribuição exibida junto aos dados inclui:
 - [Swagger da API](https://apidadosabertos.saude.gov.br/static/swagger.json)
 - [Conjunto CNES no Portal de Dados Abertos do SUS](https://dadosabertos.saude.gov.br/dataset/cnes-cadastro-nacional-de-estabelecimentos-de-saude)
 - [API de Localidades do IBGE](https://servicodados.ibge.gov.br/api/docs/localidades)
+- [API de malhas do IBGE](https://servicodados.ibge.gov.br/api/docs/malhas?versao=3)
+- [Histórico mensal de estabelecimentos (`/assistencia-a-saude/cnes-estabelecimentos`)](https://apidadosabertos.saude.gov.br/static/swagger.json)
 - [Licença CC BY-ND 3.0](https://creativecommons.org/licenses/by-nd/3.0/deed.pt-br)
 
 ## Consequências

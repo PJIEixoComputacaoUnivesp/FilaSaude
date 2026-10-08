@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import snapshot from './units.snapshot.json' with { type: 'json' };
 import { CnesClient } from './cnes.client.js';
+import { UnitLocationsService } from './unit-locations.service.js';
 import {
   NationalStateCode,
   parseState,
@@ -9,6 +10,12 @@ import {
 import type { HealthUnit, UnitsResponse } from './units.types.js';
 
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+// Units whose coordinates could not be validated are checked again soon.
+const UNVALIDATED_CACHE_TTL_MS = 5 * 60 * 1000;
+// A failed history lookup only affects the few units with an invalid
+// coordinate, which keep the municipality center meanwhile, so retrying it
+// does not justify refetching the whole list every few minutes.
+const INCOMPLETE_HISTORY_CACHE_TTL_MS = 60 * 60 * 1000;
 const FALLBACK_RETRIEVED_AT = '2026-09-24T00:00:00-03:00';
 export const CNES_SOURCE_URL =
   'https://apidadosabertos.saude.gov.br/cnes/estabelecimentos';
@@ -19,6 +26,16 @@ function latestUpdate(units: readonly HealthUnit[]): string {
       unit.lastUpdatedAt > latest ? unit.lastUpdatedAt : latest,
     '',
   );
+}
+
+function cacheTtl(located: {
+  validated: boolean;
+  historyComplete: boolean;
+}): number {
+  if (!located.validated) return UNVALIDATED_CACHE_TTL_MS;
+  return located.historyComplete
+    ? CACHE_TTL_MS
+    : INCOMPLETE_HISTORY_CACHE_TTL_MS;
 }
 
 function fallbackUnits(stateAbbr?: string): HealthUnit[] {
@@ -33,12 +50,16 @@ function fallbackUnits(stateAbbr?: string): HealthUnit[] {
         'district' in unit.address ? (unit.address.district ?? null) : null,
       postalCode:
         'postalCode' in unit.address ? (unit.address.postalCode ?? null) : null,
+      municipalityCode: unit.address.municipalityCode,
       city: unit.address.city,
       state: unit.address.state,
     },
     location: {
       latitude: unit.location.latitude ?? null,
       longitude: unit.location.longitude ?? null,
+      precision: 'source',
+      original: null,
+      referenceMonth: null,
     },
     serviceHours: unit.serviceHours ?? null,
     lastUpdatedAt: unit.lastUpdatedAt,
@@ -59,37 +80,53 @@ export class UnitsService {
   >();
   private readonly pending = new Map<string, Promise<UnitsResponse>>();
 
-  constructor(private readonly cnesClient: CnesClient) {}
+  constructor(
+    private readonly cnesClient: CnesClient,
+    private readonly locations: UnitLocationsService,
+  ) {}
 
   async findAll(stateValue?: string): Promise<UnitsResponse> {
     const state = parseState(stateValue);
     const cached = this.cache.get(state.abbreviation);
     if (cached && cached.expiresAt > Date.now()) return cached.response;
 
-    if (state.abbreviation === NationalStateCode.Brazil) {
-      const units = fallbackUnits(NationalStateCode.Brazil);
-      const response = this.buildResponse(
-        units,
-        state,
-        'fallback',
-        FALLBACK_RETRIEVED_AT,
-      );
-      this.cache.set(state.abbreviation, {
-        expiresAt: Date.now() + CACHE_TTL_MS,
-        response,
-      });
-      return response;
-    }
-
+    // Concurrent requests for the same key share a single load.
     let request = this.pending.get(state.abbreviation);
     if (!request) {
-      request = this.loadLive(state, cached).finally(() => {
+      request = (
+        state.abbreviation === NationalStateCode.Brazil
+          ? this.loadNational(state)
+          : this.loadLive(state, cached)
+      ).finally(() => {
         this.pending.delete(state.abbreviation);
       });
       this.pending.set(state.abbreviation, request);
     }
 
     return request;
+  }
+
+  /**
+   * The national view is served from the embedded snapshot, which keeps the
+   * CNES coordinates as they were collected. Their position is still checked
+   * against the municipality, like any other response, so that a misplaced
+   * unit does not appear outside it.
+   */
+  private async loadNational(state: BrazilianState): Promise<UnitsResponse> {
+    const located = await this.locations.apply(
+      fallbackUnits(NationalStateCode.Brazil),
+    );
+    const response = this.buildResponse(
+      located.units,
+      state,
+      'fallback',
+      FALLBACK_RETRIEVED_AT,
+    );
+    this.cache.set(state.abbreviation, {
+      expiresAt: Date.now() + cacheTtl(located),
+      response,
+    });
+    return response;
   }
 
   private async loadLive(
@@ -102,14 +139,15 @@ export class UnitsService {
         throw new Error('CNES returned no public urgent care units');
       }
 
+      const located = await this.locations.apply(units);
       const response = this.buildResponse(
-        units,
+        located.units,
         state,
         'live',
         new Date().toISOString(),
       );
       this.cache.set(state.abbreviation, {
-        expiresAt: Date.now() + CACHE_TTL_MS,
+        expiresAt: Date.now() + cacheTtl(located),
         response,
       });
       return response;
@@ -134,8 +172,12 @@ export class UnitsService {
         this.logger.warn(
           `Using the CNES fallback snapshot for ${state.abbreviation}`,
         );
+        // CNES is already unreachable, so its history would be as well.
+        const located = await this.locations.apply(fallback, {
+          history: false,
+        });
         return this.buildResponse(
-          fallback,
+          located.units,
           state,
           'fallback',
           FALLBACK_RETRIEVED_AT,

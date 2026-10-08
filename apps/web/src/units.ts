@@ -18,6 +18,14 @@ export interface HealthUnit {
   location: {
     latitude: number | null;
     longitude: number | null;
+    /**
+     * `history`: the current CNES coordinate was unusable, so the point is the
+     * latest earlier CNES coordinate for the same address (see `referenceMonth`).
+     * `municipality`: no usable point exists, so it is the municipality center.
+     */
+    precision: "source" | "history" | "municipality";
+    /** CNES monthly release (`YYYY-MM`) a `history` point comes from. */
+    referenceMonth: string | null;
   };
   serviceHours: string | null;
   lastUpdatedAt: string;
@@ -60,6 +68,12 @@ function isUnit(value: unknown): value is HealthUnit {
       "PRONTO SOCORRO GERAL",
       "PRONTO SOCORRO ESPECIALIZADO",
     ].includes(value.unitType as string) &&
+    // An API that predates the position check sends no precision at all.
+    (value.location.precision === undefined ||
+      value.location.precision === "source" ||
+      value.location.precision === "municipality" ||
+      (value.location.precision === "history" &&
+        typeof value.location.referenceMonth === "string")) &&
     typeof value.address.city === "string" &&
     typeof value.address.state === "string" &&
     typeof value.lastUpdatedAt === "string"
@@ -86,7 +100,12 @@ function parseUnitsResponse(value: unknown): UnitsResponse {
     throw new Error("A API retornou dados em um formato inesperado.");
   }
 
-  return value as unknown as UnitsResponse;
+  const response = value as unknown as UnitsResponse;
+  // Those older responses only carry the coordinates as CNES declared them. An
+  // unknown value is still rejected above, so a future kind of position is
+  // never shown as if it were the CNES coordinate.
+  for (const unit of response.data) unit.location.precision ??= "source";
+  return response;
 }
 
 export async function fetchUnits(
@@ -113,6 +132,12 @@ export function formatAddress(address: UnitAddress): string {
   return [street, address.district, `${address.city} - ${address.state}`]
     .filter(Boolean)
     .join(" · ");
+}
+
+/** Formats a `YYYY-MM` monthly release as `MM/AAAA`. */
+export function formatReferenceMonth(value: string): string {
+  const match = /^(\d{4})-(\d{2})$/.exec(value);
+  return match ? `${match[2]}/${match[1]}` : value;
 }
 
 export function formatSourceDate(value: string): string {
