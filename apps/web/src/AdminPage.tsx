@@ -552,6 +552,7 @@ function CorrectionRow({
   const notApplied = unitsReady && !!unit && unit.location.precision !== "manual";
   const [confirming, setConfirming] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const removingNow = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const name = unit?.name ?? `Unidade ${correction.cnesCode}`;
@@ -562,6 +563,8 @@ function CorrectionRow({
   }, [confirming]);
 
   const remove = () => {
+    if (removingNow.current) return;
+    removingNow.current = true;
     setRemoving(true);
     setError(null);
     removeCorrection(token, correction.cnesCode)
@@ -575,6 +578,7 @@ function CorrectionRow({
           return;
         }
         setError(adminErrorMessage(kind, "remove"));
+        removingNow.current = false;
         setRemoving(false);
       });
   };
@@ -623,8 +627,8 @@ function CorrectionRow({
             <button
               type="button"
               onClick={remove}
-              disabled={removing}
-              className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-red-800 bg-red-800 px-4 py-2 font-semibold text-white hover:bg-red-900 disabled:opacity-60"
+              aria-disabled={removing}
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-red-800 bg-red-800 px-4 py-2 font-semibold text-white hover:bg-red-900 aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
             >
               {removing ? "Removendo…" : "Confirmar remoção"}
             </button>
