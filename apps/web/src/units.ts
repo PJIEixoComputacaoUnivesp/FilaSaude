@@ -22,10 +22,15 @@ export interface HealthUnit {
      * `history`: the current CNES coordinate was unusable, so the point is the
      * latest earlier CNES coordinate for the same address (see `referenceMonth`).
      * `municipality`: no usable point exists, so it is the municipality center.
+     * `manual`: an administrator set the position (see `correctedAt`).
      */
-    precision: "source" | "history" | "municipality";
+    precision: "source" | "history" | "municipality" | "manual";
+    /** The coordinate CNES declared, when the position shown replaced it. */
+    original?: { latitude: number; longitude: number } | null;
     /** CNES monthly release (`YYYY-MM`) a `history` point comes from. */
     referenceMonth: string | null;
+    /** Date (`YYYY-MM-DD`) an administrator set a `manual` position. */
+    correctedAt: string | null;
   };
   serviceHours: string | null;
   lastUpdatedAt: string;
@@ -73,7 +78,9 @@ function isUnit(value: unknown): value is HealthUnit {
       value.location.precision === "source" ||
       value.location.precision === "municipality" ||
       (value.location.precision === "history" &&
-        typeof value.location.referenceMonth === "string")) &&
+        typeof value.location.referenceMonth === "string") ||
+      (value.location.precision === "manual" &&
+        typeof value.location.correctedAt === "string")) &&
     typeof value.address.city === "string" &&
     typeof value.address.state === "string" &&
     typeof value.lastUpdatedAt === "string"
@@ -145,4 +152,21 @@ export function formatSourceDate(value: string): string {
   return Number.isNaN(date.getTime())
     ? value
     : new Intl.DateTimeFormat("pt-BR").format(date);
+}
+
+/** Says where the position on the map comes from. */
+export function formatPosition({ location }: HealthUnit): string {
+  if (location.latitude === null || location.longitude === null) {
+    return "Coordenadas não informadas na fonte pública";
+  }
+  if (location.precision === "municipality") {
+    return "Aproximada: centro do município (contorno do IBGE)";
+  }
+  if (location.precision === "manual" && location.correctedAt) {
+    return `Posição corrigida manualmente em ${formatSourceDate(location.correctedAt)}`;
+  }
+  if (location.precision === "history" && location.referenceMonth) {
+    return `Posição do CNES de ${formatReferenceMonth(location.referenceMonth)} (a coordenada atual não é utilizável)`;
+  }
+  return "Disponível";
 }

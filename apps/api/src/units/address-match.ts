@@ -29,6 +29,22 @@ export function normalizeNumber(value: string | null): string {
 }
 
 /**
+ * True when both records have the same street and number, a missing street
+ * included. Used to check that a unit still sits where a manual correction
+ * was made, which is a weaker claim than the history match below: the unit
+ * is the same one, so a street missing on both sides is not a mismatch.
+ */
+export function isSameRecordedAddress(
+  left: StreetAddress,
+  right: StreetAddress,
+): boolean {
+  return (
+    normalizeStreet(left.street) === normalizeStreet(right.street) &&
+    normalizeNumber(left.number) === normalizeNumber(right.number)
+  );
+}
+
+/**
  * True when both records name the same street and number. The postal code is
  * ignored because CNES refines it over time without the unit moving. A missing
  * street never matches, since nothing then ties the two records together.

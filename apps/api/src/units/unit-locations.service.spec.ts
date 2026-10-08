@@ -1,4 +1,6 @@
 import { Logger } from '@nestjs/common';
+import type { UnitLocationCorrectionEntity } from '../database/entities/unit-location-correction.entity.js';
+import type { UnitLocationCorrectionRepository } from '../database/repositories/unit-location-correction.repository.js';
 import type {
   CnesHistoryClient,
   CnesHistoryEntry,
@@ -44,6 +46,7 @@ function unit(
       precision: 'source',
       original: null,
       referenceMonth: null,
+      correctedAt: null,
     },
     serviceHours: null,
     lastUpdatedAt: '2026-09-20',
@@ -68,13 +71,17 @@ function release(
 
 const noHistory = () => Promise.resolve<CnesHistoryEntry[]>([]);
 
+const noCorrections = () => Promise.resolve<UnitLocationCorrectionEntity[]>([]);
+
 function serviceWith(
   fetch: ReturnType<typeof vi.fn>,
   history: ReturnType<typeof vi.fn> = vi.fn(noHistory),
+  findCorrections: ReturnType<typeof vi.fn> = vi.fn(noCorrections),
 ) {
   return new UnitLocationsService(
     { fetch } as unknown as MunicipalityBoundariesClient,
     { fetch: history } as unknown as CnesHistoryClient,
+    { findAll: findCorrections } as unknown as UnitLocationCorrectionRepository,
   );
 }
 
@@ -112,6 +119,7 @@ describe('UnitLocationsService', () => {
       precision: 'municipality',
       original: { latitude: -24.9, longitude: -46.9 },
       referenceMonth: null,
+      correctedAt: null,
     });
   });
 
@@ -250,6 +258,7 @@ describe('UnitLocationsService', () => {
         precision: 'history',
         original: { latitude: -24.9, longitude: -46.9 },
         referenceMonth: '2025-11',
+        correctedAt: null,
       });
     });
 
@@ -314,6 +323,7 @@ describe('UnitLocationsService', () => {
       expect(units[0]!.location).toMatchObject({
         precision: 'municipality',
         referenceMonth: null,
+        correctedAt: null,
         original: { latitude: -24.9, longitude: -46.9 },
       });
     });
@@ -452,6 +462,209 @@ describe('UnitLocationsService', () => {
         unit(-24.9, -46.9, { street: 'Rua Nova', number: '5' }),
       ]);
 
+      expect(units[0]!.location.precision).toBe('municipality');
+    });
+  });
+  describe('manual corrections', () => {
+    const correction = (
+      overrides: Partial<UnitLocationCorrectionEntity> = {},
+    ): UnitLocationCorrectionEntity =>
+      ({
+        cnesCode: '5563704',
+        latitude: -23.85,
+        longitude: -46.85,
+        verifiedBy: 'Maria Souza',
+        method: 'Conferido no mapa oficial da prefeitura',
+        correctedAt: new Date('2026-10-07T15:00:00Z'),
+        anchorMunicipalityCode: '350000',
+        anchorStreet: 'Rua Teste',
+        anchorNumber: '100',
+        anchorLatitude: -24.9,
+        anchorLongitude: -46.9,
+        ...overrides,
+      }) as UnitLocationCorrectionEntity;
+    const withCorrections = (
+      rows: UnitLocationCorrectionEntity[],
+      history = vi.fn(noHistory),
+    ) =>
+      serviceWith(
+        vi.fn(boundaries),
+        history,
+        vi.fn(() => Promise.resolve(rows)),
+      );
+    const misplaced = () =>
+      unit(-24.9, -46.9, { street: 'Rua Teste', number: '100' });
+
+    it('puts the manual position over a misplaced CNES coordinate', async () => {
+      const history = vi.fn(noHistory);
+      const { units, validated } = await withCorrections(
+        [correction()],
+        history,
+      ).apply([misplaced()]);
+
+      expect(validated).toBe(true);
+      expect(units[0]!.location).toEqual({
+        latitude: -23.85,
+        longitude: -46.85,
+        precision: 'manual',
+        original: { latitude: -24.9, longitude: -46.9 },
+        referenceMonth: null,
+        correctedAt: '2026-10-07',
+      });
+      expect(history).not.toHaveBeenCalled();
+    });
+
+    it('also overrides a CNES coordinate that is inside the municipality', async () => {
+      const { units } = await withCorrections([
+        correction({ anchorLatitude: -23.9, anchorLongitude: -46.9 }),
+      ]).apply([unit(-23.9, -46.9, { street: 'Rua Teste', number: '100' })]);
+
+      expect(units[0]!.location).toMatchObject({
+        precision: 'manual',
+        latitude: -23.85,
+      });
+    });
+
+    it('does not expose who verified the position or how', async () => {
+      const { units } = await withCorrections([correction()]).apply([
+        misplaced(),
+      ]);
+
+      const json = JSON.stringify(units[0]);
+      expect(json).not.toContain('Maria Souza');
+      expect(json).not.toContain('Conferido no mapa');
+      expect(Object.keys(units[0]!.location).sort()).toEqual([
+        'correctedAt',
+        'latitude',
+        'longitude',
+        'original',
+        'precision',
+        'referenceMonth',
+      ]);
+    });
+
+    it('dates the correction in the Brazilian calendar day', async () => {
+      // 01:30 UTC is still the previous evening in Brasília.
+      const { units } = await withCorrections([
+        correction({ correctedAt: new Date('2026-10-08T01:30:00Z') }),
+      ]).apply([misplaced()]);
+
+      expect(units[0]!.location.correctedAt).toBe('2026-10-07');
+    });
+
+    it('ignores the corrections of other units', async () => {
+      const { units } = await withCorrections([
+        correction({ cnesCode: '7654321' }),
+      ]).apply([misplaced()]);
+
+      expect(units[0]!.location.precision).toBe('municipality');
+    });
+
+    it('leaves the correction out when the address changed in CNES', async () => {
+      const warn = vi
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+      try {
+        const { units } = await withCorrections([
+          correction({ anchorStreet: 'Rua Antiga' }),
+        ]).apply([misplaced()]);
+
+        expect(units[0]!.location.precision).toBe('municipality');
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('5563704'));
+      } finally {
+        warn.mockRestore();
+      }
+    });
+
+    it('leaves the correction out when the municipality changed in CNES', async () => {
+      const { units } = await withCorrections([
+        correction({ anchorMunicipalityCode: '350001' }),
+      ]).apply([misplaced()]);
+
+      expect(units[0]!.location.precision).toBe('municipality');
+    });
+
+    it('keeps a correction for a unit whose street is missing on both sides', async () => {
+      const { units } = await withCorrections([
+        correction({ anchorStreet: null, anchorNumber: null }),
+      ]).apply([unit(-24.9, -46.9)]);
+
+      expect(units[0]!.location.precision).toBe('manual');
+    });
+
+    it('applies to a municipality that has no boundary yet', async () => {
+      const { units } = await withCorrections([
+        correction({ anchorMunicipalityCode: '510183' }),
+      ]).apply([
+        unit(-24.9, -46.9, {
+          municipalityCode: '510183',
+          street: 'Rua Teste',
+          number: '100',
+        }),
+      ]);
+
+      expect(units[0]!.location.precision).toBe('manual');
+    });
+
+    it('compares a long CNES address as it was stored, cut to the column length', async () => {
+      const street = 'R'.repeat(400);
+      const number = '9'.repeat(60);
+
+      const { units } = await withCorrections([
+        correction({
+          anchorStreet: street.slice(0, 255),
+          anchorNumber: number.slice(0, 32),
+        }),
+      ]).apply([unit(-24.9, -46.9, { street, number })]);
+
+      expect(units[0]!.location.precision).toBe('manual');
+    });
+
+    it('does not report a change when only the CNES rounding differs', async () => {
+      const log = vi
+        .spyOn(Logger.prototype, 'log')
+        .mockImplementation(() => undefined);
+      try {
+        // CNES carries 7 decimals and the anchor 6.
+        await withCorrections([
+          correction({ anchorLatitude: -24.52124, anchorLongitude: -45.83955 }),
+        ]).apply([
+          unit(-24.5212404, -45.8395502, {
+            street: 'Rua Teste',
+            number: '100',
+          }),
+        ]);
+
+        expect(log).not.toHaveBeenCalled();
+      } finally {
+        log.mockRestore();
+      }
+    });
+
+    it('reports it, and still applies, when CNES changed the coordinate', async () => {
+      const log = vi
+        .spyOn(Logger.prototype, 'log')
+        .mockImplementation(() => undefined);
+      try {
+        const { units } = await withCorrections([correction()]).apply([
+          unit(-23.9, -46.9, { street: 'Rua Teste', number: '100' }),
+        ]);
+
+        expect(units[0]!.location.precision).toBe('manual');
+        expect(log).toHaveBeenCalledWith(expect.stringContaining('5563704'));
+      } finally {
+        log.mockRestore();
+      }
+    });
+
+    it('skips the layer and rechecks soon when the corrections cannot be read', async () => {
+      const { units, validated } = await serviceWith(
+        vi.fn(boundaries),
+        vi.fn(noHistory),
+        vi.fn().mockRejectedValue(new Error('database is down')),
+      ).apply([misplaced()]);
+
+      expect(validated).toBe(false);
       expect(units[0]!.location.precision).toBe('municipality');
     });
   });

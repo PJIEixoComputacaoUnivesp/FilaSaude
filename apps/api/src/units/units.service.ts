@@ -60,6 +60,7 @@ function fallbackUnits(stateAbbr?: string): HealthUnit[] {
       precision: 'source',
       original: null,
       referenceMonth: null,
+      correctedAt: null,
     },
     serviceHours: unit.serviceHours ?? null,
     lastUpdatedAt: unit.lastUpdatedAt,
@@ -79,14 +80,51 @@ export class UnitsService {
     { expiresAt: number; response: UnitsResponse }
   >();
   private readonly pending = new Map<string, Promise<UnitsResponse>>();
+  // Bumped by `invalidate`, so that a load started before it does not put its
+  // outdated response back in the cache. It is kept per key: a correction for a
+  // unit in one state must not keep a slow load of another state from being
+  // cached.
+  private epoch = 0;
+  private readonly keyGeneration = new Map<string, number>();
 
   constructor(
     private readonly cnesClient: CnesClient,
     private readonly locations: UnitLocationsService,
   ) {}
 
+  /**
+   * Drops the cached and in-flight responses a change to the positions (a
+   * manual correction) can affect, so that it shows on the next request: the
+   * state of the unit and the national view. Other states keep theirs, since
+   * refetching one from CNES takes tens of seconds. Without a state, all of
+   * them go.
+   *
+   * The entries are dropped, not kept as a stale fallback: if CNES is down
+   * right after a removal, the embedded snapshot still goes through the
+   * current corrections, while a stale response would keep serving the
+   * removed position.
+   */
+  invalidate(state?: string): void {
+    if (!state) {
+      this.epoch++;
+      this.cache.clear();
+      this.pending.clear();
+      return;
+    }
+    for (const key of [state, NationalStateCode.Brazil]) {
+      this.keyGeneration.set(key, (this.keyGeneration.get(key) ?? 0) + 1);
+      this.cache.delete(key);
+      this.pending.delete(key);
+    }
+  }
+
+  private generationOf(key: string): string {
+    return `${this.epoch}:${this.keyGeneration.get(key) ?? 0}`;
+  }
+
   async findAll(stateValue?: string): Promise<UnitsResponse> {
     const state = parseState(stateValue);
+    const generation = this.generationOf(state.abbreviation);
     const cached = this.cache.get(state.abbreviation);
     if (cached && cached.expiresAt > Date.now()) return cached.response;
 
@@ -95,10 +133,13 @@ export class UnitsService {
     if (!request) {
       request = (
         state.abbreviation === NationalStateCode.Brazil
-          ? this.loadNational(state)
-          : this.loadLive(state, cached)
+          ? this.loadNational(state, generation)
+          : this.loadLive(state, generation, cached)
       ).finally(() => {
-        this.pending.delete(state.abbreviation);
+        // An invalidation may already have replaced this entry.
+        if (this.pending.get(state.abbreviation) === request) {
+          this.pending.delete(state.abbreviation);
+        }
       });
       this.pending.set(state.abbreviation, request);
     }
@@ -112,7 +153,10 @@ export class UnitsService {
    * against the municipality, like any other response, so that a misplaced
    * unit does not appear outside it.
    */
-  private async loadNational(state: BrazilianState): Promise<UnitsResponse> {
+  private async loadNational(
+    state: BrazilianState,
+    generation: string,
+  ): Promise<UnitsResponse> {
     const located = await this.locations.apply(
       fallbackUnits(NationalStateCode.Brazil),
     );
@@ -122,15 +166,23 @@ export class UnitsService {
       'fallback',
       FALLBACK_RETRIEVED_AT,
     );
-    this.cache.set(state.abbreviation, {
-      expiresAt: Date.now() + cacheTtl(located),
-      response,
-    });
+    this.remember(state.abbreviation, generation, cacheTtl(located), response);
     return response;
+  }
+
+  private remember(
+    key: string,
+    generation: string,
+    ttlMs: number,
+    response: UnitsResponse,
+  ): void {
+    if (generation !== this.generationOf(key)) return;
+    this.cache.set(key, { expiresAt: Date.now() + ttlMs, response });
   }
 
   private async loadLive(
     state: BrazilianState,
+    generation: string,
     cached?: { expiresAt: number; response: UnitsResponse },
   ): Promise<UnitsResponse> {
     try {
@@ -146,10 +198,12 @@ export class UnitsService {
         'live',
         new Date().toISOString(),
       );
-      this.cache.set(state.abbreviation, {
-        expiresAt: Date.now() + cacheTtl(located),
+      this.remember(
+        state.abbreviation,
+        generation,
+        cacheTtl(located),
         response,
-      });
+      );
       return response;
     } catch (error: unknown) {
       const reason = error instanceof Error ? error.message : 'unknown error';

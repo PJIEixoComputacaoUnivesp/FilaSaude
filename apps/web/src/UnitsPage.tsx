@@ -3,7 +3,7 @@ import { BrazilianStateSelect } from "./BrazilianStateSelect";
 import { stateName } from "./brazilianStates";
 import {
   formatAddress,
-  formatReferenceMonth,
+  formatPosition,
   formatSourceDate,
   type HealthUnit,
   type UnitsResponse,
@@ -67,14 +67,7 @@ function UnitCard({
         <div>
           <dt className="font-semibold text-slate-900">Localização no mapa</dt>
           <dd>
-            {unit.location.latitude === null || unit.location.longitude === null
-              ? "Coordenadas não informadas na fonte pública"
-              : unit.location.precision === "municipality"
-                ? "Aproximada: centro do município (contorno do IBGE)"
-                : unit.location.precision === "history" &&
-                    unit.location.referenceMonth
-                  ? `Posição do CNES de ${formatReferenceMonth(unit.location.referenceMonth)} (a coordenada atual não é utilizável)`
-                  : "Disponível"}
+            {formatPosition(unit)}
           </dd>
         </div>
       </dl>

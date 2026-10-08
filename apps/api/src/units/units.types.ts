@@ -19,9 +19,11 @@ export interface Coordinate {
  * `history` is the latest earlier CNES coordinate that is inside the municipality
  * and was registered for the same address (see `referenceMonth`); `municipality`
  * is the center of the declared municipality. The last two are used when the
- * current CNES coordinate is missing or outside the municipality.
+ * current CNES coordinate is missing or outside the municipality. `manual` is
+ * a position an administrator set for the unit (see `correctedAt`); it takes
+ * precedence over the others.
  */
-export type LocationPrecision = 'source' | 'history' | 'municipality';
+export type LocationPrecision = 'source' | 'history' | 'municipality' | 'manual';
 
 export interface UnitLocation {
   latitude: number | null;
@@ -31,6 +33,8 @@ export interface UnitLocation {
   original: Coordinate | null;
   /** CNES monthly release (`YYYY-MM`) the `history` position comes from. */
   referenceMonth: string | null;
+  /** Date (`YYYY-MM-DD`) an administrator set a `manual` position. */
+  correctedAt: string | null;
 }
 
 export interface HealthUnit {
