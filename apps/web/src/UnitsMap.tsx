@@ -10,6 +10,7 @@ import {
   ZoomControl,
 } from "react-leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
+import { UnitSources } from "./UnitSources";
 import type { HealthUnit } from "./units";
 import {
   formatAddress,
@@ -300,9 +301,10 @@ export function UnitsMap({ units, className = "", overlayRef, isCountryWide }: U
                   esta unidade.
                 </p>
               )}
-              <p className="mb-0 text-xs text-slate-500">
-                CNES · atualizado em {formatSourceDate(unit.lastUpdatedAt)}
-              </p>
+              <UnitSources
+                sources={unit.sources}
+                className="mb-0 space-y-1 text-xs text-slate-500"
+              />
             </div>
           </Popup>
         </CircleMarker>

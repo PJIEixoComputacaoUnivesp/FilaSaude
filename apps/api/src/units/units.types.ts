@@ -15,7 +15,8 @@ export interface Coordinate {
 }
 
 /**
- * Where the position comes from: `source` is the CNES coordinate as declared;
+ * Where the position comes from: `source` is a coordinate from a public source
+ * identified in `sources` (normally CNES, or GeoSampa after enrichment);
  * `history` is the latest earlier CNES coordinate that is inside the municipality
  * and was registered for the same address (see `referenceMonth`); `municipality`
  * is the center of the declared municipality. The last two are used when the
@@ -37,6 +38,16 @@ export interface UnitLocation {
   correctedAt: string | null;
 }
 
+export type UnitSourceField =
+  'identity' | 'address' | 'location' | 'serviceHours';
+
+export interface UnitSource {
+  name: string;
+  url: string;
+  fields: UnitSourceField[];
+  lastUpdatedAt: string | null;
+}
+
 export interface HealthUnit {
   id: string;
   name: string;
@@ -48,6 +59,7 @@ export interface HealthUnit {
   location: UnitLocation;
   serviceHours: string | null;
   lastUpdatedAt: string;
+  sources: UnitSource[];
 }
 
 export interface UnitsMetadata {

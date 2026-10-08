@@ -7,6 +7,16 @@ export interface UnitAddress {
   state: string;
 }
 
+export type UnitSourceField =
+  "identity" | "address" | "location" | "serviceHours";
+
+export interface UnitSource {
+  name: string;
+  url: string;
+  fields: UnitSourceField[];
+  lastUpdatedAt: string | null;
+}
+
 export interface HealthUnit {
   id: string;
   name: string;
@@ -34,6 +44,7 @@ export interface HealthUnit {
   };
   serviceHours: string | null;
   lastUpdatedAt: string;
+  sources: UnitSource[];
 }
 
 export interface UnitsResponse {
@@ -83,7 +94,30 @@ function isUnit(value: unknown): value is HealthUnit {
         typeof value.location.correctedAt === "string")) &&
     typeof value.address.city === "string" &&
     typeof value.address.state === "string" &&
-    typeof value.lastUpdatedAt === "string"
+    typeof value.lastUpdatedAt === "string" &&
+    Array.isArray(value.sources) &&
+    value.sources.every(isSource)
+  );
+}
+
+function isSource(value: unknown): value is UnitSource {
+  const validFields: UnitSourceField[] = [
+    "identity",
+    "address",
+    "location",
+    "serviceHours",
+  ];
+  return (
+    isRecord(value) &&
+    typeof value.name === "string" &&
+    typeof value.url === "string" &&
+    Array.isArray(value.fields) &&
+    value.fields.every(
+      (field) =>
+        typeof field === "string" &&
+        validFields.includes(field as UnitSourceField),
+    ) &&
+    (value.lastUpdatedAt === null || typeof value.lastUpdatedAt === "string")
   );
 }
 

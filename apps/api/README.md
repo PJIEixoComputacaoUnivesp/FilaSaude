@@ -41,7 +41,7 @@ informa de onde vem a posição:
 
 | `precision`    | Origem                                                                                              |
 | -------------- | --------------------------------------------------------------------------------------------------- |
-| `source`       | Coordenada atual do CNES.                                                                           |
+| `source`       | Coordenada atual de uma fonte pública, identificada em `sources`.                                   |
 | `history`      | Ponto de uma publicação mensal anterior do CNES, dentro do município e para o mesmo endereço.       |
 | `municipality` | Centro do município, calculado do contorno do IBGE.                                                 |
 | `manual`       | Posição definida por um administrador, com a data em `location.correctedAt`.                        |
@@ -53,6 +53,16 @@ informada pelo CNES e, em `history`, `location.referenceMonth` traz a competênc
 fallback por UF, usado quando o CNES está indisponível, não consulta o
 histórico. Os detalhes e as limitações estão no
 [ADR 0001](../../docs/adr/0001-public-health-unit-data-source.md).
+
+Para unidades do município de São Paulo sem posição manual, a API tenta cruzar
+o registro com a camada oficial de urgência/emergência do GeoSampa. Uma
+correspondência única e forte por nome, CEP ou proximidade substitui somente as
+coordenadas. Cada item expõe `sources`, que indica quais campos vieram do CNES e
+quais vieram do GeoSampa. Falhas ou correspondências ambíguas preservam a
+posição já validada pela API. O conjunto federal “UPA 24h em funcionamento” foi
+avaliado apenas como controle agregado por município; a decisão e as licenças
+estão documentadas no
+[ADR 0002](../../docs/adr/0002-additional-public-data-sources.md).
 
 ### Correção manual da posição (administradores)
 

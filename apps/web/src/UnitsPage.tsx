@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type Ref } from "react";
 import { BrazilianStateSelect } from "./BrazilianStateSelect";
+import { UnitSources } from "./UnitSources";
 import { stateName } from "./brazilianStates";
 import {
   formatAddress,
@@ -28,11 +29,9 @@ function DataNotice({ metadata }: { metadata: UnitsResponse["metadata"] }) {
 
 function UnitCard({
   unit,
-  source,
   headingRef,
 }: {
   unit: HealthUnit;
-  source: UnitsResponse["metadata"]["source"];
   headingRef?: Ref<HTMLHeadingElement>;
 }) {
   return (
@@ -72,18 +71,10 @@ function UnitCard({
         </div>
       </dl>
 
-      <p className="mt-4 border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-500 sm:mt-5 sm:pt-4">
-        Fonte:{" "}
-        <a
-          className="underline hover:text-fila-blue"
-          href={source.url}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {source.name}
-        </a>
-        {" · "}atualizado em {formatSourceDate(unit.lastUpdatedAt)}
-      </p>
+      <UnitSources
+        sources={unit.sources}
+        className="mt-4 space-y-1 border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-500 sm:mt-5 sm:pt-4"
+      />
     </article>
   );
 }
@@ -204,7 +195,6 @@ export function UnitsPage() {
                   <UnitCard
                     key={unit.id}
                     unit={unit}
-                    source={state.response.metadata.source}
                     headingRef={
                       index === focusIndex ? focusHeadingRef : undefined
                     }

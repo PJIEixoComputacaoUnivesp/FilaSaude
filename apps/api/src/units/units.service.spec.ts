@@ -1,4 +1,5 @@
 import { CnesClient } from './cnes.client.js';
+import { GeoSampaClient } from './geosampa.client.js';
 import { UnitsService } from './units.service.js';
 import type { UnitLocationsService } from './unit-locations.service.js';
 import type { HealthUnit } from './units.types.js';
@@ -26,6 +27,14 @@ const liveUnit: HealthUnit = {
   },
   serviceHours: 'ATENDIMENTO CONTINUO DE 24 HORAS/DIA',
   lastUpdatedAt: '2026-09-20',
+  sources: [
+    {
+      name: 'Cadastro Nacional de Estabelecimentos de Saúde (CNES)',
+      url: 'https://example.com/cnes',
+      fields: ['identity', 'address', 'location', 'serviceHours'],
+      lastUpdatedAt: '2026-09-20',
+    },
+  ],
 };
 
 const passthrough = {
@@ -34,11 +43,26 @@ const passthrough = {
   ),
 } as unknown as UnitLocationsService;
 
+function createGeoSampaClient() {
+  return {
+    enrichLocations: vi.fn((units: HealthUnit[]) => Promise.resolve(units)),
+  } as unknown as GeoSampaClient;
+}
+
+function createService(
+  client: CnesClient,
+  locations: UnitLocationsService,
+  geoSampaClient = createGeoSampaClient(),
+) {
+  return new UnitsService(client, locations, geoSampaClient);
+}
+
 describe('UnitsService', () => {
   it('returns and caches live CNES data', async () => {
     const fetchUnits = vi.fn().mockResolvedValue([liveUnit]);
     const client = { fetchUnits } as unknown as CnesClient;
-    const service = new UnitsService(client, passthrough);
+    const geoSampaClient = createGeoSampaClient();
+    const service = createService(client, passthrough, geoSampaClient);
 
     const first = await service.findAll('SP');
     const second = await service.findAll('sp');
@@ -53,6 +77,7 @@ describe('UnitsService', () => {
     });
     expect(second).toBe(first);
     expect(fetchUnits).toHaveBeenCalledTimes(1);
+    expect(geoSampaClient.enrichLocations).toHaveBeenCalledWith([liveUnit]);
   });
 
   it('shares an in-flight CNES request for the same state', async () => {
@@ -64,7 +89,7 @@ describe('UnitsService', () => {
         }),
     );
     const client = { fetchUnits } as unknown as CnesClient;
-    const service = new UnitsService(client, passthrough);
+    const service = createService(client, passthrough);
 
     const first = service.findAll('SP');
     const second = service.findAll('SP');
@@ -80,7 +105,7 @@ describe('UnitsService', () => {
     const client = {
       fetchUnits: vi.fn().mockRejectedValue(new Error('unavailable')),
     } as unknown as CnesClient;
-    const service = new UnitsService(client, passthrough);
+    const service = createService(client, passthrough);
 
     const response = await service.findAll('SP');
 
@@ -102,7 +127,7 @@ describe('UnitsService', () => {
         .mockResolvedValueOnce([liveUnit])
         .mockRejectedValueOnce(new Error('unavailable'));
       const client = { fetchUnits } as unknown as CnesClient;
-      const service = new UnitsService(client, passthrough);
+      const service = createService(client, passthrough);
 
       const live = await service.findAll('RJ');
       vi.advanceTimersByTime(7 * 60 * 60 * 1000);
@@ -130,7 +155,7 @@ describe('UnitsService', () => {
           Promise.resolve({ units, validated: true, historyComplete: false }),
         ),
       } as unknown as UnitLocationsService;
-      const service = new UnitsService(client, incomplete);
+      const service = createService(client, incomplete);
 
       await service.findAll('RJ');
       vi.advanceTimersByTime(30 * 60 * 1000);
@@ -148,7 +173,7 @@ describe('UnitsService', () => {
   it('rejects an invalid state before calling CNES', async () => {
     const fetchUnits = vi.fn();
     const client = { fetchUnits } as unknown as CnesClient;
-    const service = new UnitsService(client, passthrough);
+    const service = createService(client, passthrough);
 
     await expect(service.findAll('XX')).rejects.toThrow(
       'Invalid Brazilian state abbreviation',
@@ -159,13 +184,30 @@ describe('UnitsService', () => {
   it('returns all country units for ALL/BR', async () => {
     const fetchUnits = vi.fn();
     const client = { fetchUnits } as unknown as CnesClient;
-    const service = new UnitsService(client, passthrough);
+    const geoSampaClient = createGeoSampaClient();
+    const service = createService(client, passthrough, geoSampaClient);
 
     const response = await service.findAll('ALL');
     expect(response.data.length).toBeGreaterThan(1000);
     expect(response.metadata.state).toBe('BR');
     expect(response.metadata.dataOrigin).toBe('fallback');
     expect(fetchUnits).not.toHaveBeenCalled();
+    expect(geoSampaClient.enrichLocations).not.toHaveBeenCalled();
+  });
+
+  it('keeps validated locations when GeoSampa is unavailable', async () => {
+    const client = {
+      fetchUnits: vi.fn().mockResolvedValue([liveUnit]),
+    } as unknown as CnesClient;
+    const geoSampaClient = {
+      enrichLocations: vi.fn().mockRejectedValue(new Error('unavailable')),
+    } as unknown as GeoSampaClient;
+    const service = createService(client, passthrough, geoSampaClient);
+
+    const response = await service.findAll('SP');
+
+    expect(response.data).toEqual([liveUnit]);
+    expect(response.metadata.dataOrigin).toBe('live');
   });
 
   describe('invalidate', () => {
@@ -182,7 +224,7 @@ describe('UnitsService', () => {
 
     it('drops the cached response, so the next request loads again', async () => {
       const fetchUnits = vi.fn().mockResolvedValue([liveUnit]);
-      const service = new UnitsService(
+      const service = createService(
         { fetchUnits } as unknown as CnesClient,
         passthrough,
       );
@@ -196,7 +238,7 @@ describe('UnitsService', () => {
 
     it('keeps a load started before it from refilling the cache with outdated data', async () => {
       const { fetchUnits, resolvers } = deferredFetch();
-      const service = new UnitsService(
+      const service = createService(
         { fetchUnits } as unknown as CnesClient,
         passthrough,
       );
@@ -215,7 +257,7 @@ describe('UnitsService', () => {
 
     it('does not let a request after it join a load that started before it', async () => {
       const { fetchUnits, resolvers } = deferredFetch();
-      const service = new UnitsService(
+      const service = createService(
         { fetchUnits } as unknown as CnesClient,
         passthrough,
       );
@@ -235,7 +277,7 @@ describe('UnitsService', () => {
         .fn()
         .mockResolvedValueOnce([liveUnit])
         .mockRejectedValueOnce(new Error('unavailable'));
-      const service = new UnitsService(
+      const service = createService(
         { fetchUnits } as unknown as CnesClient,
         passthrough,
       );
@@ -251,7 +293,7 @@ describe('UnitsService', () => {
 
     it('leaves the other states cached, since refetching one takes tens of seconds', async () => {
       const fetchUnits = vi.fn().mockResolvedValue([liveUnit]);
-      const service = new UnitsService(
+      const service = createService(
         { fetchUnits } as unknown as CnesClient,
         passthrough,
       );
@@ -274,7 +316,7 @@ describe('UnitsService', () => {
             resolvers.push(resolve);
           }),
       );
-      const service = new UnitsService(
+      const service = createService(
         { fetchUnits } as unknown as CnesClient,
         passthrough,
       );
@@ -298,7 +340,7 @@ describe('UnitsService', () => {
             resolvers.push(resolve);
           }),
       );
-      const service = new UnitsService(
+      const service = createService(
         { fetchUnits } as unknown as CnesClient,
         passthrough,
       );
@@ -318,7 +360,7 @@ describe('UnitsService', () => {
       const apply = vi.fn((units: HealthUnit[]) =>
         Promise.resolve({ units, validated: true, historyComplete: true }),
       );
-      const service = new UnitsService(
+      const service = createService(
         { fetchUnits: vi.fn() } as unknown as CnesClient,
         {
           apply,
@@ -336,7 +378,7 @@ describe('UnitsService', () => {
       const apply = vi.fn((units: HealthUnit[]) =>
         Promise.resolve({ units, validated: true, historyComplete: true }),
       );
-      const service = new UnitsService(
+      const service = createService(
         { fetchUnits: vi.fn() } as unknown as CnesClient,
         {
           apply,
@@ -372,7 +414,7 @@ describe('UnitsService', () => {
           historyComplete: true,
         }),
       );
-      const service = new UnitsService(noClient, {
+      const service = createService(noClient, {
         apply,
       } as unknown as UnitLocationsService);
 
@@ -389,7 +431,7 @@ describe('UnitsService', () => {
       const apply = vi.fn((units: HealthUnit[]) =>
         Promise.resolve({ units, validated: true, historyComplete: true }),
       );
-      const service = new UnitsService(noClient, {
+      const service = createService(noClient, {
         apply,
       } as unknown as UnitLocationsService);
 
@@ -405,7 +447,7 @@ describe('UnitsService', () => {
       const apply = vi.fn((units: HealthUnit[]) =>
         Promise.resolve({ units, validated: true, historyComplete: true }),
       );
-      const service = new UnitsService(noClient, {
+      const service = createService(noClient, {
         apply,
       } as unknown as UnitLocationsService);
 
@@ -430,7 +472,7 @@ describe('UnitsService', () => {
           const apply = vi.fn((units: HealthUnit[]) =>
             Promise.resolve({ units, validated, historyComplete }),
           );
-          const service = new UnitsService(noClient, {
+          const service = createService(noClient, {
             apply,
           } as unknown as UnitLocationsService);
 

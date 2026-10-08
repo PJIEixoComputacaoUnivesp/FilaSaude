@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AdminModule } from '../admin/admin.module.js';
 import { CnesClient } from './cnes.client.js';
 import { CnesHistoryClient } from './cnes-history.client.js';
+import { GeoSampaClient } from './geosampa.client.js';
 import { LocationCorrectionsController } from './location-corrections.controller.js';
 import { LocationCorrectionsService } from './location-corrections.service.js';
 import { MunicipalitiesClient } from './municipalities.client.js';
@@ -29,6 +30,7 @@ import { UnitLocationCorrectionRepository } from '../database/repositories/unit-
   providers: [
     CnesClient,
     CnesHistoryClient,
+    GeoSampaClient,
     MunicipalitiesClient,
     MunicipalityBoundariesClient,
     UnitLocationsService,

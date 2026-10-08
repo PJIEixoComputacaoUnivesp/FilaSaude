@@ -5,6 +5,7 @@ import { Server } from 'node:http';
 import request from 'supertest';
 import { AppModule } from './../src/app.module.js';
 import { CnesClient } from './../src/units/cnes.client.js';
+import { GeoSampaClient } from './../src/units/geosampa.client.js';
 import { UnitLocationsService } from './../src/units/unit-locations.service.js';
 import type { HealthUnit } from './../src/units/units.types.js';
 
@@ -31,6 +32,14 @@ const testUnit: HealthUnit = {
   },
   serviceHours: 'ATENDIMENTO CONTINUO DE 24 HORAS/DIA',
   lastUpdatedAt: '2026-09-20',
+  sources: [
+    {
+      name: 'Cadastro Nacional de Estabelecimentos de Saúde (CNES)',
+      url: 'https://example.com/cnes',
+      fields: ['identity', 'address', 'location', 'serviceHours'],
+      lastUpdatedAt: '2026-09-20',
+    },
+  ],
 };
 
 describe('AppController (e2e)', () => {
@@ -48,6 +57,8 @@ describe('AppController (e2e)', () => {
       })
       .overrideProvider(CnesClient)
       .useValue({ fetchUnits: vi.fn().mockResolvedValue([testUnit]) })
+      .overrideProvider(GeoSampaClient)
+      .useValue({ enrichLocations: vi.fn().mockResolvedValue([testUnit]) })
       .overrideProvider(UnitLocationsService)
       .useValue({
         apply: vi.fn((units: HealthUnit[]) =>

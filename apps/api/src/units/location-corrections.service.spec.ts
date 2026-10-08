@@ -34,6 +34,14 @@ const cnesUnit: HealthUnit = {
   },
   serviceHours: null,
   lastUpdatedAt: '2026-09-20',
+  sources: [
+    {
+      name: 'Cadastro Nacional de Estabelecimentos de Saúde (CNES)',
+      url: 'https://example.com/cnes',
+      fields: ['identity', 'address', 'location', 'serviceHours'],
+      lastUpdatedAt: '2026-09-20',
+    },
+  ],
 };
 
 const ACTOR = 'maria-souza';
