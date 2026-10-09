@@ -16,10 +16,12 @@ describe('WebhookSourceConfigService', () => {
       }),
     );
 
-    expect(new WebhookSourceConfigService().find('academic-simulator')).toEqual({
-      secret: 'a-secret-that-is-at-least-32-characters',
-      unitCnes: ['1234567', '7654321'],
-    });
+    expect(new WebhookSourceConfigService().find('academic-simulator')).toEqual(
+      {
+        secret: 'a-secret-that-is-at-least-32-characters',
+        unitCnes: ['1234567', '7654321'],
+      },
+    );
   });
 
   it.each([
@@ -30,7 +32,12 @@ describe('WebhookSourceConfigService', () => {
     ],
     [
       'a source with an invalid CNES',
-      JSON.stringify({ source: { secret: 'secret', unitCnes: ['123'] } }),
+      JSON.stringify({
+        source: {
+          secret: 'a-secret-that-is-at-least-32-characters',
+          unitCnes: ['123'],
+        },
+      }),
     ],
     [
       'a source with a short secret',
@@ -55,6 +62,8 @@ describe('WebhookSourceConfigService', () => {
       }),
     );
 
-    expect(new WebhookSourceConfigService().find('other-source')).toBeUndefined();
+    expect(
+      new WebhookSourceConfigService().find('other-source'),
+    ).toBeUndefined();
   });
 });

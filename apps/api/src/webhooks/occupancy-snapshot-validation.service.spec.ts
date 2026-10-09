@@ -41,6 +41,25 @@ describe('OccupancySnapshotValidationService', () => {
     ).toThrow(UnprocessableEntityException);
   });
 
+  it('rejects impossible calendar dates', () => {
+    expect(() =>
+      service.validate({
+        ...validSnapshot,
+        occurredAt: '2026-02-30T14:30:00Z',
+        observedAt: '2026-02-30T14:30:05Z',
+      }),
+    ).toThrow(UnprocessableEntityException);
+  });
+
+  it('rejects a non-canonical ULID', () => {
+    expect(() =>
+      service.validate({
+        ...validSnapshot,
+        eventId: 'Z1K5T2S6C4TZ1K9TR6F89A2M7X',
+      }),
+    ).toThrow(UnprocessableEntityException);
+  });
+
   it('rejects unknown fields', () => {
     expect(() =>
       service.validate({ ...validSnapshot, unexpected: true }),

@@ -45,11 +45,16 @@ describe('WebhookAuthenticationService', () => {
   });
 
   it('rejects a timestamp outside the tolerance', () => {
+    const signature = createHmac('sha256', source.secret)
+      .update(`${timestamp}.`)
+      .update(rawBody)
+      .digest('hex');
+
     expect(() =>
       service.authenticate(
         'academic-simulator',
         timestamp,
-        `sha256=${'0'.repeat(64)}`,
+        `sha256=${signature}`,
         rawBody,
         new Date((1790000000 + 301) * 1000),
       ),

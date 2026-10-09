@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity.js';
 import { OccupancyWebhookInboxEntity } from '../entities/occupancy-webhook-inbox.entity.js';
 
 @Injectable()
@@ -14,9 +15,12 @@ export class OccupancyWebhookInboxRepository {
     return this.repository.findOneBy({ eventId });
   }
 
-  insert(
+  async insert(
     entry: OccupancyWebhookInboxEntity,
   ): Promise<OccupancyWebhookInboxEntity> {
-    return this.repository.save(entry);
+    await this.repository.insert(
+      entry as unknown as QueryDeepPartialEntity<OccupancyWebhookInboxEntity>,
+    );
+    return entry;
   }
 }

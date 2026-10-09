@@ -5,7 +5,7 @@ import {
   type OccupancySnapshot,
 } from './occupancy-snapshot.types.js';
 
-const EVENT_ID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/;
+const EVENT_ID_PATTERN = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 const CNES_PATTERN = /^\d{7}$/;
 const ISO_DATE_TIME_PATTERN =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
@@ -42,7 +42,12 @@ export class OccupancySnapshotValidationService {
           fields.push(path);
           return;
         }
-        addUnknownFields(fields, category, ['code', 'capacity', 'occupied'], path);
+        addUnknownFields(
+          fields,
+          category,
+          ['code', 'capacity', 'occupied'],
+          path,
+        );
         if (
           typeof category.code !== 'string' ||
           !OCCUPANCY_CATEGORY_CODES.includes(category.code as never) ||
@@ -111,7 +116,13 @@ function requireDateTime(
 }
 
 function isValidDateTime(value: string): boolean {
-  return ISO_DATE_TIME_PATTERN.test(value) && !Number.isNaN(Date.parse(value));
+  if (!ISO_DATE_TIME_PATTERN.test(value) || Number.isNaN(Date.parse(value))) {
+    return false;
+  }
+
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return day >= 1 && day <= daysInMonth;
 }
 
 function isNonNegativeInteger(value: unknown): value is number {

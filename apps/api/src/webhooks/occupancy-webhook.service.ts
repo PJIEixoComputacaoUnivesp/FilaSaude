@@ -1,10 +1,10 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
-  BadRequestException,
   UnsupportedMediaTypeException,
 } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
@@ -15,6 +15,8 @@ import { OccupancySnapshotValidationService } from './occupancy-snapshot-validat
 import { WebhookAuthenticationService } from './webhook-authentication.service.js';
 import { WebhookRateLimiterService } from './webhook-rate-limiter.service.js';
 import { WebhookSourceConfigService } from './webhook-source-config.service.js';
+
+const MAX_BODY_BYTES = 64 * 1024;
 
 export interface OccupancyWebhookHeaders {
   contentType: string | undefined;
@@ -37,17 +39,17 @@ export class OccupancyWebhookService {
     headers: OccupancyWebhookHeaders,
     rawBody: Buffer,
   ): Promise<{ duplicate: boolean }> {
-    if (!headers.contentType?.toLowerCase().startsWith('application/json')) {
+    if (!isJsonContentType(headers.contentType)) {
       throw new UnsupportedMediaTypeException({
         code: 'unsupported_content_type',
         message: 'O Content-Type deve ser application/json.',
       });
     }
-    if (rawBody.length > 64 * 1024) {
+    if (rawBody.length > MAX_BODY_BYTES) {
       throw new HttpException(
         {
-        code: 'payload_too_large',
-        message: 'O corpo excede o limite permitido.',
+          code: 'payload_too_large',
+          message: 'O corpo excede o limite permitido.',
         },
         HttpStatus.PAYLOAD_TOO_LARGE,
       );
@@ -98,7 +100,8 @@ export class OccupancyWebhookService {
     } catch (error) {
       if (!isUniqueViolation(error)) throw error;
       const concurrent = await this.inbox.findByEventId(snapshot.eventId);
-      if (concurrent) return this.handleExisting(concurrent, sourceId, rawBodyText);
+      if (concurrent)
+        return this.handleExisting(concurrent, sourceId, rawBodyText);
       throw error;
     }
   }
@@ -138,5 +141,13 @@ export class OccupancyWebhookService {
 }
 
 function isUniqueViolation(error: unknown): boolean {
-  return error instanceof QueryFailedError && error.driverError?.code === '23505';
+  return (
+    error instanceof QueryFailedError && error.driverError?.code === '23505'
+  );
+}
+
+function isJsonContentType(contentType: string | undefined): boolean {
+  return (
+    contentType?.split(';', 1)[0].trim().toLowerCase() === 'application/json'
+  );
 }
