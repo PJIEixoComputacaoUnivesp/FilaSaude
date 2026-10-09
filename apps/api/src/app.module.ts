@@ -4,9 +4,10 @@ import { AppService } from './app.service.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { databaseOptions } from './database/data-source.js';
 import { UnitsModule } from './units/units.module.js';
+import { WebhooksModule } from './webhooks/webhooks.module.js';
 
 @Module({
-  imports: [TypeOrmModule.forRoot(databaseOptions), UnitsModule],
+  imports: [TypeOrmModule.forRoot(databaseOptions), UnitsModule, WebhooksModule],
   controllers: [AppController],
   providers: [AppService],
 })
