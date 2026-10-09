@@ -34,7 +34,7 @@ ambiente de execução. O valor é um objeto JSON em que cada fonte possui um
 segredo e a lista de unidades CNES autorizadas:
 
 ```bash
-WEBHOOK_SOURCE_CONFIG='{"academic-simulator":{"secret":"segredo-fora-do-git","unitCnes":["1234567"]}}'
+WEBHOOK_SOURCE_CONFIG='{"academic-simulator":{"secret":"segredo-com-pelo-menos-32-caracteres","unitCnes":["1234567"]}}'
 ```
 
 Os cabeçalhos obrigatórios são `X-Webhook-Source`,

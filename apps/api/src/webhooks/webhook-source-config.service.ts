@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { WebhookSourceConfiguration } from './occupancy-snapshot.types.js';
 
 const SOURCE_CONFIG_ENV = 'WEBHOOK_SOURCE_CONFIG';
+const SOURCE_SECRET_MIN_LENGTH = 32;
 
 @Injectable()
 export class WebhookSourceConfigService {
@@ -33,9 +34,13 @@ export class WebhookSourceConfigService {
 
     const sources = new Map<string, WebhookSourceConfiguration>();
     for (const [sourceId, value] of Object.entries(parsed)) {
-      if (!isRecord(value) || typeof value.secret !== 'string') {
+      if (
+        !isRecord(value) ||
+        typeof value.secret !== 'string' ||
+        value.secret.length < SOURCE_SECRET_MIN_LENGTH
+      ) {
         throw new Error(
-          `${SOURCE_CONFIG_ENV}.${sourceId}.secret must be a string`,
+          `${SOURCE_CONFIG_ENV}.${sourceId}.secret must contain at least ${SOURCE_SECRET_MIN_LENGTH} characters`,
         );
       }
       if (
