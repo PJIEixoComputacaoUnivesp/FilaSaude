@@ -34,14 +34,15 @@ ambiente de execução. O valor é um objeto JSON em que cada fonte possui um
 segredo e a lista de unidades CNES autorizadas:
 
 ```bash
-WEBHOOK_SOURCE_CONFIG='{"academic-simulator":{"secret":"segredo-com-pelo-menos-32-caracteres","unitCnes":["1234567"]}}'
+WEBHOOK_SECRET="$(openssl rand -hex 32)"
+printf '{"academic-simulator":{"secret":"%s","unitCnes":["1234567"]}}\n' "$WEBHOOK_SECRET"
 ```
 
 Os cabeçalhos obrigatórios são `X-Webhook-Source`,
 `X-Webhook-Timestamp` (Unix em segundos) e `X-Webhook-Signature`
 (`sha256=<hexadecimal>`). A assinatura usa o timestamp, um ponto e o corpo
 bruto da requisição. O payload e os vetores de assinatura estão documentados
-em [`docs/contracts/occupancy-snapshot-v1.md`](../../docs/contracts/occupancy-snapshot-v1.md).
+em [`docs/contracts/occupancy-snapshot-v1.md`](../../docs/contracts/occupancy-snapshot-v1.md), que tambÃ©m traz um vetor fixo para validar implementaÃ§Ãµes independentes.
 
 O endpoint de unidades consulta diretamente os tipos oficiais `20` (pronto
 socorro geral), `21` (pronto socorro especializado) e `73` (pronto atendimento)

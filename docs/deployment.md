@@ -75,11 +75,22 @@ O valor de `WEBHOOK_SOURCE_CONFIG` deve seguir este formato, sem incluir
 segredos no repositório:
 
 ```json
-{"municipal-source":{"secret":"pelo-menos-32-caracteres-gerados-aleatoriamente","unitCnes":["1234567"]}}
+{"academic-simulator":{"secret":"<openssl rand -hex 32>","unitCnes":["1234567"]}}
 ```
 
 O deploy de produção exige essa configuração; sem ela, o serviço não inicia
 pelo Compose.
+
+Gere o secret fora do repositório e salve o JSON resultante como secret do
+environment `production`:
+
+```bash
+WEBHOOK_SECRET="$(openssl rand -hex 32)"
+printf '{"academic-simulator":{"secret":"%s","unitCnes":["1234567"]}}\n' "$WEBHOOK_SECRET"
+```
+
+Em produção, o webhook é acessível pelo prefixo público da API:
+`https://<domínio>/api/webhooks/v1/occupancy`.
 
 Crie também duas variáveis de Actions:
 

@@ -1,4 +1,8 @@
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  UnsupportedMediaTypeException,
+} from '@nestjs/common';
 import { OccupancyWebhookInboxEntity } from '../database/entities/occupancy-webhook-inbox.entity.js';
 import type { OccupancyWebhookInboxRepository } from '../database/repositories/occupancy-webhook-inbox.repository.js';
 import { OccupancySnapshotValidationService } from './occupancy-snapshot-validation.service.js';
@@ -30,19 +34,36 @@ describe('OccupancyWebhookService', () => {
     findByEventId: vi.fn().mockResolvedValue(null),
     insert: vi.fn().mockResolvedValue(new OccupancyWebhookInboxEntity()),
   } as unknown as OccupancyWebhookInboxRepository;
-  const service = new OccupancyWebhookService(
-    authentication,
-    sourceConfig,
-    new OccupancySnapshotValidationService(),
-    new WebhookRateLimiterService(),
-    repository,
-  );
+  let service: OccupancyWebhookService;
   const headers = {
     contentType: 'application/json',
     source: 'academic-simulator',
     timestamp: '1790000000',
     signature: 'sha256=' + '0'.repeat(64),
   };
+
+  beforeEach(() => {
+    vi.mocked(authentication.authenticate)
+      .mockReset()
+      .mockReturnValue('academic-simulator');
+    vi.mocked(sourceConfig.find)
+      .mockReset()
+      .mockReturnValue({
+        secret: 'test-secret',
+        unitCnes: ['1234567'],
+      });
+    vi.mocked(repository.findByEventId).mockReset().mockResolvedValue(null);
+    vi.mocked(repository.insert)
+      .mockReset()
+      .mockResolvedValue(new OccupancyWebhookInboxEntity());
+    service = new OccupancyWebhookService(
+      authentication,
+      sourceConfig,
+      new OccupancySnapshotValidationService(),
+      new WebhookRateLimiterService(),
+      repository,
+    );
+  });
 
   it('persists a valid event before returning success', async () => {
     await expect(service.receive(headers, rawBody)).resolves.toEqual({
@@ -78,7 +99,6 @@ describe('OccupancyWebhookService', () => {
   });
 
   it('rejects a source that is not authorized for the unit', async () => {
-    vi.mocked(repository.findByEventId).mockResolvedValue(null);
     vi.mocked(sourceConfig.find).mockReturnValue({
       secret: 'test-secret',
       unitCnes: ['7654321'],
@@ -87,5 +107,27 @@ describe('OccupancyWebhookService', () => {
     await expect(service.receive(headers, rawBody)).rejects.toThrow(
       ForbiddenException,
     );
+  });
+
+  it('rejects unsupported content types', async () => {
+    await expect(
+      service.receive({ ...headers, contentType: 'text/plain' }, rawBody),
+    ).rejects.toThrow(UnsupportedMediaTypeException);
+  });
+
+  it('rejects bodies above the webhook limit', async () => {
+    await expect(
+      service.receive(headers, Buffer.alloc(64 * 1024 + 1)),
+    ).rejects.toMatchObject({ status: 413 });
+  });
+
+  it('rejects the request that exceeds the source rate limit', async () => {
+    for (let index = 0; index < 60; index += 1) {
+      await service.receive(headers, rawBody);
+    }
+
+    await expect(service.receive(headers, rawBody)).rejects.toMatchObject({
+      status: 429,
+    });
   });
 });

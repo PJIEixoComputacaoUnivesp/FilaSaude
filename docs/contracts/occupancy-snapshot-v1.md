@@ -24,6 +24,21 @@ A assinatura é calculada sobre os bytes exatos do corpo HTTP:
 HMAC-SHA256(sourceSecret, timestamp + "." + rawBody)
 ```
 
+### Vetor de assinatura
+
+Este vetor usa um segredo exclusivamente documental e um corpo compacto. Ele
+permite conferir a implementação do HMAC antes de usar um segredo real:
+
+| Campo | Valor |
+| --- | --- |
+| `sourceSecret` | `test-secret-for-occupancy-vector-2026` |
+| `timestamp` | `1790000000` |
+| `rawBody` | `{"eventId":"01K5T2S6C4TZ1K9TR6F89A2M7X","type":"occupancy.snapshot.v1","unitCnes":"1234567","occurredAt":"2026-09-25T14:30:00Z","observedAt":"2026-09-25T14:30:05Z","categories":[{"code":"observation","capacity":20,"occupied":13}]}` |
+| `X-Webhook-Signature` | `sha256=da56c33183345cfa94a63775704a2b52655350b77dae47c84a836db888cc62e5` |
+
+O corpo deve ser usado exatamente como está na tabela, sem espaços ou quebras
+de linha adicionais.
+
 O simulador deve serializar o JSON uma única vez, assinar os mesmos bytes que
 serão enviados e gerar um novo timestamp e assinatura em cada retentativa. O
 `eventId` permanece igual nas retentativas.

@@ -184,6 +184,11 @@ jobs:
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
           set -eu
+          if grep -q 'WEBHOOK_SOURCE_CONFIG:?' deploy/compose.prod.yaml &&
+            [ -z "$WEBHOOK_SOURCE_CONFIG" ]; then
+            echo "::error::O secret WEBHOOK_SOURCE_CONFIG é obrigatório em produção" >&2
+            exit 1
+          fi
           umask 077
           mkdir -p "$HOME/.ssh"
           printf '%s\n' "$DEPLOY_SSH_KEY" > "$RUNNER_TEMP/deploy_key"

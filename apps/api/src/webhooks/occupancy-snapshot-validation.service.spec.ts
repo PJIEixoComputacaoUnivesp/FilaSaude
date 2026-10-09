@@ -31,6 +31,79 @@ describe('OccupancySnapshotValidationService', () => {
     ).toThrow(UnprocessableEntityException);
   });
 
+  it('reports duplicate category fields', () => {
+    let error: unknown;
+    try {
+      service.validate({
+        ...validSnapshot,
+        categories: [
+          { code: 'observation', capacity: 1, occupied: 1 },
+          { code: 'observation', capacity: 1, occupied: 1 },
+        ],
+      });
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(UnprocessableEntityException);
+    expect((error as UnprocessableEntityException).getResponse()).toMatchObject(
+      {
+        fields: ['categories[1].code'],
+      },
+    );
+  });
+
+  it('reports occupied capacity overflow fields', () => {
+    let error: unknown;
+    try {
+      service.validate({
+        ...validSnapshot,
+        categories: [{ code: 'observation', capacity: 1, occupied: 2 }],
+      });
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(UnprocessableEntityException);
+    expect((error as UnprocessableEntityException).getResponse()).toMatchObject(
+      {
+        fields: ['categories[0].occupied'],
+      },
+    );
+  });
+
+  it('reports an empty category list', () => {
+    let error: unknown;
+    try {
+      service.validate({ ...validSnapshot, categories: [] });
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(UnprocessableEntityException);
+    expect((error as UnprocessableEntityException).getResponse()).toMatchObject(
+      {
+        fields: ['categories'],
+      },
+    );
+  });
+
+  it('reports an invalid snapshot type', () => {
+    let error: unknown;
+    try {
+      service.validate({ ...validSnapshot, type: 'other.event' });
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(UnprocessableEntityException);
+    expect((error as UnprocessableEntityException).getResponse()).toMatchObject(
+      {
+        fields: ['type'],
+      },
+    );
+  });
+
   it('rejects timestamps in reverse order', () => {
     expect(() =>
       service.validate({
