@@ -38,7 +38,7 @@ export class OccupancyWebhookService {
   async receive(
     headers: OccupancyWebhookHeaders,
     rawBody: Buffer,
-  ): Promise<{ duplicate: boolean }> {
+  ): Promise<void> {
     if (!isJsonContentType(headers.contentType)) {
       throw new UnsupportedMediaTypeException({
         code: 'unsupported_content_type',
@@ -91,17 +91,22 @@ export class OccupancyWebhookService {
 
     const rawBodyText = rawBody.toString('utf8');
     const existing = await this.inbox.findByEventId(snapshot.eventId);
-    if (existing) return this.handleExisting(existing, sourceId, rawBodyText);
+    if (existing) {
+      this.handleExisting(existing, sourceId, rawBodyText);
+      return;
+    }
 
     const entry = this.toEntity(sourceId, rawBodyText, snapshot);
     try {
       await this.inbox.insert(entry);
-      return { duplicate: false };
+      return;
     } catch (error) {
       if (!isUniqueViolation(error)) throw error;
       const concurrent = await this.inbox.findByEventId(snapshot.eventId);
-      if (concurrent)
-        return this.handleExisting(concurrent, sourceId, rawBodyText);
+      if (concurrent) {
+        this.handleExisting(concurrent, sourceId, rawBodyText);
+        return;
+      }
       throw error;
     }
   }
@@ -110,14 +115,13 @@ export class OccupancyWebhookService {
     existing: OccupancyWebhookInboxEntity,
     sourceId: string,
     rawBody: string,
-  ): { duplicate: boolean } {
+  ): void {
     if (existing.sourceId !== sourceId || existing.rawBody !== rawBody) {
       throw new ConflictException({
         code: 'event_id_conflict',
         message: 'O eventId já está associado a outro evento.',
       });
     }
-    return { duplicate: true };
   }
 
   private toEntity(

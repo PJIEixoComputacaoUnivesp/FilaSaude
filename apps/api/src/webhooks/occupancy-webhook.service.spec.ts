@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   UnsupportedMediaTypeException,
 } from '@nestjs/common';
+import { QueryFailedError } from 'typeorm';
 import { OccupancyWebhookInboxEntity } from '../database/entities/occupancy-webhook-inbox.entity.js';
 import type { OccupancyWebhookInboxRepository } from '../database/repositories/occupancy-webhook-inbox.repository.js';
 import { OccupancySnapshotValidationService } from './occupancy-snapshot-validation.service.js';
@@ -66,9 +67,7 @@ describe('OccupancyWebhookService', () => {
   });
 
   it('persists a valid event before returning success', async () => {
-    await expect(service.receive(headers, rawBody)).resolves.toEqual({
-      duplicate: false,
-    });
+    await expect(service.receive(headers, rawBody)).resolves.toBeUndefined();
     expect(repository.insert).toHaveBeenCalledWith(
       expect.objectContaining({ eventId: snapshot.eventId }),
     );
@@ -81,9 +80,7 @@ describe('OccupancyWebhookService', () => {
     existing.rawBody = rawBody.toString('utf8');
     vi.mocked(repository.findByEventId).mockResolvedValue(existing);
 
-    await expect(service.receive(headers, rawBody)).resolves.toEqual({
-      duplicate: true,
-    });
+    await expect(service.receive(headers, rawBody)).resolves.toBeUndefined();
   });
 
   it('rejects a duplicate event with a different body', async () => {
@@ -129,5 +126,26 @@ describe('OccupancyWebhookService', () => {
     await expect(service.receive(headers, rawBody)).rejects.toMatchObject({
       status: 429,
     });
+  });
+
+  it('handles a concurrent event conflict between different sources', async () => {
+    const existing = new OccupancyWebhookInboxEntity();
+    existing.eventId = snapshot.eventId;
+    existing.sourceId = 'another-source';
+    existing.rawBody = rawBody.toString('utf8');
+    vi.mocked(repository.insert).mockRejectedValue(
+      new QueryFailedError(
+        'INSERT',
+        [],
+        Object.assign(new Error('unique violation'), { code: '23505' }),
+      ),
+    );
+    vi.mocked(repository.findByEventId)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(existing);
+
+    await expect(service.receive(headers, rawBody)).rejects.toThrow(
+      ConflictException,
+    );
   });
 });
