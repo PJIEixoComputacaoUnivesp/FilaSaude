@@ -1,16 +1,16 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import { createHmac } from 'node:crypto';
-import type { Server } from 'node:http';
-import type { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
+import { configureApp } from '../src/app-configuration.js';
 import { AppModule } from '../src/app.module.js';
 import type { OccupancyWebhookInboxEntity } from '../src/database/entities/occupancy-webhook-inbox.entity.js';
 import { OccupancyWebhookInboxRepository } from '../src/database/repositories/occupancy-webhook-inbox.repository.js';
 import { WebhookSourceConfigService } from '../src/webhooks/webhook-source-config.service.js';
 
 describe('Occupancy webhook (e2e)', () => {
-  let app: INestApplication<Server>;
+  let app: NestExpressApplication;
   const secret = 'test-secret';
   const entries = new Map<string, OccupancyWebhookInboxEntity>();
   const repository = {
@@ -42,7 +42,10 @@ describe('Occupancy webhook (e2e)', () => {
       })
       .compile();
 
-    app = moduleFixture.createNestApplication({ rawBody: true });
+    app = moduleFixture.createNestApplication<NestExpressApplication>({
+      bodyParser: false,
+    });
+    configureApp(app);
     await app.init();
   });
 
@@ -53,9 +56,7 @@ describe('Occupancy webhook (e2e)', () => {
       unitCnes: '1234567',
       occurredAt: '2026-09-25T14:30:00-03:00',
       observedAt: '2026-09-25T14:30:05-03:00',
-      categories: [
-        { code: 'observation', capacity: 20, occupied: 13 },
-      ],
+      categories: [{ code: 'observation', capacity: 20, occupied: 13 }],
     });
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const signature = createHmac('sha256', secret)
@@ -97,6 +98,66 @@ describe('Occupancy webhook (e2e)', () => {
         expect(body).toEqual({
           code: 'invalid_webhook_authentication',
           message: 'Cabeçalhos de autenticação inválidos.',
+        });
+      });
+  });
+
+  it('rejects an unsupported content type before reading the raw body', async () => {
+    await request(app.getHttpServer())
+      .post('/webhooks/v1/occupancy')
+      .set('Content-Type', 'text/plain')
+      .send('not-json')
+      .expect(415)
+      .expect(({ body }) => {
+        expect(body).toEqual({
+          code: 'unsupported_content_type',
+          message: 'O Content-Type deve ser application/json.',
+        });
+      });
+  });
+
+  it('normalizes malformed JSON parser errors', async () => {
+    await request(app.getHttpServer())
+      .post('/webhooks/v1/occupancy')
+      .set('Content-Type', 'application/json')
+      .send('{"eventId":')
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body).toEqual({
+          code: 'malformed_json',
+          message: 'O corpo não contém JSON válido.',
+        });
+      });
+  });
+
+  it('returns the contractual error for a body above the webhook limit', async () => {
+    const body = JSON.stringify({ data: 'x'.repeat(64 * 1024) });
+
+    await request(app.getHttpServer())
+      .post('/webhooks/v1/occupancy')
+      .set('Content-Type', 'application/json')
+      .send(body)
+      .expect(413)
+      .expect(({ body: responseBody }) => {
+        expect(responseBody).toEqual({
+          code: 'payload_too_large',
+          message: 'O corpo excede o limite permitido.',
+        });
+      });
+  });
+
+  it('normalizes parser errors for bodies above the parser limit', async () => {
+    const body = JSON.stringify({ data: 'x'.repeat(101 * 1024) });
+
+    await request(app.getHttpServer())
+      .post('/webhooks/v1/occupancy')
+      .set('Content-Type', 'application/json')
+      .send(body)
+      .expect(413)
+      .expect(({ body: responseBody }) => {
+        expect(responseBody).toEqual({
+          code: 'payload_too_large',
+          message: 'O corpo excede o limite permitido.',
         });
       });
   });
