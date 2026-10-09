@@ -68,12 +68,16 @@ em mais um município. A comparação completa por recurso está no rascunho da
 
 | Plataforma | O que informa | O que não informa |
 | --- | --- | --- |
-| Meu SUS Digital (Ministério da Saúde) | Cartão Nacional de Saúde, vacinas, exames, agendamentos e rede de saúde com busca por raio (até 70 km, segundo o grupo) e botão de rota | Tempo de espera e disponibilidade de medicamentos |
+| Meu SUS Digital (Ministério da Saúde) | Cartão Nacional de Saúde, vacinas, exames, registro de agendamentos (segundo o grupo) e rede de saúde com busca por raio (até 70 km, segundo o grupo) e botão de rota; marcação online só nos municípios que usam o PEC e-SUS APS e habilitam a opção | Tempo de espera e disponibilidade de medicamentos |
 | e-SaúdeSP (Prefeitura de São Paulo) | Histórico e agendamentos, mapa de unidades por tipo, busca de medicamentos na rede ("Remédio na Hora") e situação das salas de vacinação ("De olho na fila") | Espera em pronto atendimento |
 
-A afirmação sobre o raio de 70 km e o botão de rota segue **a verificar** em
-fonte oficial. Já o "De olho na fila" do e-SaúdeSP refere-se a salas de
-vacinação, o que responde a dúvida registrada na [#61](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/61).
+As afirmações sobre o raio de 70 km, o botão de rota e o registro de
+agendamentos já feitos seguem **a verificar** em fonte oficial. A marcação
+online, ao contrário, foi conferida na página de perguntas e respostas do
+Ministério: ela depende de o município usar o PEC e-SUS APS e de o gestor local
+habilitar a opção, então não pode ser tratada como disponível em todo município.
+Já o "De olho na fila" do e-SaúdeSP refere-se a salas de vacinação, o que
+responde a dúvida registrada na [#61](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/61).
 
 **Lacuna que motiva o projeto:** espera e estoque de medicamentos dependem de
 cada município. Não existe fonte pública nacional e unificada com a ocupação das
@@ -215,6 +219,9 @@ como aproximado.
 - [Meu SUS Digital: página do Ministério da Saúde](https://www.gov.br/saude/pt-br/composicao/seidigi/meususdigital)
   e [Rede de Saúde](https://meususdigital.saude.gov.br/publico/rede-saude)
   (conferidos em 29/09/2026; a tela de Rede de Saúde não pôde ser inspecionada)
+- [Meu SUS Digital: é possível marcar consultas?](https://www.gov.br/saude/pt-br/composicao/seidigi/meususdigital/perguntas-e-respostas/cidadao/8-e-possivel-marcar-consultas)
+  (conferido em 09/10/2026): marcação online depende do PEC e-SUS APS e da
+  habilitação pelo município
 - [Prefeitura de São Paulo: funcionalidades do e-SaúdeSP](https://prefeitura.sp.gov.br/w/saiba-mais-sobre-as-funcionalidades-do-aplicativo-e-sa%C3%BAdesp-1)
   (conferido em 29/09/2026)
 - [Lei nº 14.654/2023](https://www2.camara.leg.br/legin/fed/lei/2023/lei-14654-23-agosto-2023-794579-norma-pl.html):
