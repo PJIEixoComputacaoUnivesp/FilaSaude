@@ -20,6 +20,29 @@ A API inicia em `http://localhost:3000`.
 | `GET /units`           | Lista unidades públicas de pronto atendimento de todo o Brasil. |
 | `GET /units?state=SP`  | Lista unidades públicas de pronto atendimento da UF informada.  |
 | `GET /units?state=ALL` | Lista unidades de todo o Brasil a partir do snapshot local.      |
+| `POST /webhooks/v1/occupancy` | Recebe snapshots de ocupação assinados.              |
+
+### Webhook de ocupação
+
+O endpoint `POST /webhooks/v1/occupancy` recebe um snapshot por unidade CNES,
+autentica a fonte com HMAC-SHA256, valida o contrato v1 e persiste o evento na
+inbox antes de responder `202 Accepted`. O processamento posterior da inbox
+ainda não faz parte deste endpoint.
+
+Configure as fontes por meio de `WEBHOOK_SOURCE_CONFIG`, exclusivamente no
+ambiente de execução. O valor é um objeto JSON em que cada fonte possui um
+segredo e a lista de unidades CNES autorizadas:
+
+```bash
+WEBHOOK_SECRET="$(openssl rand -hex 32)"
+printf '{"academic-simulator":{"secret":"%s","unitCnes":["1234567"]}}\n' "$WEBHOOK_SECRET"
+```
+
+Os cabeçalhos obrigatórios são `X-Webhook-Source`,
+`X-Webhook-Timestamp` (Unix em segundos) e `X-Webhook-Signature`
+(`sha256=<hexadecimal>`). A assinatura usa o timestamp, um ponto e o corpo
+bruto da requisição. O payload e os vetores de assinatura estão documentados
+em [`docs/contracts/occupancy-snapshot-v1.md`](../../docs/contracts/occupancy-snapshot-v1.md), que tambÃ©m traz um vetor fixo para validar implementaÃ§Ãµes independentes.
 
 O endpoint de unidades consulta diretamente os tipos oficiais `20` (pronto
 socorro geral), `21` (pronto socorro especializado) e `73` (pronto atendimento)
@@ -106,6 +129,9 @@ As migrations são executadas explicitamente e `synchronize` permanece desativad
 O Compose injeta `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` e `DB_PASSWORD` na
 API. Ao executar a API diretamente fora do Compose, essas variáveis precisam
 ser exportadas no shell; a API não carrega arquivos `.env` automaticamente.
+
+A migration da inbox do webhook é executada pelo mesmo comando
+`pnpm --filter @filasaude/api migration:run`.
 
 O serviço deve expor apenas dados públicos e nunca oferecer diagnóstico,
 triagem, orientação médica ou recomendação de unidades.

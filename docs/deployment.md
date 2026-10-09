@@ -69,6 +69,28 @@ adicione os secrets:
 | `APP_DOMAIN` | Domínio completo, sem protocolo, ou `http://IP` sem domínio |
 | `POSTGRES_PASSWORD` | Senha do PostgreSQL de produção (`openssl rand -hex 32`) |
 | `ADMIN_API_TOKENS` | Opcional. Liga a administração das posições. Uma entrada `login:token` por administrador, separadas por vírgula (ver "Correções manuais de posição") |
+| `WEBHOOK_SOURCE_CONFIG` | Objeto JSON com os segredos das fontes e os códigos CNES autorizados para cada fonte |
+
+O valor de `WEBHOOK_SOURCE_CONFIG` deve seguir este formato, sem incluir
+segredos no repositório:
+
+```json
+{"academic-simulator":{"secret":"<openssl rand -hex 32>","unitCnes":["1234567"]}}
+```
+
+O deploy de produção exige essa configuração; sem ela, o serviço não inicia
+pelo Compose.
+
+Gere o secret fora do repositório e salve o JSON resultante como secret do
+environment `production`:
+
+```bash
+WEBHOOK_SECRET="$(openssl rand -hex 32)"
+printf '{"academic-simulator":{"secret":"%s","unitCnes":["1234567"]}}\n' "$WEBHOOK_SECRET"
+```
+
+Em produção, o webhook é acessível pelo prefixo público da API:
+`https://<domínio>/api/webhooks/v1/occupancy`.
 
 Crie também duas variáveis de Actions:
 

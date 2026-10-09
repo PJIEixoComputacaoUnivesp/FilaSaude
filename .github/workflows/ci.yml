@@ -49,6 +49,9 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: API e2e
+        run: pnpm --filter @filasaude/api test:e2e
+
   e2e:
     name: Fluxo E2E com Playwright
     runs-on: ubuntu-latest

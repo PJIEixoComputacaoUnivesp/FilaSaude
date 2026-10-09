@@ -16,6 +16,7 @@ services:
       # Optional: login:token entries, one per administrator, turn the admin
       # endpoints on.
       ADMIN_API_TOKENS: ${ADMIN_API_TOKENS:-}
+      WEBHOOK_SOURCE_CONFIG: ${WEBHOOK_SOURCE_CONFIG:-}
     ports:
       - "3000:3000"
     healthcheck:
