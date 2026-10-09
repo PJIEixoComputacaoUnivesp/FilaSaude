@@ -146,6 +146,38 @@ describe('Occupancy webhook (e2e)', () => {
       });
   });
 
+  it('returns Retry-After when the source rate limit is exceeded', async () => {
+    const rawBody = JSON.stringify({
+      eventId: '01K5T2S6C4TZ1K9TR6F89A2M7X',
+      type: 'occupancy.snapshot.v1',
+      unitCnes: '1234567',
+      occurredAt: '2026-09-25T14:30:00-03:00',
+      observedAt: '2026-09-25T14:30:05-03:00',
+      categories: [{ code: 'observation', capacity: 20, occupied: 13 }],
+    });
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const signature = createHmac('sha256', secret)
+      .update(`${timestamp}.${rawBody}`)
+      .digest('hex');
+
+    for (let index = 0; index < 61; index += 1) {
+      const response = await request(app.getHttpServer())
+        .post('/webhooks/v1/occupancy')
+        .set('Content-Type', 'application/json')
+        .set('X-Webhook-Source', 'academic-simulator')
+        .set('X-Webhook-Timestamp', timestamp)
+        .set('X-Webhook-Signature', `sha256=${signature}`)
+        .send(rawBody);
+
+      if (index < 60) {
+        expect(response.status).toBe(202);
+      } else {
+        expect(response.status).toBe(429);
+        expect(response.headers['retry-after']).toMatch(/^\d+$/);
+      }
+    }
+  });
+
   it('normalizes parser errors for bodies above the parser limit', async () => {
     const body = JSON.stringify({ data: 'x'.repeat(101 * 1024) });
 

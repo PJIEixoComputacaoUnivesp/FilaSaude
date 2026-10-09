@@ -114,6 +114,25 @@ describe('OccupancySnapshotValidationService', () => {
     ).toThrow(UnprocessableEntityException);
   });
 
+  it('accepts an old snapshot for later processing', () => {
+    expect(
+      service.validate(validSnapshot, new Date('2026-10-01T14:30:05Z')),
+    ).toEqual(validSnapshot);
+  });
+
+  it('rejects an observed timestamp too far in the future', () => {
+    expect(() =>
+      service.validate(
+        {
+          ...validSnapshot,
+          occurredAt: '2026-09-25T14:35:00Z',
+          observedAt: '2026-09-25T14:35:06Z',
+        },
+        new Date('2026-09-25T14:30:05Z'),
+      ),
+    ).toThrow(UnprocessableEntityException);
+  });
+
   it('rejects impossible calendar dates', () => {
     expect(() =>
       service.validate({

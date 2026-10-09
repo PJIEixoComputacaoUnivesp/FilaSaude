@@ -7,12 +7,13 @@ import {
 
 const EVENT_ID_PATTERN = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 const CNES_PATTERN = /^\d{7}$/;
+export const OCCUPANCY_SNAPSHOT_FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
 const ISO_DATE_TIME_PATTERN =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 
 @Injectable()
 export class OccupancySnapshotValidationService {
-  validate(payload: unknown): OccupancySnapshot {
+  validate(payload: unknown, now = new Date()): OccupancySnapshot {
     const fields: string[] = [];
     if (!isRecord(payload)) {
       throw invalidPayload(['body']);
@@ -78,6 +79,15 @@ export class OccupancySnapshotValidationService {
       new Date(payload.occurredAt) > new Date(payload.observedAt)
     ) {
       fields.push('occurredAt');
+      fields.push('observedAt');
+    }
+
+    if (
+      typeof payload.observedAt === 'string' &&
+      isValidDateTime(payload.observedAt) &&
+      new Date(payload.observedAt).getTime() >
+        now.getTime() + OCCUPANCY_SNAPSHOT_FUTURE_TOLERANCE_MS
+    ) {
       fields.push('observedAt');
     }
 

@@ -125,6 +125,7 @@ describe('OccupancyWebhookService', () => {
 
     await expect(service.receive(headers, rawBody)).rejects.toMatchObject({
       status: 429,
+      retryAfterSeconds: expect.any(Number),
     });
   });
 

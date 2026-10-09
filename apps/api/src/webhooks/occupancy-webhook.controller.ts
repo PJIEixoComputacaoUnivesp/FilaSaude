@@ -2,6 +2,7 @@ import { Controller, Post, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import type { RawBodyRequest } from '@nestjs/common';
 import { OccupancyWebhookService } from './occupancy-webhook.service.js';
+import { WebhookRateLimitException } from './webhook-rate-limiter.service.js';
 
 @Controller('webhooks/v1/occupancy')
 export class OccupancyWebhookController {
@@ -30,15 +31,22 @@ export class OccupancyWebhookController {
       return;
     }
 
-    await this.webhook.receive(
-      {
-        contentType,
-        source: request.header('x-webhook-source'),
-        timestamp: request.header('x-webhook-timestamp'),
-        signature: request.header('x-webhook-signature'),
-      },
-      rawBody,
-    );
+    try {
+      await this.webhook.receive(
+        {
+          contentType,
+          source: request.header('x-webhook-source'),
+          timestamp: request.header('x-webhook-timestamp'),
+          signature: request.header('x-webhook-signature'),
+        },
+        rawBody,
+      );
+    } catch (error) {
+      if (error instanceof WebhookRateLimitException) {
+        response.setHeader('Retry-After', error.retryAfterSeconds.toString());
+      }
+      throw error;
+    }
     response.status(202).send();
   }
 }

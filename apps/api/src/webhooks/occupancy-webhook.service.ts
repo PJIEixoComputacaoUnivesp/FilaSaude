@@ -13,7 +13,10 @@ import { OccupancyWebhookInboxRepository } from '../database/repositories/occupa
 import type { OccupancySnapshot } from './occupancy-snapshot.types.js';
 import { OccupancySnapshotValidationService } from './occupancy-snapshot-validation.service.js';
 import { WebhookAuthenticationService } from './webhook-authentication.service.js';
-import { WebhookRateLimiterService } from './webhook-rate-limiter.service.js';
+import {
+  WebhookRateLimitException,
+  WebhookRateLimiterService,
+} from './webhook-rate-limiter.service.js';
 import { WebhookSourceConfigService } from './webhook-source-config.service.js';
 
 const MAX_BODY_BYTES = 64 * 1024;
@@ -62,12 +65,8 @@ export class OccupancyWebhookService {
       rawBody,
     );
     if (!this.rateLimiter.allow(sourceId)) {
-      throw new HttpException(
-        {
-          code: 'rate_limit_exceeded',
-          message: 'Limite temporário de requisições excedido.',
-        },
-        HttpStatus.TOO_MANY_REQUESTS,
+      throw new WebhookRateLimitException(
+        this.rateLimiter.retryAfterSeconds(sourceId),
       );
     }
 
