@@ -43,6 +43,12 @@ O simulador deve serializar o JSON uma única vez, assinar os mesmos bytes que
 serão enviados e gerar um novo timestamp e assinatura em cada retentativa. O
 `eventId` permanece igual nas retentativas.
 
+Quando a API responder `429 rate_limit_exceeded`, a origem deve aguardar o
+intervalo indicado pelo cabeçalho `Retry-After` e repetir o envio com o mesmo
+`eventId`. A retentativa deve usar um novo timestamp e uma nova assinatura,
+com backoff limitado e número máximo de tentativas. Outras respostas `4xx` não
+devem ser repetidas automaticamente.
+
 ## Regras semânticas
 
 - `eventId` é um ULID e identifica o evento de forma idempotente.
@@ -54,6 +60,9 @@ serão enviados e gerar um novo timestamp e assinatura em cada retentativa. O
 - Cada código de categoria pode aparecer uma única vez.
 - `occurredAt` e `observedAt` usam ISO 8601; `occurredAt` deve ser anterior ou
   igual a `observedAt`.
+- `observedAt` não pode estar mais de cinco minutos no futuro em relação ao
+  recebimento. Snapshots antigos podem ser aceitos na inbox, mas o processamento
+  posterior não deve deixar um snapshot atrasado substituir um estado mais novo.
 - Campos desconhecidos são rejeitados.
 
 O schema valida a estrutura e os tipos básicos. As relações entre timestamps,
@@ -108,6 +117,7 @@ assinaturas completas ou detalhes internos.
 | Corpo acima do limite | `413 Payload Too Large` |
 | `Content-Type` inválido | `415 Unsupported Media Type` |
 | `eventId` com corpo diferente | `409 Conflict` |
+| Limite temporário da fonte | `429 Too Many Requests` com `Retry-After` |
 | Falha transitória da API | `5xx` |
 
 O corpo máximo é de 64 KB, a tolerância do timestamp é de cinco minutos e o

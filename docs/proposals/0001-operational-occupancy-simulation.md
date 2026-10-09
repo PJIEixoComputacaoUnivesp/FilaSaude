@@ -270,7 +270,12 @@ As decisões abaixo orientam a implementação do receptor e do simulador:
   e responderá `202`, sem criar outra linha;
 - o mesmo `eventId` associado a um corpo diferente será rejeitado como conflito;
 - falhas de conexão, timeout e respostas `5xx` podem ser repetidos pelo
-  simulador; respostas `4xx` não devem ser repetidas automaticamente;
+  simulador; `429` é a exceção entre os `4xx` e deve ser repetido após o
+  intervalo indicado por `Retry-After`, com backoff limitado e número máximo de
+  tentativas; os demais `4xx` não devem ser repetidos automaticamente;
+- `observedAt` não pode estar mais de cinco minutos no futuro em relação ao
+  recebimento; snapshots antigos podem ser preservados, mas não substituem um
+  estado mais recente;
 - erros retornam um objeto com código estável, mensagem curta e, quando útil,
   campos inválidos. A resposta não informa segredos, assinaturas, detalhes
   criptográficos ou informações internas da API.
@@ -285,7 +290,8 @@ simulador deve enviar exatamente os mesmos bytes usados no cálculo da assinatur
 - uma retentativa mantém o `eventId`, mas recebe novo instante e nova assinatura
   de transporte;
 - timeouts e respostas `5xx` podem ser repetidos com espera progressiva;
-- erros de contrato ou autenticação (`4xx`) não entram em repetição infinita;
+- erros de contrato ou autenticação (`4xx`), exceto `429`, não entram em
+  repetição automática;
 - a ordenação dos snapshots usa `occurredAt` como timestamp principal, pois ele
   representa quando o estado ocorreu na origem; em caso de empate, compara-se
   `observedAt`, depois `receivedAt` e, por fim, `eventId` em ordem lexicográfica;
