@@ -103,11 +103,18 @@ houver categorias ou se a soma das capacidades for zero, a ocupação geral ser�
 - **alta:** a partir de 85%.
 
 Uma categoria ausente significa “não informada” ou “não aplicável”, nunca zero.
-As categorias iniciais sugeridas são:
+As categorias iniciais sugeridas são representadas no contrato por códigos em
+inglês, com os seguintes significados em português:
 
-- observação;
-- estabilização;
-- internação.
+- `observation`: observação;
+- `stabilization`: estabilização;
+- `inpatient`: internação, isto é, atendimento de pacientes admitidos para
+  permanecer internados.
+
+Para o contrato `occupancy.snapshot.v1`, esses são os únicos códigos de
+categoria aceitos nesta versão. Os códigos são estáveis e permanecem em
+inglês; os nomes em português são a apresentação conceitual para o grupo e
+para a interface.
 
 Ao selecionar uma unidade, a pessoa poderia consultar o estado atual e um
 histórico acessível das últimas 24 horas, tanto em gráfico quanto em forma
@@ -206,6 +213,11 @@ O formato abaixo é apenas uma referência inicial para discussão e prototipaç
       "code": "stabilization",
       "capacity": 4,
       "occupied": 2
+    },
+    {
+      "code": "inpatient",
+      "capacity": 8,
+      "occupied": 5
     }
   ]
 }
@@ -228,6 +240,44 @@ signature = HMAC_SHA256(sourceSecret, timestamp + "." + rawBody)
 Segredos devem existir somente em variáveis de ambiente ou em um gerenciador de
 segredos. Para a prova de conceito, cada fonte teria um segredo independente e
 uma associação explícita com as unidades que pode atualizar.
+
+### 7.1 Decisões confirmadas para o contrato v1
+
+As decisões abaixo orientam a implementação do receptor e do simulador:
+
+- cada requisição representa uma única unidade CNES; não haverá lote de
+  unidades no webhook;
+- `Content-Type: application/json` é obrigatório;
+- o timestamp do cabeçalho de assinatura usa Unix em segundos;
+- a assinatura usa o formato `sha256=<hexadecimal>`;
+- a tolerância do timestamp é de cinco minutos;
+- o corpo tem limite de 64 KB e cada fonte pode enviar até 60 requisições por
+  minuto;
+- `eventId` usa o formato ULID;
+- as categorias aceitas são `observation`, `stabilization` e `inpatient`;
+- um snapshot pode conter somente as categorias aplicáveis ou informadas para
+  a unidade. Uma categoria ausente não representa ocupação zero;
+- a lista `categories` não pode ser vazia e cada código pode aparecer uma
+  única vez;
+- `capacity` e `occupied` são inteiros não negativos, e `occupied` não pode
+  exceder `capacity`;
+- `occurredAt` e `observedAt` usam data e hora ISO 8601, sendo obrigatório que
+  `occurredAt` seja anterior ou igual a `observedAt`;
+- a origem não será diferenciada por ambiente de simulador ou produção;
+- o segredo é definido por fonte, enquanto a autorização relaciona a fonte às
+  unidades CNES que ela pode atualizar;
+- uma duplicidade idêntica de `eventId` será tratada como recebimento bem-sucedido
+  e responderá `202`, sem criar outra linha;
+- o mesmo `eventId` associado a um corpo diferente será rejeitado como conflito;
+- falhas de conexão, timeout e respostas `5xx` podem ser repetidos pelo
+  simulador; respostas `4xx` não devem ser repetidas automaticamente;
+- erros retornam um objeto com código estável, mensagem curta e, quando útil,
+  campos inválidos. A resposta não informa segredos, assinaturas, detalhes
+  criptográficos ou informações internas da API.
+
+Os nomes dos cabeçalhos serão `X-Webhook-Source`, `X-Webhook-Timestamp` e
+`X-Webhook-Signature`. A API deve assinar e validar o corpo bruto recebido, e o
+simulador deve enviar exatamente os mesmos bytes usados no cálculo da assinatura.
 
 ### Idempotência, ordem e retentativas
 
@@ -351,7 +401,7 @@ Nem todas as frentes precisam ser assumidas pelas mesmas pessoas.
 | Qual município será demonstrado? | Amostra configurável; São Paulo como fallback | Em aberto | — |
 | Haverá tentativa de parceria institucional? | Desejável, mas não obrigatória para o simulador | Em aberto | — |
 | Quais unidades entram na amostra? | 10 a 20 unidades com CNES e coordenadas válidas | Em aberto | — |
-| Quais categorias serão exibidas? | Observação, estabilização e internação | Em aberto | — |
+| Quais categorias serão exibidas? | `observation` (observação), `stabilization` (estabilização) e `inpatient` (internação) | Confirmadas para o contrato v1 | — |
 | Quais faixas representam ocupação? | `<60%`, `>=60% e <85%` e `>=85%` | Em aberto | — |
 | A camada começa desligada? | Sim | Em aberto | — |
 | Qual período de histórico será público? | Últimas 24 horas | Em aberto | — |
