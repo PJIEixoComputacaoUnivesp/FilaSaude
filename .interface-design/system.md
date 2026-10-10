@@ -31,6 +31,9 @@
   paths (`/map`, anything else) redirect to `/` and keep the query string.
 - The safety notice is in the footer of every screen. Source and update date
   stay on each unit, in the card and in the map popup.
+- Search matches name and address, which is what its labels promise ("unidade,
+  cidade ou bairro"). It does not match service hours: filtering by
+  characteristic is a feature of its own (#29).
 - Results have a neutral order (UF, city, name). Nothing ranks, highlights or
   recommends a unit. That holds when the map becomes the entry point and when
   it shows occupancy: ranges are always text plus color, and never reuse the

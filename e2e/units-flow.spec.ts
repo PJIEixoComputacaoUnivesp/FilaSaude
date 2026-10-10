@@ -243,3 +243,25 @@ test("mantém a busca ao ler Sobre os dados e voltar ao mapa", async ({ page }) 
   ).toHaveValue("Osasco");
   await expect(page.getByText("1 unidade no mapa.")).toBeVisible();
 });
+
+test("trata /units/ com barra final como a lista e grava a busca na URL", async ({
+  page,
+}) => {
+  await page.route("**/api/units?state=SP", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(unitsResponse),
+    }),
+  );
+
+  await page.goto("/units/?uf=SP");
+  await expect(page.getByText("2 unidades encontradas")).toBeVisible();
+
+  await page
+    .getByRole("searchbox", { name: "Buscar por unidade, cidade ou bairro" })
+    .fill("Osasco");
+
+  await expect(page.getByText("1 unidade encontrada")).toBeVisible();
+  await expect(page).toHaveURL(/\?uf=SP&q=Osasco$/);
+});
