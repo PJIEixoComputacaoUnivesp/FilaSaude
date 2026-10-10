@@ -1,11 +1,12 @@
 # Deploy na DigitalOcean
 
-A produção do FilaSaúde usa um único Droplet e três containers:
+A produção do FilaSaúde usa um único Droplet e quatro containers:
 
 - Caddy recebe o tráfego público, emite certificados TLS e encaminha as
   requisições;
 - o frontend é servido por Nginx em uma rede interna do Compose;
-- a API NestJS fica disponível externamente pelo prefixo `/api`.
+- a API NestJS fica disponível externamente pelo prefixo `/api`;
+- o PostgreSQL guarda os dados da API e só é acessível pela rede interna.
 
 As imagens são publicadas no GitHub Container Registry (GHCR) somente no
 deploy, identificadas pelo SHA do commit. O servidor não compila o projeto:
@@ -123,12 +124,13 @@ use um runner com IP fixo e atualize `ssh_allowed_cidrs`.
 
 ## 4. Publicação e rollback
 
-Pull requests e pushes na `main` executam lint, typecheck, testes, build e
-validação do Terraform (workflow `CI`). A CI não constrói as imagens Docker nem
-atualiza o Droplet: as imagens são construídas e publicadas só no deploy. Assim,
-o registro guarda apenas versões que foram de fato para produção, o que mantém
-os pacotes privados dentro da cota gratuita de armazenamento. Como
-consequência, um erro no `Dockerfile` só aparece no deploy.
+Pull requests e pushes na `main` executam o workflow `CI`: lint, typecheck,
+testes, build e os testes e2e da API (job "Qualidade do monorepo"), o fluxo da
+interface com Playwright e a validação do Terraform. A CI não constrói as
+imagens Docker nem atualiza o Droplet: as imagens são construídas e publicadas
+só no deploy. Assim, o registro guarda apenas versões que foram de fato para
+produção, o que mantém os pacotes privados dentro da cota gratuita de
+armazenamento. Como consequência, um erro no `Dockerfile` só aparece no deploy.
 
 O deploy é manual, pelo workflow `Deploy`: na aba Actions, clique em "Run
 workflow" na branch `main`. Pela linha de comando:
@@ -318,7 +320,11 @@ gunzip -c backups/filasaude-AAAAMMDDTHHMMSSZ.sql.gz |
   sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" "$POSTGRES_DB"'
 ```
 
-Como os dados de unidades vêm do CNES, eles também podem ser reconstruídos por
-uma nova ingestão. O backup evita depender da disponibilidade da fonte.
+Hoje o banco guarda as posições corrigidas por administradores, o histórico de
+cada alteração e a inbox de snapshots do webhook. Nada disso vem do CNES, então
+não pode ser reconstruído por ele: **o backup é a única cópia**. O cadastro de
+unidades ainda não é gravado no banco; quando a ingestão (#23) existir, ele
+poderá ser refeito a partir do CNES, mas as correções continuarão dependendo do
+backup.
 
 O volume do Caddy guarda certificados e estado, e pode ser recriado.
