@@ -90,6 +90,9 @@ Regras:
   o Git ignora (o `deploy/.env` nunca é copiado: pode ter credenciais de
   produção). Cada worktree tem seu próprio `node_modules`, e o `pnpm install` é
   barato porque o pnpm reaproveita o store.
+- O script recusa uma branch que já existe em `origin` (para continuar o
+  trabalho dela, use `--base origin/<branch>`) e, quando não consegue atualizar
+  a base ou consultar `origin`, avisa no resumo final.
 - Os hooks do Git (lint no commit, `pnpm check` no push) são gerados pelo
   `pnpm install`. Se a instalação falhar, o script termina com erro, e com
   `--no-install` ela é pulada: nos dois casos a worktree não tem hooks até
