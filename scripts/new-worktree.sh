@@ -117,12 +117,18 @@ target="$main_root/.worktrees/$name"
 if git show-ref --verify --quiet "refs/heads/$branch"; then
   die "a branch $branch já existe. Para usá-la: git worktree add .worktrees/$name $branch"
 fi
-# Best effort: refresh the remote-tracking ref, so a branch that exists only on
-# origin is not silently recreated from the base (the push would be rejected).
-git fetch --quiet origin "$branch" >/dev/null 2>&1 || true
-if git show-ref --verify --quiet "refs/remotes/origin/$branch" \
-  && [ "$base" != "origin/$branch" ]; then
-  die "a branch $branch já existe em origin. Para continuar o trabalho dela: scripts/new-worktree.sh $branch --base origin/$branch"
+# Ask the remote itself, not the local remote-tracking ref (which outlives a
+# deleted branch). Exit status 2 means "not there"; anything else means origin
+# could not be reached, and then the check is skipped, loudly.
+remote_unchecked=0
+if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+  [ "$base" = "origin/$branch" ] \
+    || die "a branch $branch já existe em origin. Para continuar o trabalho dela: scripts/new-worktree.sh $branch --base origin/$branch"
+else
+  if [ $? -ne 2 ]; then
+    remote_unchecked=1
+    echo "Aviso: não consegui consultar origin; não sei se $branch já existe lá." >&2
+  fi
 fi
 
 # Offline, or with another remote name, the local ref is still usable.
@@ -161,9 +167,18 @@ fi
 # Only the root .env, which holds local development defaults. Never deploy/.env.
 env_copied=0
 if [ -f "$main_root/.env" ] && [ ! -e "$target/.env" ]; then
-  cp "$main_root/.env" "$target/.env"
+  cp -p "$main_root/.env" "$target/.env"
   env_copied=1
 fi
+# Other ignored .env files stay behind on purpose; say which, so it is not silent.
+env_skipped=$(
+  find "$main_root" -maxdepth 4 -name .env -type f \
+    -not -path '*/node_modules/*' -not -path '*/.worktrees/*' 2>/dev/null \
+    | while IFS= read -r file; do
+      relative=${file#"$main_root"/}
+      [ "$relative" = ".env" ] || echo "$relative"
+    done
+)
 
 hooks_ready=1
 install_failed=0
@@ -184,25 +199,36 @@ else
 fi
 
 echo
-echo "Worktree criada: .worktrees/$name"
+if [ "$install_failed" -eq 1 ]; then
+  echo "Worktree criada, mas SEM as dependências instaladas: .worktrees/$name"
+else
+  echo "Worktree criada: .worktrees/$name"
+fi
 echo "  branch: $branch (a partir de $base, $base_commit)"
 echo "  entrar: cd $target"
 [ "$env_copied" -eq 0 ] || echo "  .env copiado da checkout principal (ignorado pelo Git)."
+if [ -n "$env_skipped" ]; then
+  echo "  não copiado de propósito (copie à mão se a tarefa precisar): $(echo "$env_skipped" | tr '\n' ' ')"
+fi
 echo
 echo "Lembretes:"
 if [ "$base_stale" -eq 1 ]; then
   echo "  - ATENÇÃO: não consegui atualizar $base; a worktree parte da referência local"
   echo "    ($base_commit) e pode estar atrasada. Confira com git fetch antes de abrir a PR."
 fi
-if [ "$hooks_ready" -eq 0 ]; then
-  echo "  - ATENÇÃO: as dependências não foram instaladas, então os hooks do Git"
-  echo "    (lint no commit, verificação completa no push) NÃO existem nesta worktree."
+if [ "$install" -eq 0 ]; then
+  echo "  - ATENÇÃO: a instalação foi pulada, então os hooks do Git (lint no commit,"
+  echo "    verificação completa no push) NÃO existem nesta worktree."
   echo "    Rode, antes de commitar: cd .worktrees/$name && pnpm install --frozen-lockfile"
 fi
+if [ "$remote_unchecked" -eq 1 ]; then
+  echo "  - ATENÇÃO: não consegui consultar origin. Se $branch já existir lá, o primeiro"
+  echo "    push será rejeitado; confira com git ls-remote --heads origin $branch."
+fi
+echo "  - A worktree parte de $base ($base_commit), não do HEAD de $current_root:"
+echo "    commits e alterações que só existem lá não vêm junto."
 if [ "$local_changes" -gt 0 ]; then
-  echo "  - $current_root tem $local_changes alteração(ões) local(is) não commitada(s), incluindo arquivos novos. Elas não foram trazidas."
-else
-  echo "  - A worktree parte de $base. Alterações locais de outras checkouts não vêm junto."
+  echo "  - $current_root tem $local_changes alteração(ões) local(is) não commitada(s), incluindo arquivos novos."
 fi
 echo "  - Nada foi adicionado, commitado nem enviado. Arquivos fora do escopo da tarefa"
 echo "    só entram em commit e push quando isso for pedido de forma explícita."
