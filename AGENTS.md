@@ -86,10 +86,10 @@ Regras:
   `scripts/new-worktree.sh feat/units-cnes`. Ele usa como nome a branch sem o
   prefixo (`.worktrees/units-cnes`; use `--name` se o nome colidir com outra
   worktree), parte de `origin/main` (ou de `--base <ref>`), instala as
-  dependências, recria os links de `.claude/skills` e copia os `.env` que têm
-  um `.env.example` versionado ao lado, que o Git ignora. Cada worktree tem seu
-  próprio `node_modules`, e o `pnpm install` é barato porque o pnpm reaproveita
-  o store.
+  dependências, recria os links de `.claude/skills` e copia o `.env` da raiz, que
+  o Git ignora (o `deploy/.env` nunca é copiado: pode ter credenciais de
+  produção). Cada worktree tem seu próprio `node_modules`, e o `pnpm install` é
+  barato porque o pnpm reaproveita o store.
 - Os hooks do Git (lint no commit, `pnpm check` no push) são gerados pelo
   `pnpm install`. Se a instalação falhar, o script termina com erro, e com
   `--no-install` ela é pulada: nos dois casos a worktree não tem hooks até
