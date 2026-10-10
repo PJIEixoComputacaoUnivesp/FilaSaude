@@ -90,16 +90,20 @@ function UnitCard({
   );
 }
 
-/**
- * Cards with progressive loading. The parent remounts it (via `key`) when the
- * search changes, which resets the page size and the focus target.
- */
+/** Cards with progressive loading ("Mostrar mais"). */
 function UnitResults({ units }: { units: HealthUnit[] }) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   // Index of the first card added by "Mostrar mais", which receives focus so
   // keyboard and screen reader users land on the new results.
   const [focusIndex, setFocusIndex] = useState<number | null>(null);
   const focusHeadingRef = useRef<HTMLHeadingElement>(null);
+  // A different result list starts again from the first page.
+  const [shownUnits, setShownUnits] = useState(units);
+  if (shownUnits !== units) {
+    setShownUnits(units);
+    setVisibleCount(PAGE_SIZE);
+    setFocusIndex(null);
+  }
 
   useEffect(() => {
     if (focusIndex !== null) focusHeadingRef.current?.focus();
@@ -138,8 +142,10 @@ function UnitResults({ units }: { units: HealthUnit[] }) {
   );
 }
 
+const title = "Unidades de pronto atendimento";
+
 export function UnitsPage() {
-  const headingRef = usePageHeading("Unidades de pronto atendimento");
+  const headingRef = usePageHeading(title);
   const { stateCode, query, setStateCode, setQuery, flush } =
     useSearchFilters();
   const searchRef = useRef<HTMLInputElement>(null);
@@ -150,9 +156,10 @@ export function UnitsPage() {
     () => (state.status === "success" ? sortUnits(state.response.data) : []),
     [state],
   );
+  const trimmedQuery = query.trim();
   const filteredUnits = useMemo(
-    () => filterUnits(sortedUnits, query),
-    [sortedUnits, query],
+    () => filterUnits(sortedUnits, trimmedQuery),
+    [sortedUnits, trimmedQuery],
   );
 
   const countText = `${filteredUnits.length.toLocaleString("pt-BR")} ${
@@ -180,7 +187,7 @@ export function UnitsPage() {
           tabIndex={-1}
           className="text-2xl font-bold tracking-tight text-fila-blue focus:outline-none sm:text-3xl"
         >
-          Unidades de pronto atendimento
+          {title}
         </h1>
         <p className="mt-2 hidden leading-relaxed text-slate-700 sm:block">
           Endereços e horários publicados no Cadastro Nacional de

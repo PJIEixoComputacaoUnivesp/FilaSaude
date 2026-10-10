@@ -21,6 +21,8 @@ import {
 } from "./units";
 
 const brazilCenter: [number, number] = [-14.2, -51.9];
+// A fixed empty list, so a country-wide view does not look like a new input.
+const noUnits: HealthUnit[] = [];
 // Canvas does not resolve CSS variables, so the brand blue is repeated here.
 const markerColor = "#1266cc";
 const fitPadding = 24;
@@ -191,15 +193,18 @@ function FitUnits({
       );
 
     map.invalidateSize();
-    // Follows the reduced-motion choice made when the map was created.
-    const animate = map.options.zoomAnimation !== false;
+    // Only turn animation off (reduced motion, chosen when the map was
+    // created). Leaflet decides otherwise; passing `true` would force an
+    // animated zoom even from a far-away view, which it skips by default.
+    const noMotion: L.ZoomPanOptions =
+      map.options.zoomAnimation === false ? { animate: false } : {};
     if (coordinates.length > 0) {
       map.fitBounds(coordinates, {
         ...overlayPadding(map, overlayRef?.current),
-        animate,
+        ...noMotion,
       });
     } else {
-      map.setView(brazilCenter, 4, { animate });
+      map.setView(brazilCenter, 4, noMotion);
     }
   }, [map, overlayRef, units]);
 
@@ -263,7 +268,9 @@ function EnforceCountryZoom() {
 }
 
 export function UnitsMap({ units, className = "", overlayRef, isCountryWide }: UnitsMapProps) {
-  const unitsWithLocation = units.filter(hasLocation);
+  // Stable between renders: FitUnits re-fits the map whenever this changes.
+  const unitsWithLocation = useMemo(() => units.filter(hasLocation), [units]);
+  const unitsToFit = isCountryWide ? noUnits : unitsWithLocation;
   const markerRadius = unitsWithLocation.length > 100 ? 4 : 6;
   // Canvas draws hundreds of markers cheaply, and the tolerance widens each
   // marker's hit area so small points remain easy to tap.
@@ -304,7 +311,7 @@ export function UnitsMap({ units, className = "", overlayRef, isCountryWide }: U
         zoomInTitle="Aproximar o mapa"
         zoomOutTitle="Afastar o mapa"
       />
-      <FitUnits units={isCountryWide ? [] : unitsWithLocation} overlayRef={overlayRef} />
+      <FitUnits units={unitsToFit} overlayRef={overlayRef} />
       {unitsWithLocation.map((unit) => (
         <CircleMarker
           key={unit.id}
