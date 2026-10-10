@@ -122,6 +122,16 @@ GitHub não têm IP de saída fixo. O servidor aceita somente autenticação por
 chave e não permite login de root. Para restringir também a origem da conexão,
 use um runner com IP fixo e atualize `ssh_allowed_cidrs`.
 
+### Notificações no Discord (opcional)
+
+O workflow `Deploy` avisa o resultado (sucesso, falha ou cancelamento) em um
+canal do Discord, e o workflow `Notificar pull requests` avisa quando um PR para
+a `main` é aberto, reaberto ou fechado. Os dois usam os secrets
+`DISCORD_WEBHOOK_ID` e `DISCORD_WEBHOOK_TOKEN`, que são do **repositório** e não
+do environment `production`, porque o job de notificação não usa esse
+environment. Sem eles, a notificação é ignorada com um aviso e o deploy não é
+afetado.
+
 ## 4. Publicação e rollback
 
 Pull requests e pushes na `main` executam o workflow `CI`: lint, typecheck,
@@ -143,7 +153,7 @@ gh workflow run deploy.yml --ref main
 gh workflow run deploy.yml --ref main -f image_tag=sha-<commit completo>
 ```
 
-O workflow segue três etapas:
+O workflow segue quatro etapas:
 
 1. **Validar commit:** o commit precisa estar na `main` e ter passado no check
    "Qualidade do monorepo" da CI.
@@ -154,6 +164,8 @@ O workflow segue três etapas:
    deploys.
 3. **Deploy:** os arquivos de `deploy/` também vêm desse commit, para que o
    compose e os scripts correspondam à imagem.
+4. **Notificar:** avisa o resultado no Discord, inclusive quando uma etapa
+   anterior falha. É opcional; ver "Notificações no Discord".
 
 Qualquer commit da `main` com CI aprovada pode ser publicado ou usado num
 rollback (`git log --format='sha-%H' origin/main`).
