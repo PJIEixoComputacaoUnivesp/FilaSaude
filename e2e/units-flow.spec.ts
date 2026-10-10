@@ -87,7 +87,7 @@ async function openUnitsPage(page: Page) {
       body: JSON.stringify(unitsResponse),
     }),
   );
-  await page.goto("/units");
+  await page.goto("/units?uf=SP");
   await expect(page.getByText("2 unidades encontradas")).toBeVisible();
 }
 
@@ -138,4 +138,52 @@ test("informa quando a busca não encontra unidades", async ({ page }) => {
     ),
   ).toBeVisible();
   await expect(page.getByRole("article")).toHaveCount(0);
+});
+
+test("leva a busca do mapa para a lista", async ({ page }) => {
+  await page.route("**/api/units?state=ALL", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...unitsResponse,
+        metadata: {
+          ...unitsResponse.metadata,
+          state: "BR",
+          dataOrigin: "fallback",
+          isStale: true,
+        },
+      }),
+    }),
+  );
+
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", {
+      level: 1,
+      name: "Mapa das unidades de pronto atendimento",
+    }),
+  ).toBeAttached();
+  await expect(page.getByText("2 unidades no mapa.")).toBeVisible();
+
+  await page
+    .getByRole("searchbox", { name: "Buscar no mapa" })
+    .fill("Vila Mariana");
+  await expect(page.getByText("1 unidade no mapa.")).toBeVisible();
+
+  await page
+    .getByRole("navigation", { name: "Forma de visualização" })
+    .getByRole("link", { name: "Lista" })
+    .click();
+
+  await expect(page).toHaveURL(/\/units\?q=Vila\+Mariana$/);
+  await expect(
+    page.getByRole("searchbox", {
+      name: "Buscar por unidade, cidade ou bairro",
+    }),
+  ).toHaveValue("Vila Mariana");
+  await expect(page.getByText("1 unidade encontrada")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 2, name: "UPA Vila Mariana" }),
+  ).toBeVisible();
 });
