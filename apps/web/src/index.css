@@ -68,8 +68,8 @@
 }
 
 .leaflet-container .leaflet-popup-content {
-  /* Keeps long unit names clear of the larger close button. */
-  margin-right: 2.25rem;
+  /* Keeps long unit names clear of the 44px close button. */
+  margin-right: 2.75rem;
 }
 
 .leaflet-container .leaflet-control-attribution a {
