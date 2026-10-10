@@ -1,8 +1,12 @@
 import { Link } from "react-router-dom";
 import { usePageHeading } from "./usePageHeading";
+import { useSearchFilters } from "./useSearchFilters";
+
+const title = "Sobre os dados";
 
 export function AboutPage() {
-  const headingRef = usePageHeading("Sobre os dados");
+  const headingRef = usePageHeading(title);
+  const { search } = useSearchFilters();
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-6 sm:px-6 md:gap-10 md:py-10">
@@ -12,7 +16,7 @@ export function AboutPage() {
           tabIndex={-1}
           className="text-2xl font-bold leading-tight tracking-tight text-fila-blue focus:outline-none sm:text-3xl"
         >
-          Sobre os dados
+          {title}
         </h1>
         <p className="text-lg leading-relaxed text-slate-700">
           O FilaSaúde reúne informações cadastrais públicas de unidades de
@@ -50,7 +54,7 @@ export function AboutPage() {
 
       <p>
         <Link
-          to="/"
+          to={{ pathname: "/", search }}
           className="inline-flex min-h-11 items-center font-semibold text-fila-blue underline underline-offset-2"
         >
           Voltar ao mapa

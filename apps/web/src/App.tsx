@@ -11,7 +11,9 @@ import { AboutPage } from "./AboutPage";
 import { AdminPage } from "./AdminPage";
 import { Logo } from "./Logo";
 import { MapPage } from "./MapPage";
+import { SearchFiltersProvider } from "./SearchFiltersProvider";
 import { UnitsPage } from "./UnitsPage";
+import { useSearchFilters } from "./useSearchFilters";
 
 // The map is the entry point and the list is its accessible equivalent. They
 // are two views of the same search, so they share the query string (see
@@ -22,7 +24,7 @@ const views = [
 ];
 
 function Header() {
-  const { search } = useLocation();
+  const { search } = useSearchFilters();
 
   return (
     <header className="relative z-[1000] border-b border-slate-200 bg-white">
@@ -80,31 +82,33 @@ function Footer() {
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="relative flex min-h-dvh flex-col bg-fila-bg font-sans">
-        <a
-          href="#conteudo"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[1100] focus:rounded-lg focus:border focus:border-slate-300 focus:bg-white focus:px-4 focus:py-3 focus:font-semibold focus:text-fila-blue"
-        >
-          Ir para o conteúdo
-        </a>
-        <Header />
-        <main
-          id="conteudo"
-          tabIndex={-1}
-          className="flex flex-1 flex-col focus:outline-none"
-        >
-          <Routes>
-            <Route path="/" element={<MapPage />} />
-            <Route path="/units" element={<UnitsPage />} />
-            <Route path="/map" element={<RedirectToMap />} />
-            <Route path="/about" element={<AboutPage />} />
-            {/* Not in the navigation: only the team is meant to find it. */}
-            <Route path="/admin" element={<AdminPage />} />
-            <Route path="*" element={<RedirectToMap />} />
-          </Routes>
-        </main>
-        <Footer />
-      </div>
+      <SearchFiltersProvider>
+        <div className="relative flex min-h-dvh flex-col bg-fila-bg font-sans">
+          <a
+            href="#conteudo"
+            className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[1100] focus:rounded-lg focus:border focus:border-slate-300 focus:bg-white focus:px-4 focus:py-3 focus:font-semibold focus:text-fila-blue"
+          >
+            Ir para o conteúdo
+          </a>
+          <Header />
+          <main
+            id="conteudo"
+            tabIndex={-1}
+            className="flex flex-1 flex-col focus:outline-none"
+          >
+            <Routes>
+              <Route path="/" element={<MapPage />} />
+              <Route path="/units" element={<UnitsPage />} />
+              <Route path="/map" element={<RedirectToMap />} />
+              <Route path="/about" element={<AboutPage />} />
+              {/* Not in the navigation: only the team is meant to find it. */}
+              <Route path="/admin" element={<AdminPage />} />
+              <Route path="*" element={<RedirectToMap />} />
+            </Routes>
+          </main>
+          <Footer />
+        </div>
+      </SearchFiltersProvider>
     </BrowserRouter>
   );
 }
