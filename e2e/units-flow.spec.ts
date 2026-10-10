@@ -213,3 +213,33 @@ test("redireciona /map e caminhos desconhecidos para o mapa, mantendo a busca", 
   await page.goto("/caminho-que-nao-existe");
   await expect(page).toHaveURL(/\/$/);
 });
+
+test("mantém a busca ao ler Sobre os dados e voltar ao mapa", async ({ page }) => {
+  await page.route("**/api/units?state=ALL", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...unitsResponse,
+        metadata: { ...unitsResponse.metadata, state: "BR" },
+      }),
+    }),
+  );
+
+  await page.goto("/");
+  const field = page.getByRole("searchbox", { name: "Buscar no mapa" });
+  await field.fill("Osasco");
+  await expect(page.getByText("1 unidade no mapa.")).toBeVisible();
+
+  await page.getByRole("link", { name: "Sobre os dados" }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Sobre os dados" }),
+  ).toBeFocused();
+
+  await page.getByRole("link", { name: "Voltar ao mapa" }).click();
+  await expect(page).toHaveURL(/\/\?q=Osasco$/);
+  await expect(
+    page.getByRole("searchbox", { name: "Buscar no mapa" }),
+  ).toHaveValue("Osasco");
+  await expect(page.getByText("1 unidade no mapa.")).toBeVisible();
+});
