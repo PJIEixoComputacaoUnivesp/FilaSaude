@@ -170,6 +170,8 @@ test("leva a busca do mapa para a lista", async ({ page }) => {
     .getByRole("searchbox", { name: "Buscar no mapa" })
     .fill("Vila Mariana");
   await expect(page.getByText("1 unidade no mapa.")).toBeVisible();
+  // The URL follows the field once typing pauses.
+  await expect(page).toHaveURL(/\?q=Vila\+Mariana$/);
 
   await page
     .getByRole("navigation", { name: "Forma de visualização" })
@@ -186,4 +188,28 @@ test("leva a busca do mapa para a lista", async ({ page }) => {
   await expect(
     page.getByRole("heading", { level: 2, name: "UPA Vila Mariana" }),
   ).toBeVisible();
+});
+
+test("redireciona /map e caminhos desconhecidos para o mapa, mantendo a busca", async ({
+  page,
+}) => {
+  await page.route("**/api/units?state=ALL", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...unitsResponse,
+        metadata: { ...unitsResponse.metadata, state: "BR" },
+      }),
+    }),
+  );
+
+  await page.goto("/map?uf=SP&q=osasco");
+  await expect(page).toHaveURL(/\/\?uf=SP&q=osasco$/);
+  await expect(page.getByRole("searchbox", { name: "Buscar no mapa" })).toHaveValue(
+    "osasco",
+  );
+
+  await page.goto("/caminho-que-nao-existe");
+  await expect(page).toHaveURL(/\/$/);
 });
