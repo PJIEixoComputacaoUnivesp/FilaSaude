@@ -148,16 +148,21 @@ export function UnitsPage() {
     return sortUnits(filterUnits(state.response.data, query));
   }, [query, state]);
 
-  const countText = `${stateName(stateCode)}: ${filteredUnits.length.toLocaleString("pt-BR")} ${
+  const countText = `${filteredUnits.length.toLocaleString("pt-BR")} ${
     filteredUnits.length === 1 ? "unidade encontrada" : "unidades encontradas"
   }`;
+  // Worded differently from the visible count on purpose: the same text twice
+  // would be read twice and would match twice in a text query.
+  const announcement = `${filteredUnits.length.toLocaleString("pt-BR")} ${
+    filteredUnits.length === 1 ? "resultado" : "resultados"
+  } em ${stateName(stateCode)}`;
   // One region stays mounted across loading, success and error, so a change of
   // state is announced; the error has its own role="alert".
   const liveMessage =
     state.status === "loading"
       ? "Carregando unidades…"
       : state.status === "success"
-        ? countText
+        ? announcement
         : "";
 
   return (

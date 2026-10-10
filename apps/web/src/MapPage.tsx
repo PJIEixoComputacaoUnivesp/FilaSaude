@@ -43,7 +43,9 @@ export function MapPage() {
     state.status === "loading"
       ? "Carregando unidades…"
       : state.status === "success"
-        ? `${stateName(stateCode)}: ${countText}`
+        ? `${mappableCount.toLocaleString("pt-BR")} ${
+            mappableCount === 1 ? "resultado" : "resultados"
+          } no mapa em ${stateName(stateCode)}`
         : "";
 
   return (
