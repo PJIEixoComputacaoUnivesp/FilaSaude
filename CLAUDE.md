@@ -24,3 +24,5 @@ done
 Rode de novo quando uma skill for adicionada ao projeto. Se uma skill do
 projeto já estiver copiada em `.claude/skills`, apague a cópia antes para
 trocá-la pelo link.
+
+Worktrees criadas com `scripts/new-worktree.sh` já recebem esses links.
