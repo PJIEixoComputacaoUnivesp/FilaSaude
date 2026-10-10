@@ -24,25 +24,30 @@ export function MapPage() {
   const { state, retry } = useUnits(NationalStateCode.All);
   const panelRef = useRef<HTMLElement>(null);
 
-  // The field answers at once; filtering and redrawing the markers can lag
-  // behind it, so typing stays responsive on a phone with the national list.
+  // The fields answer at once; filtering and redrawing the markers can lag
+  // behind them, so typing stays responsive on a phone with the national list.
+  // Both are deferred together, so the count and the announcement always come
+  // from one consistent pair.
   const deferredQuery = useDeferredValue(query.trim());
+  const deferredState = useDeferredValue(stateCode);
   const filteredUnits = useMemo(() => {
     if (state.status !== "success") return [];
     const inState =
-      stateCode === NationalStateCode.All
+      deferredState === NationalStateCode.All
         ? state.response.data
-        : state.response.data.filter((unit) => unit.address.state === stateCode);
+        : state.response.data.filter(
+            (unit) => unit.address.state === deferredState,
+          );
 
     return filterUnits(inState, deferredQuery);
-  }, [deferredQuery, stateCode, state]);
+  }, [deferredQuery, deferredState, state]);
 
   const mappableCount = useMemo(
     () => filteredUnits.filter(hasLocation).length,
     [filteredUnits],
   );
   const isCountryWide =
-    stateCode === NationalStateCode.All && deferredQuery === "";
+    deferredState === NationalStateCode.All && deferredQuery === "";
   const originNotice =
     state.status === "success"
       ? dataOriginNotice(state.response.metadata)
@@ -58,7 +63,7 @@ export function MapPage() {
     state.status === "loading"
       ? LOADING_MESSAGE
       : state.status === "success"
-        ? `${formatCount(mappableCount, "resultado", "resultados")} no mapa em ${stateName(stateCode)}`
+        ? `${formatCount(mappableCount, "resultado", "resultados")} no mapa em ${stateName(deferredState)}`
         : "";
 
   return (
