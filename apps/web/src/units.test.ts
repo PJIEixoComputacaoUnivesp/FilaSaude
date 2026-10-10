@@ -134,6 +134,7 @@ describe("dataOriginNotice", () => {
 
       expect(notice?.isOutage).toBe(false);
       expect(notice?.text).toContain("20/09/2026");
+      expect(notice?.shortText).toBe("Cópia do CNES de 20/09/2026");
     },
   );
 

@@ -244,7 +244,7 @@ export function formatSourceDate(value: string): string {
  */
 export function dataOriginNotice(
   metadata: UnitsResponse["metadata"],
-): { text: string; isOutage: boolean } | null {
+): { text: string; shortText: string; isOutage: boolean } | null {
   if (!metadata.isStale) return null;
 
   const date = formatSourceDate(metadata.latestSourceUpdate);
@@ -253,9 +253,14 @@ export function dataOriginNotice(
     metadata.state === NationalStateCode.Brazil;
 
   return isNational
-    ? { text: `Cópia nacional do CNES, atualizada até ${date}.`, isOutage: false }
+    ? {
+        text: `Cópia nacional do CNES, atualizada até ${date}.`,
+        shortText: `Cópia do CNES de ${date}`,
+        isOutage: false,
+      }
     : {
         text: `A fonte oficial está temporariamente indisponível. Exibimos a cópia de segurança atualizada até ${date}.`,
+        shortText: `Fonte indisponível. Cópia de ${date}`,
         isOutage: true,
       };
 }

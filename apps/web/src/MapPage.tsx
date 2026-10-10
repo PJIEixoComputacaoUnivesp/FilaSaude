@@ -1,5 +1,5 @@
 import { useMemo, useRef } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { BrazilianStateSelect } from "./BrazilianStateSelect";
 import { NationalStateCode, stateName } from "./brazilianStates";
 import { LiveStatus } from "./LiveStatus";
@@ -9,12 +9,13 @@ import { usePageHeading } from "./usePageHeading";
 import { useSearchFilters } from "./useSearchFilters";
 import { useUnits } from "./useUnits";
 
+const title = "Mapa das unidades de pronto atendimento";
+
 export function MapPage() {
-  const headingRef = usePageHeading("Mapa das unidades de pronto atendimento");
-  const { stateCode, query, setStateCode, setQuery, flush } =
+  const headingRef = usePageHeading(title);
+  const { stateCode, query, setStateCode, setQuery, flush, search } =
     useSearchFilters();
   const { state, retry } = useUnits(NationalStateCode.All);
-  const { search } = useLocation();
   const panelRef = useRef<HTMLElement>(null);
 
   const filteredUnits = useMemo(() => {
@@ -54,7 +55,7 @@ export function MapPage() {
   return (
     <div className="relative min-h-[28rem] w-full flex-1">
       <h1 ref={headingRef} tabIndex={-1} className="sr-only">
-        Mapa das unidades de pronto atendimento
+        {title}
       </h1>
 
       {/* Before the map in DOM order so keyboard users reach the search and the
@@ -108,9 +109,11 @@ export function MapPage() {
             </Link>
             {originNotice && (
               <p
-                className={`w-full ${originNotice.isOutage ? "font-semibold text-amber-800" : "hidden sm:block"}`}
+                className={`w-full ${originNotice.isOutage ? "font-semibold text-amber-800" : ""}`}
               >
-                {originNotice.text}
+                {originNotice.isOutage
+                  ? originNotice.text
+                  : originNotice.shortText}
               </p>
             )}
           </div>
