@@ -176,12 +176,19 @@ aguardando os health checks do Compose. Depois, a CI verifica
 `https://<APP_DOMAIN>/api/health` pela internet, o que também cobre DNS,
 firewall, emissão do certificado TLS e roteamento do Caddy. Somente quando essa
 verificação pública passa, `deploy.sh confirm <tag>` registra a tag como a
-última versão bem-sucedida em `/opt/filasaude/.last-successful-tag`.
+última versão bem-sucedida em `/opt/filasaude/.last-successful-tag` e remove as
+imagens Docker sem uso (`docker image prune`).
 
 Se qualquer uma das verificações falhar e já existir uma versão anterior
 bem-sucedida, a tag anterior é reaplicada automaticamente. No primeiro deploy
 ainda não há versão anterior, então a falha apenas interrompe a publicação.
 Cada tag tem o formato `sha-<commit>`.
+
+O rollback troca só as imagens: as migrations que o deploy aplicou **não** são
+desfeitas, e a versão anterior da API volta a rodar sobre o schema novo. Antes
+de publicar uma migration que remove ou renomeia colunas ou tabelas, leve isso
+em conta: acrescentar costuma ser seguro, e uma remoção fica mais segura em duas
+versões (primeiro o código deixa de usar, depois a migration remove).
 
 Para voltar a uma versão específica, rode o workflow `Deploy` com o
 `image_tag` desejado, como acima. Para reaplicar direto no servidor a última
@@ -286,7 +293,11 @@ município da unidade (tolerância de 5 km) e no Brasil. A resposta pública mos
 apenas `precision: "manual"` e a data, e o login e o método ficam só para os
 administradores. A correção vale enquanto o município e o endereço da unidade no
 CNES forem os de quando ela foi feita. Se algum mudar, ela deixa de valer e o
-motivo vai para o log.
+motivo vai para o log. Se, em vez disso, a coordenada do CNES mudar depois da
+correção, ela continua valendo e a mudança só é registrada no log, para
+revisão. A visão nacional vem de um snapshot que pode atrasar em relação ao
+CNES, então uma correção feita contra um endereço mais novo pode ficar de fora
+dela até o snapshot ser atualizado.
 
 **Histórico.** Cada definição, substituição e remoção grava quem fez, quando, o
 método e a posição anterior e a nova, na tabela `unit_location_correction_events`,
@@ -322,6 +333,12 @@ usuário `deploy` (`crontab -e`):
 ```cron
 30 3 * * * /opt/filasaude/backup.sh >> /opt/filasaude/backups/backup.log 2>&1
 ```
+
+O cron não é criado pelo cloud-init: agende-o uma vez, depois do primeiro
+deploy, que é quando o `backup.sh` chega ao servidor. Os arquivos ficam no
+próprio Droplet, então um Droplet perdido leva os backups junto. O Terraform tem
+a variável `enable_backups` (desligada por padrão) para os backups do Droplet na
+DigitalOcean; considere também copiar os dumps para fora do servidor.
 
 Para restaurar um backup (o dump recria as tabelas existentes):
 
