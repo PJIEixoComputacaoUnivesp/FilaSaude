@@ -11,7 +11,8 @@ import { useUnits } from "./useUnits";
 
 export function MapPage() {
   const headingRef = usePageHeading("Mapa das unidades de pronto atendimento");
-  const { stateCode, query, setStateCode, setQuery } = useSearchFilters();
+  const { stateCode, query, setStateCode, setQuery, flush } =
+    useSearchFilters();
   const { state, retry } = useUnits(NationalStateCode.All);
   const { search } = useLocation();
   const panelRef = useRef<HTMLElement>(null);
@@ -82,6 +83,7 @@ export function MapPage() {
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
+              onBlur={flush}
               enterKeyHint="search"
               autoComplete="off"
               placeholder="Cidade ou unidade"

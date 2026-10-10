@@ -140,7 +140,9 @@ function UnitResults({ units }: { units: HealthUnit[] }) {
 
 export function UnitsPage() {
   const headingRef = usePageHeading("Unidades de pronto atendimento");
-  const { stateCode, query, setStateCode, setQuery } = useSearchFilters();
+  const { stateCode, query, setStateCode, setQuery, flush } =
+    useSearchFilters();
+  const searchRef = useRef<HTMLInputElement>(null);
   const { state, retry } = useUnits(stateCode);
 
   // Sorted once per response; filtering keeps that order.
@@ -204,7 +206,9 @@ export function UnitsPage() {
           <input
             type="search"
             value={query}
+            ref={searchRef}
             onChange={(event) => setQuery(event.target.value)}
+            onBlur={flush}
             enterKeyHint="search"
             autoComplete="off"
             placeholder="Ex.: Osasco ou Vila Mariana"
@@ -253,7 +257,12 @@ export function UnitsPage() {
                 {query.trim() !== "" && (
                   <button
                     type="button"
-                    onClick={() => setQuery("")}
+                    onClick={() => {
+                    setQuery("");
+                    flush();
+                    // The button unmounts with the empty state; keep focus in the page.
+                    searchRef.current?.focus();
+                  }}
                     className="mt-4 min-h-11 rounded-xl border border-slate-300 bg-white px-6 py-2 font-semibold text-slate-800 hover:border-fila-blue hover:text-fila-blue"
                   >
                     Limpar busca
