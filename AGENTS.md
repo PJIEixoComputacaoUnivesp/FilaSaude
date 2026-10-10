@@ -82,11 +82,28 @@ Regras:
 
 - Crie worktrees sempre em `.worktrees/<nome>` dentro do repositório, nunca
   em pastas irmãs nem em `/tmp`. A pasta `.worktrees/` é ignorada pelo Git.
-- Use como nome a branch sem o prefixo, por exemplo
-  `git worktree add .worktrees/units-cnes -b feat/units-cnes origin/main`.
-- Cada worktree tem seu próprio `node_modules`: rode `pnpm install` nela.
-  Arquivos ignorados, como `.env`, não são copiados e precisam ser criados de
-  novo se forem necessários.
+- Crie a worktree com o script, por exemplo
+  `scripts/new-worktree.sh feat/units-cnes`. Ele usa como nome a branch sem o
+  prefixo (`.worktrees/units-cnes`; use `--name` se o nome colidir com outra
+  worktree), parte de `origin/main` (ou de `--base <ref>`), instala as
+  dependências, recria os links de `.claude/skills` e copia o `.env` da raiz, que
+  o Git ignora (o `deploy/.env` nunca é copiado: pode ter credenciais de
+  produção). Cada worktree tem seu próprio `node_modules`, e o `pnpm install` é
+  barato porque o pnpm reaproveita o store.
+- O script recusa uma branch que já existe em `origin` (para continuar o
+  trabalho dela, use `--base origin/<branch>`) e, quando não consegue atualizar
+  a base ou consultar `origin`, avisa no resumo final.
+- Os hooks do Git (lint no commit, `pnpm check` no push) são gerados pelo
+  `pnpm install`. Se a instalação falhar, o script termina com erro, e com
+  `--no-install` ela é pulada: nos dois casos a worktree não tem hooks até
+  rodar `pnpm install --frozen-lockfile` nela. Não use `--no-verify` para
+  contornar.
+- A worktree não traz as alterações locais da checkout de origem, e o script
+  não faz `git add`, commit nem push. Arquivos fora do escopo da tarefa
+  (alterações locais, arquivos não rastreados como `docs/pesquisas/`, ajustes
+  de ambiente) só entram em commit e push quando isso for pedido de forma
+  explícita. Adicione por caminho (`git add <arquivo>`); evite `git add -A`,
+  `git add .` e `git commit -a`.
 - Depois do merge, remova a worktree com `git worktree remove .worktrees/<nome>`
   e limpe referências antigas com `git worktree prune`.
 
