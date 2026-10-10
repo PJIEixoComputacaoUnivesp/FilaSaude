@@ -16,7 +16,7 @@ export function BrazilianStateSelect({
   return (
     <label className="block">
       <span
-        className={`block font-semibold text-slate-800 ${compact ? "mb-1 text-xs sm:mb-2 sm:text-sm" : "mb-2 text-sm"}`}
+        className={`block font-semibold text-slate-800 ${compact ? "sr-only text-xs sm:not-sr-only sm:mb-2 sm:text-sm" : "mb-2 text-sm"}`}
       >
         Estado
       </span>

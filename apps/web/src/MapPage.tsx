@@ -73,7 +73,7 @@ export function MapPage() {
             allOptionLabel={stateName(NationalStateCode.All)}
           />
           <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-slate-800 sm:mb-2 sm:text-sm">
+            <span className="sr-only text-xs font-semibold text-slate-800 sm:not-sr-only sm:mb-2 sm:block sm:text-sm">
               Buscar no mapa
             </span>
             <input
@@ -104,7 +104,7 @@ export function MapPage() {
             </Link>
             {originNotice && (
               <p
-                className={`w-full ${originNotice.isOutage ? "font-semibold text-amber-800" : ""}`}
+                className={`w-full ${originNotice.isOutage ? "font-semibold text-amber-800" : "hidden sm:block"}`}
               >
                 {originNotice.text}
               </p>

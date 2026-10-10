@@ -62,21 +62,17 @@ function RedirectToMap() {
 function Footer() {
   return (
     <footer className="border-t border-slate-200 bg-white">
-      <div className="mx-auto flex max-w-7xl items-start justify-between gap-3 px-4 py-2 text-xs leading-relaxed text-slate-700 sm:px-6 md:items-center md:gap-8 md:py-3 md:text-sm">
-        <p>
-          <strong className="font-semibold text-slate-900">Importante:</strong>{" "}
-          o FilaSaúde não realiza diagnóstico, triagem ou recomendação médica.
-          Em uma emergência, procure os canais oficiais de atendimento.
-        </p>
-        {/* The negative margin keeps the footer compact while the link keeps a
-            44px touch target. */}
+      <p className="mx-auto max-w-7xl px-4 py-2 text-xs leading-relaxed text-slate-700 sm:px-6 md:py-3 md:text-sm">
+        <strong className="font-semibold text-slate-900">Informativo:</strong>{" "}
+        não faz diagnóstico, triagem nem recomendação médica. Em emergência,
+        procure os canais oficiais de atendimento.{" "}
         <Link
           to="/about"
-          className="-my-2.5 inline-flex min-h-11 shrink-0 items-center text-sm font-semibold text-fila-blue underline underline-offset-2 md:my-0"
+          className="whitespace-nowrap font-semibold text-fila-blue underline underline-offset-2"
         >
           Sobre os dados
         </Link>
-      </div>
+      </p>
     </footer>
   );
 }
