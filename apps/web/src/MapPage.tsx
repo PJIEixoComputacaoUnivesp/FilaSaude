@@ -26,8 +26,10 @@ export function MapPage() {
     return filterUnits(inState, query);
   }, [query, stateCode, state]);
 
-  const mapUnits = state.status === "success" ? filteredUnits : [];
-  const mappableCount = mapUnits.filter(hasLocation).length;
+  const mappableCount = useMemo(
+    () => filteredUnits.filter(hasLocation).length,
+    [filteredUnits],
+  );
   const isCountryWide =
     stateCode === NationalStateCode.All && !query.trim();
   const originNotice =
@@ -126,7 +128,7 @@ export function MapPage() {
       </section>
 
       <UnitsMap
-        units={mapUnits}
+        units={filteredUnits}
         isCountryWide={isCountryWide}
         overlayRef={panelRef}
         className="absolute inset-0"

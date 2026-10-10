@@ -185,17 +185,27 @@ function normalizeSearchText(value: string): string {
     .toLocaleLowerCase("pt-BR");
 }
 
+const searchTextCache = new WeakMap<HealthUnit, string>();
+
+/** Name, address and hours, normalized once per unit and reused for each query. */
+function searchableText(unit: HealthUnit): string {
+  let text = searchTextCache.get(unit);
+  if (text === undefined) {
+    text = normalizeSearchText(
+      [unit.name, formatAddress(unit.address), unit.serviceHours]
+        .filter(Boolean)
+        .join(" "),
+    );
+    searchTextCache.set(unit, text);
+  }
+  return text;
+}
+
 export function filterUnits(units: HealthUnit[], query: string): HealthUnit[] {
   const normalizedQuery = normalizeSearchText(query.trim());
   if (!normalizedQuery) return units;
 
-  return units.filter((unit) =>
-    normalizeSearchText(
-      [unit.name, formatAddress(unit.address), unit.serviceHours]
-        .filter(Boolean)
-        .join(" "),
-    ).includes(normalizedQuery),
-  );
+  return units.filter((unit) => searchableText(unit).includes(normalizedQuery));
 }
 
 const collator = new Intl.Collator("pt-BR");

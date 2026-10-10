@@ -17,6 +17,7 @@ import {
   formatAddress,
   formatReferenceMonth,
   formatSourceDate,
+  hasLocation,
 } from "./units";
 
 const brazilCenter: [number, number] = [-14.2, -51.9];
@@ -180,10 +181,7 @@ function FitUnits({
 
   useEffect(() => {
     const coordinates = units
-      .filter(
-        (unit) =>
-          unit.location.latitude !== null && unit.location.longitude !== null,
-      )
+      .filter(hasLocation)
       .map(
         (unit) =>
           [unit.location.latitude!, unit.location.longitude!] as [
@@ -265,10 +263,7 @@ function EnforceCountryZoom() {
 }
 
 export function UnitsMap({ units, className = "", overlayRef, isCountryWide }: UnitsMapProps) {
-  const unitsWithLocation = units.filter(
-    (unit) =>
-      unit.location.latitude !== null && unit.location.longitude !== null,
-  );
+  const unitsWithLocation = units.filter(hasLocation);
   const markerRadius = unitsWithLocation.length > 100 ? 4 : 6;
   // Canvas draws hundreds of markers cheaply, and the tolerance widens each
   // marker's hit area so small points remain easy to tap.

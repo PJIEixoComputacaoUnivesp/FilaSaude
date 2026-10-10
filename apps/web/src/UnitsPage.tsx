@@ -143,10 +143,15 @@ export function UnitsPage() {
   const { stateCode, query, setStateCode, setQuery } = useSearchFilters();
   const { state, retry } = useUnits(stateCode);
 
-  const filteredUnits = useMemo(() => {
-    if (state.status !== "success") return [];
-    return sortUnits(filterUnits(state.response.data, query));
-  }, [query, state]);
+  // Sorted once per response; filtering keeps that order.
+  const sortedUnits = useMemo(
+    () => (state.status === "success" ? sortUnits(state.response.data) : []),
+    [state],
+  );
+  const filteredUnits = useMemo(
+    () => filterUnits(sortedUnits, query),
+    [sortedUnits, query],
+  );
 
   const countText = `${filteredUnits.length.toLocaleString("pt-BR")} ${
     filteredUnits.length === 1 ? "unidade encontrada" : "unidades encontradas"
