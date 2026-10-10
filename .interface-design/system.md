@@ -18,10 +18,14 @@
   or screen reader, so everything the map shows must also be reachable in the
   list (this includes the occupancy layer, as required by #79).
 - Map and list share one search through the URL: `?uf=SP&q=osasco`. A missing
-  `uf` means "Todo o Brasil". Switching views keeps the search. The URL is read
-  once when a page mounts and only written afterwards (`useSearchFilters`);
-  reading it back on every change drops characters while typing. Typing
-  replaces the history entry instead of adding one.
+  `uf` means "Todo o Brasil". The filters are held above the routes
+  (`SearchFiltersProvider`), so they survive a change of page: the header links,
+  "Ver em lista" and "Voltar ao mapa" carry the live search even before the URL
+  catches up. The URL is written with `replace` (typing adds no history entries)
+  and, for the text, 300 ms after typing pauses or on blur, because Safari
+  throws after 100 `replaceState` calls in 30 seconds. The URL is followed only
+  when something else changes it (a link, Voltar); reading the page's own writes
+  back drops characters while typing.
 - Navigation has two destinations, "Mapa" and "Lista", visible at every width
   with no menu button. "Sobre os dados" lives in the footer. Removed or unknown
   paths (`/map`, anything else) redirect to `/` and keep the query string.
@@ -84,9 +88,10 @@
   `100vh` minus a hard-coded header height.
 - Text is cut before controls on narrow screens. In the map panel the field
   labels are screen-reader-only below `sm` (the select shows its value and the
-  field has a placeholder), and the neutral origin line shows from `sm`; the
-  amber outage notice always shows. The footer is one short paragraph with the
-  link inline, so the map keeps its height.
+  field has a placeholder), and the origin line is the one-line `shortText`
+  ("Cópia do CNES de 22/09/2026"); an outage keeps its full amber notice. The
+  footer is one short paragraph with the link inline, so the map keeps its
+  height.
 - Reserve the height of a results screen (`min-h-[60dvh]`) so the footer does
   not jump when cards replace a short loading state.
 - Long result lists load progressively (24 at a time, "Mostrar mais") with a
