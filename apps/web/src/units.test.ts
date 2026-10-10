@@ -3,6 +3,7 @@ import { isStateCode } from "./brazilianStates";
 import {
   dataOriginNotice,
   filterUnits,
+  formatCount,
   hasLocation,
   sortUnits,
   type HealthUnit,
@@ -83,9 +84,14 @@ describe("filterUnits", () => {
     expect(filterUnits(units, "são paulo").map((u) => u.id)).toEqual(["1"]);
   });
 
-  it("matches name, address and service hours", () => {
+  it("matches name and address", () => {
     expect(filterUnits(units, "osasco").map((u) => u.id)).toEqual(["2"]);
-    expect(filterUnits(units, "continuo").map((u) => u.id)).toEqual(["3"]);
+    expect(filterUnits(units, "vila mariana").map((u) => u.id)).toEqual(["1"]);
+  });
+
+  it("does not match service hours, which the field label does not promise", () => {
+    expect(filterUnits(units, "continuo")).toEqual([]);
+    expect(filterUnits(units, "24 horas")).toEqual([]);
   });
 
   it("returns an empty list when nothing matches", () => {
@@ -145,6 +151,21 @@ describe("dataOriginNotice", () => {
 
     expect(notice?.isOutage).toBe(true);
     expect(notice?.text).toContain("indisponível");
+    expect(notice?.shortText).toBeUndefined();
+  });
+
+  it("does not write an empty date when the response has no units", () => {
+    const national = dataOriginNotice(
+      metadata({ state: "BR", isStale: true, latestSourceUpdate: "" }),
+    );
+    const outage = dataOriginNotice(
+      metadata({ state: "SP", isStale: true, latestSourceUpdate: "" }),
+    );
+
+    expect(national?.text).toBe("Cópia nacional do CNES.");
+    expect(national?.shortText).toBe("Cópia do CNES");
+    expect(outage?.text).not.toContain("até");
+    expect(outage?.text.endsWith(".")).toBe(true);
   });
 });
 
@@ -156,5 +177,19 @@ describe("isStateCode", () => {
     expect(isStateCode("BR")).toBe(false);
     expect(isStateCode("sp")).toBe(false);
     expect(isStateCode("")).toBe(false);
+  });
+});
+
+describe("formatCount", () => {
+  it("uses the singular for one and the pt-BR thousands separator", () => {
+    expect(formatCount(1, "unidade encontrada", "unidades encontradas")).toBe(
+      "1 unidade encontrada",
+    );
+    expect(formatCount(0, "unidade encontrada", "unidades encontradas")).toBe(
+      "0 unidades encontradas",
+    );
+    expect(
+      formatCount(1793, "unidade encontrada", "unidades encontradas"),
+    ).toMatch(/^1\.793 unidades encontradas$/);
   });
 });

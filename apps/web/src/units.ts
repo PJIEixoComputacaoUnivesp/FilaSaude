@@ -187,14 +187,17 @@ function normalizeSearchText(value: string): string {
 
 const searchTextCache = new WeakMap<HealthUnit, string>();
 
-/** Name, address and hours, normalized once per unit and reused for each query. */
+/**
+ * Name and address, normalized once per unit and reused for each query. The
+ * fields are labelled "unidade, cidade ou bairro", so service hours are not
+ * searched: matching "24" or "horas" would return units for a reason the
+ * person cannot see. Filtering by characteristic is its own feature (#29).
+ */
 function searchableText(unit: HealthUnit): string {
   let text = searchTextCache.get(unit);
   if (text === undefined) {
     text = normalizeSearchText(
-      [unit.name, formatAddress(unit.address), unit.serviceHours]
-        .filter(Boolean)
-        .join(" "),
+      [unit.name, formatAddress(unit.address)].join(" "),
     );
     searchTextCache.set(unit, text);
   }
@@ -244,25 +247,42 @@ export function formatSourceDate(value: string): string {
  */
 export function dataOriginNotice(
   metadata: UnitsResponse["metadata"],
-): { text: string; shortText: string; isOutage: boolean } | null {
+): { text: string; shortText?: string; isOutage: boolean } | null {
   if (!metadata.isStale) return null;
 
-  const date = formatSourceDate(metadata.latestSourceUpdate);
+  // An empty response has no update date; do not write "atualizada até .".
+  const date = metadata.latestSourceUpdate
+    ? formatSourceDate(metadata.latestSourceUpdate)
+    : "";
   const isNational =
     metadata.state === NationalStateCode.All ||
     metadata.state === NationalStateCode.Brazil;
 
   return isNational
     ? {
-        text: `Cópia nacional do CNES, atualizada até ${date}.`,
-        shortText: `Cópia do CNES de ${date}`,
+        text: date
+          ? `Cópia nacional do CNES, atualizada até ${date}.`
+          : "Cópia nacional do CNES.",
+        shortText: date ? `Cópia do CNES de ${date}` : "Cópia do CNES",
         isOutage: false,
       }
     : {
-        text: `A fonte oficial está temporariamente indisponível. Exibimos a cópia de segurança atualizada até ${date}.`,
-        shortText: `Fonte indisponível. Cópia de ${date}`,
+        text: date
+          ? `A fonte oficial está temporariamente indisponível. Exibimos a cópia de segurança atualizada até ${date}.`
+          : "A fonte oficial está temporariamente indisponível. Exibimos a cópia de segurança.",
         isOutage: true,
       };
+}
+
+export const LOADING_MESSAGE = "Carregando unidades…";
+
+/** `1 unidade encontrada` or `1.793 unidades encontradas`. */
+export function formatCount(
+  count: number,
+  singular: string,
+  plural: string,
+): string {
+  return `${count.toLocaleString("pt-BR")} ${count === 1 ? singular : plural}`;
 }
 
 /** Says where the position on the map comes from. */
