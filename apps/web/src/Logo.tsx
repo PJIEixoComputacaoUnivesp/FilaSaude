@@ -1,6 +1,6 @@
 export function Logo({ className = "h-10", showText = true }: { className?: string; showText?: boolean }) {
   return (
-    <div className="flex items-center gap-3 cursor-pointer select-none">
+    <div className="flex items-center gap-2 sm:gap-3 cursor-pointer select-none">
       <svg 
         viewBox="0 0 200 200" 
         fill="none" 
@@ -67,7 +67,7 @@ export function Logo({ className = "h-10", showText = true }: { className?: stri
 
       {showText && (
         <div className="flex flex-col">
-          <span className="text-2xl font-bold text-fila-blue tracking-tight leading-none">
+          <span className="text-xl sm:text-2xl font-bold text-fila-blue tracking-tight leading-none">
             Fila<span className="text-fila-green">Saúde</span>
           </span>
         </div>
