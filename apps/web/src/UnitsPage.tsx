@@ -1,28 +1,41 @@
 import { useEffect, useMemo, useRef, useState, type Ref } from "react";
 import { BrazilianStateSelect } from "./BrazilianStateSelect";
+import { NationalStateCode, stateName } from "./brazilianStates";
+import { LiveStatus } from "./LiveStatus";
 import { UnitSources } from "./UnitSources";
-import { stateName } from "./brazilianStates";
 import {
+  dataOriginNotice,
+  filterUnits,
   formatAddress,
+  formatCount,
   formatPosition,
-  formatSourceDate,
+  LOADING_MESSAGE,
+  sortUnits,
   type HealthUnit,
   type UnitsResponse,
 } from "./units";
+import { usePageHeading } from "./usePageHeading";
+import { useSearchFilters } from "./useSearchFilters";
 import { useUnits } from "./useUnits";
 
 const PAGE_SIZE = 24;
 
 function DataNotice({ metadata }: { metadata: UnitsResponse["metadata"] }) {
-  if (!metadata.isStale) return null;
+  const notice = dataOriginNotice(metadata);
+  if (!notice) return null;
+
+  // The national copy is by design, so it is plain text; only a real outage
+  // of the official source gets the warning surface.
+  if (!notice.isOutage) {
+    return <p className="text-sm text-slate-700">{notice.text}</p>;
+  }
 
   return (
     <div
       className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"
       role="status"
     >
-      A fonte oficial está temporariamente indisponível. Exibimos a cópia de
-      segurança atualizada até {formatSourceDate(metadata.latestSourceUpdate)}.
+      {notice.text}
     </div>
   );
 }
@@ -35,10 +48,10 @@ function UnitCard({
   headingRef?: Ref<HTMLHeadingElement>;
 }) {
   return (
-    <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+    <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-x-3 gap-y-1 sm:mb-4">
         <div className="min-w-0">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-fila-green">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-fila-green-ink">
             {unit.unitType}
           </p>
           <h2
@@ -73,68 +86,132 @@ function UnitCard({
 
       <UnitSources
         sources={unit.sources}
-        className="mt-4 space-y-1 border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-500 sm:mt-5 sm:pt-4"
+        className="mt-4 space-y-1 border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-600 sm:mt-5 sm:pt-4"
       />
     </article>
   );
 }
 
-export function UnitsPage() {
-  const [stateCode, setStateCode] = useState("SP");
-  const { state, retry } = useUnits(stateCode);
-  const [query, setQuery] = useState("");
+/** Cards with progressive loading ("Mostrar mais"). */
+function UnitResults({ units }: { units: HealthUnit[] }) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   // Index of the first card added by "Mostrar mais", which receives focus so
   // keyboard and screen reader users land on the new results.
   const [focusIndex, setFocusIndex] = useState<number | null>(null);
   const focusHeadingRef = useRef<HTMLHeadingElement>(null);
+  // A different result list starts again from the first page.
+  const [shownUnits, setShownUnits] = useState(units);
+  if (shownUnits !== units) {
+    setShownUnits(units);
+    setVisibleCount(PAGE_SIZE);
+    setFocusIndex(null);
+  }
 
   useEffect(() => {
     if (focusIndex !== null) focusHeadingRef.current?.focus();
   }, [focusIndex]);
 
-  const changeState = (value: string) => {
-    setStateCode(value);
-    setVisibleCount(PAGE_SIZE);
-    setFocusIndex(null);
-  };
-  const changeQuery = (value: string) => {
-    setQuery(value);
-    setVisibleCount(PAGE_SIZE);
-    setFocusIndex(null);
-  };
+  return (
+    <>
+      <div className="grid gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
+        {units.slice(0, visibleCount).map((unit, index) => (
+          <UnitCard
+            key={unit.id}
+            unit={unit}
+            headingRef={index === focusIndex ? focusHeadingRef : undefined}
+          />
+        ))}
+      </div>
+      {visibleCount < units.length && (
+        <div className="flex flex-col items-center gap-2 text-sm text-slate-600">
+          <p>
+            Mostrando {visibleCount} de {units.length.toLocaleString("pt-BR")}{" "}
+            unidades
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setFocusIndex(visibleCount);
+              setVisibleCount(visibleCount + PAGE_SIZE);
+            }}
+            className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-6 py-3 font-semibold text-slate-800 transition hover:border-fila-blue hover:text-fila-blue sm:w-auto"
+          >
+            Mostrar mais unidades
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
 
-  const filteredUnits = useMemo(() => {
-    if (state.status !== "success") return [];
-    const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
-    if (!normalizedQuery) return state.response.data;
+const title = "Unidades de pronto atendimento";
 
-    return state.response.data.filter((unit) =>
-      [unit.name, formatAddress(unit.address), unit.serviceHours]
-        .filter(Boolean)
-        .some((value) =>
-          value!.toLocaleLowerCase("pt-BR").includes(normalizedQuery),
-        ),
-    );
-  }, [query, state]);
+export function UnitsPage() {
+  const headingRef = usePageHeading(title);
+  const { stateCode, query, setStateCode, setQuery, flush } =
+    useSearchFilters();
+  const searchRef = useRef<HTMLInputElement>(null);
+  const { state, retry } = useUnits(stateCode);
+
+  // Sorted once per response; filtering keeps that order.
+  const sortedUnits = useMemo(
+    () => (state.status === "success" ? sortUnits(state.response.data) : []),
+    [state],
+  );
+  const trimmedQuery = query.trim();
+  const filteredUnits = useMemo(
+    () => filterUnits(sortedUnits, trimmedQuery),
+    [sortedUnits, trimmedQuery],
+  );
+
+  const countText = formatCount(
+    filteredUnits.length,
+    "unidade encontrada",
+    "unidades encontradas",
+  );
+  // Worded differently from the visible count on purpose: the same text twice
+  // would be read twice and would match twice in a text query.
+  const announcement = `${formatCount(
+    filteredUnits.length,
+    "resultado",
+    "resultados",
+  )} em ${stateName(stateCode)}`;
+  // One region stays mounted across loading, success and error, so a change of
+  // state is announced; the error has its own role="alert".
+  const liveMessage =
+    state.status === "loading"
+      ? LOADING_MESSAGE
+      : state.status === "success"
+        ? announcement
+        : "";
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 md:py-16">
-      <div className="mb-6 max-w-3xl md:mb-8">
-        <p className="mb-2 text-sm font-bold uppercase tracking-widest text-fila-green">
-          {stateName(stateCode)} · {stateCode}
-        </p>
-        <h1 className="text-3xl font-bold tracking-tight text-fila-blue sm:text-4xl md:text-5xl">
-          Unidades de pronto atendimento
+    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 md:py-10">
+      <div className="mb-5 max-w-3xl md:mb-6">
+        <h1
+          ref={headingRef}
+          tabIndex={-1}
+          className="text-2xl font-bold tracking-tight text-fila-blue focus:outline-none sm:text-3xl"
+        >
+          {title}
         </h1>
-        <p className="mt-3 text-base leading-relaxed text-slate-600 sm:mt-4 sm:text-lg">
-          Consulte endereços e horários publicados no Cadastro Nacional de
-          Estabelecimentos de Saúde.
+        <p className="mt-2 hidden leading-relaxed text-slate-700 sm:block">
+          Endereços e horários publicados no Cadastro Nacional de
+          Estabelecimentos de Saúde (CNES).
         </p>
       </div>
 
-      <div className="mb-6 grid max-w-3xl gap-4 sm:grid-cols-[14rem_1fr] md:mb-8">
-        <BrazilianStateSelect value={stateCode} onChange={changeState} />
+      <form
+        role="search"
+        aria-label="Buscar unidades"
+        onSubmit={(event) => event.preventDefault()}
+        className="mb-6 grid max-w-3xl gap-4 sm:grid-cols-[14rem_1fr] md:mb-8"
+      >
+        <BrazilianStateSelect
+          value={stateCode}
+          onChange={setStateCode}
+          allOptionLabel={stateName(NationalStateCode.All)}
+        />
         <label className="block">
           <span className="mb-2 block text-sm font-semibold text-slate-800">
             Buscar por unidade, cidade ou bairro
@@ -142,87 +219,76 @@ export function UnitsPage() {
           <input
             type="search"
             value={query}
-            onChange={(event) => changeQuery(event.target.value)}
+            ref={searchRef}
+            onChange={(event) => setQuery(event.target.value)}
+            onBlur={flush}
+            enterKeyHint="search"
+            autoComplete="off"
             placeholder="Ex.: Osasco ou Vila Mariana"
-            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-fila-blue focus:ring-2 focus:ring-blue-100"
+            className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-500 focus-visible:border-fila-blue"
           />
         </label>
-      </div>
+      </form>
 
-      {state.status === "loading" && (
-        <div
-          className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600"
-          role="status"
-        >
-          Consultando a fonte oficial…
-        </div>
-      )}
+      <LiveStatus message={liveMessage} />
 
-      {state.status === "error" && (
-        <div
-          className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-950"
-          role="alert"
-        >
-          <p>{state.message}</p>
-          <button
-            type="button"
-            onClick={retry}
-            className="mt-4 rounded-lg bg-fila-blue px-4 py-2 font-semibold text-white hover:bg-blue-800"
+      {/* Reserves the height of a results screen so the footer does not
+          jump when the cards replace the short loading state. */}
+      <div className="min-h-[60dvh]">
+        {state.status === "loading" && (
+          <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-700">
+            {LOADING_MESSAGE}
+          </div>
+        )}
+
+        {state.status === "error" && (
+          <div
+            className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-950"
+            role="alert"
           >
-            Tentar novamente
-          </button>
-        </div>
-      )}
+            <p>{state.message}</p>
+            <button
+              type="button"
+              onClick={retry}
+              className="mt-4 min-h-11 rounded-lg bg-fila-blue px-4 py-2 font-semibold text-white hover:bg-blue-800"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        )}
 
-      {state.status === "success" && (
-        <div className="flex flex-col gap-4 sm:gap-6">
-          <DataNotice metadata={state.response.metadata} />
-          <p className="text-sm text-slate-600" aria-live="polite">
-            {filteredUnits.length}{" "}
-            {filteredUnits.length === 1
-              ? "unidade encontrada"
-              : "unidades encontradas"}
-          </p>
-          {filteredUnits.length === 0 ? (
-            <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-600">
-              Nenhuma unidade corresponde à busca. Tente outro nome, cidade ou
-              bairro.
-            </div>
-          ) : (
-            <>
-              <div className="grid gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
-                {filteredUnits.slice(0, visibleCount).map((unit, index) => (
-                  <UnitCard
-                    key={unit.id}
-                    unit={unit}
-                    headingRef={
-                      index === focusIndex ? focusHeadingRef : undefined
-                    }
-                  />
-                ))}
-              </div>
-              {visibleCount < filteredUnits.length && (
-                <div className="flex flex-col items-center gap-2 text-sm text-slate-600">
-                  <p>
-                    Mostrando {visibleCount} de {filteredUnits.length}{" "}
-                    unidades
-                  </p>
+        {state.status === "success" && (
+          <div className="flex flex-col gap-4 sm:gap-6">
+            <DataNotice metadata={state.response.metadata} />
+            <p className="text-sm text-slate-700">{countText}</p>
+            {filteredUnits.length === 0 ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-700">
+                <p>
+                  Nenhuma unidade corresponde à busca. Tente outro nome, cidade
+                  ou bairro.
+                </p>
+                {query.trim() !== "" && (
                   <button
                     type="button"
                     onClick={() => {
-                      setFocusIndex(visibleCount);
-                      setVisibleCount(visibleCount + PAGE_SIZE);
+                      setQuery("");
+                      flush();
+                      // The button unmounts with the empty state; keep focus in
+                      // the page.
+                      searchRef.current?.focus();
                     }}
-                    className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-6 py-3 font-semibold text-slate-800 transition hover:border-fila-blue hover:text-fila-blue sm:w-auto"
+                    className="mt-4 min-h-11 rounded-xl border border-slate-300 bg-white px-6 py-2 font-semibold text-slate-800 hover:border-fila-blue hover:text-fila-blue"
                   >
-                    Mostrar mais unidades
+                    Limpar busca
                   </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-    </main>
+                )}
+              </div>
+            ) : (
+              <UnitResults units={filteredUnits} />
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

@@ -7,6 +7,7 @@ import {
   Popup,
   TileLayer,
   useMap,
+  useMapEvents,
   ZoomControl,
 } from "react-leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
@@ -16,9 +17,12 @@ import {
   formatAddress,
   formatReferenceMonth,
   formatSourceDate,
+  hasLocation,
 } from "./units";
 
 const brazilCenter: [number, number] = [-14.2, -51.9];
+// A fixed empty list, so a country-wide view does not look like a new input.
+const noUnits: HealthUnit[] = [];
 // Canvas does not resolve CSS variables, so the brand blue is repeated here.
 const markerColor = "#1266cc";
 const fitPadding = 24;
@@ -179,10 +183,7 @@ function FitUnits({
 
   useEffect(() => {
     const coordinates = units
-      .filter(
-        (unit) =>
-          unit.location.latitude !== null && unit.location.longitude !== null,
-      )
+      .filter(hasLocation)
       .map(
         (unit) =>
           [unit.location.latitude!, unit.location.longitude!] as [
@@ -192,12 +193,55 @@ function FitUnits({
       );
 
     map.invalidateSize();
+    // Only turn animation off (reduced motion, chosen when the map was
+    // created). Leaflet decides otherwise; passing `true` would force an
+    // animated zoom even from a far-away view, which it skips by default.
+    const noMotion: L.ZoomPanOptions =
+      map.options.zoomAnimation === false ? { animate: false } : {};
     if (coordinates.length > 0) {
-      map.fitBounds(coordinates, overlayPadding(map, overlayRef?.current));
+      map.fitBounds(coordinates, {
+        ...overlayPadding(map, overlayRef?.current),
+        ...noMotion,
+      });
     } else {
-      map.setView(brazilCenter, 4);
+      map.setView(brazilCenter, 4, noMotion);
     }
   }, [map, overlayRef, units]);
+
+  return null;
+}
+
+/**
+ * Canvas markers cannot be reached by keyboard or screen reader, so the map is
+ * named as a supplement and points to the list, which has the same data. Also
+ * replaces the English strings and the flag that Leaflet adds by default.
+ */
+function MapLocalization() {
+  const map = useMap();
+
+  // Leaflet hard-codes the English "Close popup" name on its close button.
+  useMapEvents({
+    popupopen(event) {
+      event.popup
+        .getElement()
+        ?.querySelector(".leaflet-popup-close-button")
+        ?.setAttribute("aria-label", "Fechar detalhes da unidade");
+    },
+  });
+
+  useEffect(() => {
+    const container = map.getContainer();
+    container.setAttribute("role", "group");
+    container.setAttribute(
+      "aria-label",
+      "Mapa das unidades. Para consultar por teclado ou leitor de tela, use a lista.",
+    );
+    // Credit for OpenStreetMap stays in the tile layer attribution; this only
+    // drops Leaflet's default prefix (the Ukrainian flag and English title).
+    map.attributionControl.setPrefix(
+      '<a href="https://leafletjs.com" title="Biblioteca para mapas interativos">Leaflet</a>',
+    );
+  }, [map]);
 
   return null;
 }
@@ -224,14 +268,18 @@ function EnforceCountryZoom() {
 }
 
 export function UnitsMap({ units, className = "", overlayRef, isCountryWide }: UnitsMapProps) {
-  const unitsWithLocation = units.filter(
-    (unit) =>
-      unit.location.latitude !== null && unit.location.longitude !== null,
-  );
+  // Stable between renders: FitUnits re-fits the map whenever this changes.
+  const unitsWithLocation = useMemo(() => units.filter(hasLocation), [units]);
+  const unitsToFit = isCountryWide ? noUnits : unitsWithLocation;
   const markerRadius = unitsWithLocation.length > 100 ? 4 : 6;
   // Canvas draws hundreds of markers cheaply, and the tolerance widens each
   // marker's hit area so small points remain easy to tap.
   const renderer = useMemo(() => L.canvas({ tolerance: 10 }), []);
+  // Leaflet reads its animation options once, when the map is created.
+  const animate = useMemo(
+    () => !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    [],
+  );
 
   return (
     <MapContainer
@@ -242,6 +290,10 @@ export function UnitsMap({ units, className = "", overlayRef, isCountryWide }: U
       className={`h-full w-full ${className}`}
       scrollWheelZoom
       zoomControl={false}
+      zoomAnimation={animate}
+      fadeAnimation={animate}
+      markerZoomAnimation={animate}
+      inertia={animate}
       renderer={renderer}
       style={{ background: "#d6e4f0" }}
     >
@@ -252,9 +304,14 @@ export function UnitsMap({ units, className = "", overlayRef, isCountryWide }: U
 
       />
       <BrazilBorderLayer />
+      <MapLocalization />
       <EnforceCountryZoom />
-      <ZoomControl position="bottomleft" />
-      <FitUnits units={isCountryWide ? [] : unitsWithLocation} overlayRef={overlayRef} />
+      <ZoomControl
+        position="bottomleft"
+        zoomInTitle="Aproximar o mapa"
+        zoomOutTitle="Afastar o mapa"
+      />
+      <FitUnits units={unitsToFit} overlayRef={overlayRef} />
       {unitsWithLocation.map((unit) => (
         <CircleMarker
           key={unit.id}

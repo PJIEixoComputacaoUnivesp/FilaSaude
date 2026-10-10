@@ -32,6 +32,7 @@ import {
 import { NationalStateCode } from "./brazilianStates";
 import { PositionPicker } from "./PositionPicker";
 import { formatAddress, formatPosition, type HealthUnit } from "./units";
+import { usePageHeading } from "./usePageHeading";
 import { clearUnitsCache, useUnits } from "./useUnits";
 
 interface Session {
@@ -1045,6 +1046,7 @@ function Console({
 export function AdminPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const headingRef = usePageHeading("Administração");
   useNoIndex();
 
   const signOut = useCallback((reason?: string) => {
@@ -1055,11 +1057,15 @@ export function AdminPage() {
   }, []);
 
   return (
-    <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6 md:py-12">
+    <div className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6 md:py-12">
       <p className="mb-2 text-sm font-bold uppercase tracking-widest text-fila-green">
         Administração
       </p>
-      <h1 className="text-3xl font-bold tracking-tight text-fila-blue sm:text-4xl">
+      <h1
+        ref={headingRef}
+        tabIndex={-1}
+        className="text-3xl font-bold tracking-tight text-fila-blue focus:outline-none sm:text-4xl"
+      >
         Posições corrigidas manualmente
       </h1>
       <p className="mt-3 max-w-2xl text-base leading-relaxed text-slate-600">
@@ -1080,6 +1086,6 @@ export function AdminPage() {
           />
         )}
       </div>
-    </main>
+    </div>
   );
 }

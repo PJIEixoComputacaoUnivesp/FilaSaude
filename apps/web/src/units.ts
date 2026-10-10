@@ -1,3 +1,5 @@
+import { NationalStateCode } from "./brazilianStates";
+
 export interface UnitAddress {
   street: string | null;
   number: string | null;
@@ -175,6 +177,56 @@ export function formatAddress(address: UnitAddress): string {
     .join(" · ");
 }
 
+/** Lowercases and strips accents so "sao paulo" finds "São Paulo". */
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLocaleLowerCase("pt-BR");
+}
+
+const searchTextCache = new WeakMap<HealthUnit, string>();
+
+/**
+ * Name and address, normalized once per unit and reused for each query. The
+ * fields are labelled "unidade, cidade ou bairro", so service hours are not
+ * searched: matching "24" or "horas" would return units for a reason the
+ * person cannot see. Filtering by characteristic is its own feature (#29).
+ */
+function searchableText(unit: HealthUnit): string {
+  let text = searchTextCache.get(unit);
+  if (text === undefined) {
+    text = normalizeSearchText(
+      [unit.name, formatAddress(unit.address)].join(" "),
+    );
+    searchTextCache.set(unit, text);
+  }
+  return text;
+}
+
+export function filterUnits(units: HealthUnit[], query: string): HealthUnit[] {
+  const normalizedQuery = normalizeSearchText(query.trim());
+  if (!normalizedQuery) return units;
+
+  return units.filter((unit) => searchableText(unit).includes(normalizedQuery));
+}
+
+const collator = new Intl.Collator("pt-BR");
+
+/** Alphabetical by UF, city and name: a neutral order, not a ranking. */
+export function sortUnits(units: HealthUnit[]): HealthUnit[] {
+  return [...units].sort(
+    (a, b) =>
+      collator.compare(a.address.state, b.address.state) ||
+      collator.compare(a.address.city, b.address.city) ||
+      collator.compare(a.name, b.name),
+  );
+}
+
+export function hasLocation(unit: HealthUnit): boolean {
+  return unit.location.latitude !== null && unit.location.longitude !== null;
+}
+
 /** Formats a `YYYY-MM` monthly release as `MM/AAAA`. */
 export function formatReferenceMonth(value: string): string {
   const match = /^(\d{4})-(\d{2})$/.exec(value);
@@ -186,6 +238,51 @@ export function formatSourceDate(value: string): string {
   return Number.isNaN(date.getTime())
     ? value
     : new Intl.DateTimeFormat("pt-BR").format(date);
+}
+
+/**
+ * Says when the data shown is the local copy instead of a live query. The
+ * national query is always answered from that copy by design, so it is not an
+ * outage and must not read like one.
+ */
+export function dataOriginNotice(
+  metadata: UnitsResponse["metadata"],
+): { text: string; shortText?: string; isOutage: boolean } | null {
+  if (!metadata.isStale) return null;
+
+  // An empty response has no update date; do not write "atualizada até .".
+  const date = metadata.latestSourceUpdate
+    ? formatSourceDate(metadata.latestSourceUpdate)
+    : "";
+  const isNational =
+    metadata.state === NationalStateCode.All ||
+    metadata.state === NationalStateCode.Brazil;
+
+  return isNational
+    ? {
+        text: date
+          ? `Cópia nacional do CNES, atualizada até ${date}.`
+          : "Cópia nacional do CNES.",
+        shortText: date ? `Cópia do CNES de ${date}` : "Cópia do CNES",
+        isOutage: false,
+      }
+    : {
+        text: date
+          ? `A fonte oficial está temporariamente indisponível. Exibimos a cópia de segurança atualizada até ${date}.`
+          : "A fonte oficial está temporariamente indisponível. Exibimos a cópia de segurança.",
+        isOutage: true,
+      };
+}
+
+export const LOADING_MESSAGE = "Carregando unidades…";
+
+/** `1 unidade encontrada` or `1.793 unidades encontradas`. */
+export function formatCount(
+  count: number,
+  singular: string,
+  plural: string,
+): string {
+  return `${count.toLocaleString("pt-BR")} ${count === 1 ? singular : plural}`;
 }
 
 /** Says where the position on the map comes from. */
