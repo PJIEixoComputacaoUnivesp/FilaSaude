@@ -7,7 +7,9 @@ import {
   dataOriginNotice,
   filterUnits,
   formatAddress,
+  formatCount,
   formatPosition,
+  LOADING_MESSAGE,
   sortUnits,
   type HealthUnit,
   type UnitsResponse,
@@ -162,19 +164,23 @@ export function UnitsPage() {
     [sortedUnits, trimmedQuery],
   );
 
-  const countText = `${filteredUnits.length.toLocaleString("pt-BR")} ${
-    filteredUnits.length === 1 ? "unidade encontrada" : "unidades encontradas"
-  }`;
+  const countText = formatCount(
+    filteredUnits.length,
+    "unidade encontrada",
+    "unidades encontradas",
+  );
   // Worded differently from the visible count on purpose: the same text twice
   // would be read twice and would match twice in a text query.
-  const announcement = `${filteredUnits.length.toLocaleString("pt-BR")} ${
-    filteredUnits.length === 1 ? "resultado" : "resultados"
-  } em ${stateName(stateCode)}`;
+  const announcement = `${formatCount(
+    filteredUnits.length,
+    "resultado",
+    "resultados",
+  )} em ${stateName(stateCode)}`;
   // One region stays mounted across loading, success and error, so a change of
   // state is announced; the error has its own role="alert".
   const liveMessage =
     state.status === "loading"
-      ? "Carregando unidades…"
+      ? LOADING_MESSAGE
       : state.status === "success"
         ? announcement
         : "";
@@ -231,7 +237,7 @@ export function UnitsPage() {
       <div className="min-h-[60dvh]">
         {state.status === "loading" && (
           <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-700">
-            Carregando unidades…
+            {LOADING_MESSAGE}
           </div>
         )}
 
@@ -265,11 +271,12 @@ export function UnitsPage() {
                   <button
                     type="button"
                     onClick={() => {
-                    setQuery("");
-                    flush();
-                    // The button unmounts with the empty state; keep focus in the page.
-                    searchRef.current?.focus();
-                  }}
+                      setQuery("");
+                      flush();
+                      // The button unmounts with the empty state; keep focus in
+                      // the page.
+                      searchRef.current?.focus();
+                    }}
                     className="mt-4 min-h-11 rounded-xl border border-slate-300 bg-white px-6 py-2 font-semibold text-slate-800 hover:border-fila-blue hover:text-fila-blue"
                   >
                     Limpar busca
@@ -277,10 +284,7 @@ export function UnitsPage() {
                 )}
               </div>
             ) : (
-              <UnitResults
-                key={`${stateCode}|${query}`}
-                units={filteredUnits}
-              />
+              <UnitResults units={filteredUnits} />
             )}
           </div>
         )}

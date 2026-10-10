@@ -1,10 +1,16 @@
-import { useMemo, useRef } from "react";
+import { useDeferredValue, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { BrazilianStateSelect } from "./BrazilianStateSelect";
 import { NationalStateCode, stateName } from "./brazilianStates";
 import { LiveStatus } from "./LiveStatus";
 import { UnitsMap } from "./UnitsMap";
-import { dataOriginNotice, filterUnits, hasLocation } from "./units";
+import {
+  dataOriginNotice,
+  filterUnits,
+  formatCount,
+  hasLocation,
+  LOADING_MESSAGE,
+} from "./units";
 import { usePageHeading } from "./usePageHeading";
 import { useSearchFilters } from "./useSearchFilters";
 import { useUnits } from "./useUnits";
@@ -18,6 +24,9 @@ export function MapPage() {
   const { state, retry } = useUnits(NationalStateCode.All);
   const panelRef = useRef<HTMLElement>(null);
 
+  // The field answers at once; filtering and redrawing the markers can lag
+  // behind it, so typing stays responsive on a phone with the national list.
+  const deferredQuery = useDeferredValue(query.trim());
   const filteredUnits = useMemo(() => {
     if (state.status !== "success") return [];
     const inState =
@@ -25,31 +34,31 @@ export function MapPage() {
         ? state.response.data
         : state.response.data.filter((unit) => unit.address.state === stateCode);
 
-    return filterUnits(inState, query);
-  }, [query, stateCode, state]);
+    return filterUnits(inState, deferredQuery);
+  }, [deferredQuery, stateCode, state]);
 
   const mappableCount = useMemo(
     () => filteredUnits.filter(hasLocation).length,
     [filteredUnits],
   );
   const isCountryWide =
-    stateCode === NationalStateCode.All && !query.trim();
+    stateCode === NationalStateCode.All && deferredQuery === "";
   const originNotice =
     state.status === "success"
       ? dataOriginNotice(state.response.metadata)
       : null;
-  const countText = `${mappableCount.toLocaleString("pt-BR")} ${
-    mappableCount === 1 ? "unidade no mapa" : "unidades no mapa"
-  }`;
+  const countText = formatCount(
+    mappableCount,
+    "unidade no mapa",
+    "unidades no mapa",
+  );
   // One region stays mounted across loading, success and error, so a change of
   // state is announced; the error has its own role="alert".
   const liveMessage =
     state.status === "loading"
-      ? "Carregando unidades…"
+      ? LOADING_MESSAGE
       : state.status === "success"
-        ? `${mappableCount.toLocaleString("pt-BR")} ${
-            mappableCount === 1 ? "resultado" : "resultados"
-          } no mapa em ${stateName(stateCode)}`
+        ? `${formatCount(mappableCount, "resultado", "resultados")} no mapa em ${stateName(stateCode)}`
         : "";
 
   return (
@@ -95,7 +104,7 @@ export function MapPage() {
         <LiveStatus message={liveMessage} />
         {state.status === "loading" && (
           <p className="mt-2 text-sm text-slate-700 sm:mt-3">
-            Carregando unidades…
+            {LOADING_MESSAGE}
           </p>
         )}
         {state.status === "success" && (
@@ -111,9 +120,7 @@ export function MapPage() {
               <p
                 className={`w-full ${originNotice.isOutage ? "font-semibold text-amber-800" : ""}`}
               >
-                {originNotice.isOutage
-                  ? originNotice.text
-                  : originNotice.shortText}
+                {originNotice.shortText ?? originNotice.text}
               </p>
             )}
           </div>
