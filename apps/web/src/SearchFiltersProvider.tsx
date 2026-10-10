@@ -27,6 +27,11 @@ const QUERY_WRITE_DELAY_MS = 300;
 // Pages that show the filters. Other pages keep them without touching the URL.
 const FILTER_ROUTES = new Set(["/", "/units"]);
 
+/** `/units/` renders the same page as `/units`. */
+function isFilterRoute(pathname: string): boolean {
+  return FILTER_ROUTES.has(pathname.replace(/\/+$/, "") || "/");
+}
+
 /**
  * Holds the search filters for the whole app and mirrors them to the URL
  * (`?uf=SP&q=osasco`).
@@ -41,7 +46,7 @@ const FILTER_ROUTES = new Set(["/", "/units"]);
 export function SearchFiltersProvider({ children }: { children: ReactNode }) {
   const [params, setParams] = useSearchParams();
   const { pathname } = useLocation();
-  const onFilterRoute = FILTER_ROUTES.has(pathname);
+  const onFilterRoute = isFilterRoute(pathname);
   const fromUrl = readFilters(params);
 
   const [filters, setFilters] = useState<Filters>(fromUrl);
@@ -63,7 +68,7 @@ export function SearchFiltersProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const writeToUrl = useCallback((next: Filters) => {
-    if (!FILTER_ROUTES.has(window.location.pathname)) return;
+    if (!isFilterRoute(window.location.pathname)) return;
 
     tracker.current?.wrote(next);
     setParamsRef.current(
