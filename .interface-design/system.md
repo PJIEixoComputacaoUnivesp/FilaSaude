@@ -82,8 +82,11 @@
   and a negative vertical margin.
 - Full-screen views (the map) use `dvh`-based flex layouts, never
   `100vh` minus a hard-coded header height.
-- The footer is compact on narrow screens (small text, link on the same row) so
-  the map keeps its height.
+- Text is cut before controls on narrow screens. In the map panel the field
+  labels are screen-reader-only below `sm` (the select shows its value and the
+  field has a placeholder), and the neutral origin line shows from `sm`; the
+  amber outage notice always shows. The footer is one short paragraph with the
+  link inline, so the map keeps its height.
 - Reserve the height of a results screen (`min-h-[60dvh]`) so the footer does
   not jump when cards replace a short loading state.
 - Long result lists load progressively (24 at a time, "Mostrar mais") with a
@@ -97,7 +100,7 @@
 
 - Product status: compact bordered pill with explicit text.
 - Safety notice: amber-tinted surface with a strong left border and direct label
-  where it needs emphasis; a plain footer line elsewhere.
+  where it needs emphasis; a short plain footer paragraph elsewhere.
 - Public-data records must expose source and update time in their own context.
 - Empty search: say what was searched and offer "Limpar busca".
 
