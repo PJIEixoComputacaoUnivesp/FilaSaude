@@ -43,13 +43,8 @@
   }
 }
 
-/* Leaflet draws 30px zoom buttons and a 24px popup close button; keep the
-   project's 44px touch target. */
-.leaflet-container.leaflet-touch .leaflet-bar a {
-  width: 2.75rem;
-  height: 2.75rem;
-  line-height: 2.75rem;
-}
+/* Leaflet draws 30px zoom buttons and a 24px popup close button. On touch
+   screens the project uses 44px; see the media query at the end of the file. */
 
 /* leaflet.css is loaded after this file, so these selectors are one class more
    specific instead of relying on order. */
@@ -85,8 +80,9 @@
 }
 
 /* Leaflet's zoom buttons are 30px; on touch screens the project uses 44px. The
-   selector is more specific than Leaflet's own, which loads after this file. */
+   selectors are more specific than Leaflet's own, which loads after this file. */
 @media (pointer: coarse), (hover: none) {
+  .leaflet-container.leaflet-touch .leaflet-bar a,
   .picker-map .leaflet-container .leaflet-bar a {
     width: 44px;
     height: 44px;
