@@ -178,24 +178,19 @@ env_skipped=$(
       relative=${file#"$main_root"/}
       [ "$relative" = ".env" ] || echo "$relative"
     done
-)
+) || true
 
-hooks_ready=1
 install_failed=0
 if [ "$install" -eq 1 ]; then
   if command -v pnpm >/dev/null 2>&1; then
     echo "Instalando dependências..."
     if ! (cd "$target" && pnpm install --frozen-lockfile); then
-      hooks_ready=0
       install_failed=1
     fi
   else
     echo "pnpm não encontrado." >&2
-    hooks_ready=0
     install_failed=1
   fi
-else
-  hooks_ready=0
 fi
 
 echo
