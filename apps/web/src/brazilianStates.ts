@@ -38,10 +38,14 @@ export function stateName(abbreviation: string): string {
     abbreviation === NationalStateCode.All ||
     abbreviation === NationalStateCode.Brazil
   ) {
-    return "Todas as UFs";
+    return "Todo o Brasil";
   }
   return (
     brazilianStates.find((state) => state.abbreviation === abbreviation)
       ?.name ?? abbreviation
   );
+}
+
+export function isStateCode(value: string): boolean {
+  return brazilianStates.some((state) => state.abbreviation === value);
 }

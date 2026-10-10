@@ -1,63 +1,74 @@
-import { useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useMemo, useRef } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { BrazilianStateSelect } from "./BrazilianStateSelect";
+import { NationalStateCode, stateName } from "./brazilianStates";
+import { LiveStatus } from "./LiveStatus";
 import { UnitsMap } from "./UnitsMap";
-import { NationalStateCode } from "./brazilianStates";
-import { formatAddress, formatSourceDate } from "./units";
+import { dataOriginNotice, filterUnits, hasLocation } from "./units";
+import { usePageHeading } from "./usePageHeading";
+import { useSearchFilters } from "./useSearchFilters";
 import { useUnits } from "./useUnits";
 
 export function MapPage() {
-  const [selectedState, setSelectedState] = useState<string>(
-    NationalStateCode.All,
-  );
+  const headingRef = usePageHeading("Mapa das unidades de pronto atendimento");
+  const { stateCode, query, setStateCode, setQuery } = useSearchFilters();
   const { state, retry } = useUnits(NationalStateCode.All);
-  const [query, setQuery] = useState("");
+  const { search } = useLocation();
   const panelRef = useRef<HTMLElement>(null);
 
   const filteredUnits = useMemo(() => {
     if (state.status !== "success") return [];
-    let list = state.response.data;
+    const inState =
+      stateCode === NationalStateCode.All
+        ? state.response.data
+        : state.response.data.filter((unit) => unit.address.state === stateCode);
 
-    if (selectedState !== NationalStateCode.All) {
-      list = list.filter((unit) => unit.address.state === selectedState);
-    }
-
-    const normalized = query.trim().toLocaleLowerCase("pt-BR");
-    if (normalized) {
-      list = list.filter((unit) =>
-        `${unit.name} ${formatAddress(unit.address)}`
-          .toLocaleLowerCase("pt-BR")
-          .includes(normalized),
-      );
-    }
-
-    return list;
-  }, [query, selectedState, state]);
+    return filterUnits(inState, query);
+  }, [query, stateCode, state]);
 
   const mapUnits = state.status === "success" ? filteredUnits : [];
+  const mappableCount = mapUnits.filter(hasLocation).length;
   const isCountryWide =
-    selectedState === NationalStateCode.All && !query.trim();
+    stateCode === NationalStateCode.All && !query.trim();
+  const originNotice =
+    state.status === "success"
+      ? dataOriginNotice(state.response.metadata)
+      : null;
+  const countText = `${mappableCount.toLocaleString("pt-BR")} ${
+    mappableCount === 1 ? "unidade no mapa" : "unidades no mapa"
+  }`;
+  // One region stays mounted across loading, success and error, so a change of
+  // state is announced; the error has its own role="alert".
+  const liveMessage =
+    state.status === "loading"
+      ? "Carregando unidades…"
+      : state.status === "success"
+        ? `${stateName(stateCode)}: ${countText}`
+        : "";
 
   return (
-    <main className="relative min-h-[28rem] w-full flex-1">
-      <UnitsMap
-        units={mapUnits}
-        isCountryWide={isCountryWide}
-        overlayRef={panelRef}
-        className="absolute inset-0"
-      />
+    <div className="relative min-h-[28rem] w-full flex-1">
+      <h1 ref={headingRef} tabIndex={-1} className="sr-only">
+        Mapa das unidades de pronto atendimento
+      </h1>
 
+      {/* Before the map in DOM order so keyboard users reach the search and the
+          list link before the map controls. */}
       <section
         ref={panelRef}
         className="absolute left-3 right-3 top-3 z-[900] rounded-2xl border border-slate-200 bg-white p-3 sm:left-6 sm:right-auto sm:top-4 sm:w-96 sm:p-4"
-        aria-label="Busca no mapa"
       >
-        <div className="grid grid-cols-[minmax(0,7rem)_1fr] gap-2 sm:grid-cols-1 sm:gap-3">
+        <form
+          role="search"
+          aria-label="Buscar no mapa"
+          onSubmit={(event) => event.preventDefault()}
+          className="grid gap-2 min-[360px]:grid-cols-[minmax(0,8.75rem)_1fr] sm:grid-cols-1 sm:gap-3"
+        >
           <BrazilianStateSelect
-            value={selectedState}
-            onChange={setSelectedState}
+            value={stateCode}
+            onChange={setStateCode}
             compact
-            allOptionLabel="Todas as UFs"
+            allOptionLabel={stateName(NationalStateCode.All)}
           />
           <label className="block">
             <span className="mb-1 block text-xs font-semibold text-slate-800 sm:mb-2 sm:text-sm">
@@ -67,45 +78,33 @@ export function MapPage() {
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Unidade, cidade ou bairro"
-              className="min-h-11 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-fila-blue focus:ring-2 focus:ring-blue-100"
+              enterKeyHint="search"
+              autoComplete="off"
+              placeholder="Cidade ou unidade"
+              className="min-h-11 w-full rounded-lg border border-slate-300 px-3 py-2 placeholder:text-slate-500 focus-visible:border-fila-blue"
             />
           </label>
-        </div>
+        </form>
+        <LiveStatus message={liveMessage} />
         {state.status === "loading" && (
-          <p
-            className="mt-2 text-sm text-slate-600 sm:mt-3"
-            role="status"
-            aria-live="polite"
-          >
-            Consultando a fonte oficial…
+          <p className="mt-2 text-sm text-slate-700 sm:mt-3">
+            Carregando unidades…
           </p>
         )}
         {state.status === "success" && (
-          <div
-            className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 text-xs leading-relaxed text-slate-600 sm:mt-3"
-            aria-live="polite"
-          >
-            <p>
-              {
-                filteredUnits.filter(
-                  (unit) =>
-                    unit.location.latitude !== null &&
-                    unit.location.longitude !== null,
-                ).length
-              }{" "}
-              unidades no mapa.
-            </p>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 text-xs leading-relaxed text-slate-700 sm:mt-3">
+            <p>{countText}.</p>
             <Link
-              to="/units"
-              className="font-semibold text-fila-blue underline underline-offset-2"
+              to={{ pathname: "/units", search }}
+              className="-my-2 inline-flex min-h-11 items-center font-semibold text-fila-blue underline underline-offset-2"
             >
               Ver em lista
             </Link>
-            {state.response.metadata.isStale && (
-              <p className="mt-1 w-full font-semibold text-amber-800">
-                Cópia de segurança até{" "}
-                {formatSourceDate(state.response.metadata.latestSourceUpdate)}.
+            {originNotice && (
+              <p
+                className={`w-full ${originNotice.isOutage ? "font-semibold text-amber-800" : ""}`}
+              >
+                {originNotice.text}
               </p>
             )}
           </div>
@@ -123,6 +122,13 @@ export function MapPage() {
           </div>
         )}
       </section>
-    </main>
+
+      <UnitsMap
+        units={mapUnits}
+        isCountryWide={isCountryWide}
+        overlayRef={panelRef}
+        className="absolute inset-0"
+      />
+    </div>
   );
 }
