@@ -9,6 +9,16 @@ export interface UnitAddress {
   state: string;
 }
 
+export type UnitSourceField =
+  "identity" | "address" | "location" | "serviceHours";
+
+export interface UnitSource {
+  name: string;
+  url: string;
+  fields: UnitSourceField[];
+  lastUpdatedAt: string | null;
+}
+
 export interface HealthUnit {
   id: string;
   name: string;
@@ -20,9 +30,23 @@ export interface HealthUnit {
   location: {
     latitude: number | null;
     longitude: number | null;
+    /**
+     * `history`: the current CNES coordinate was unusable, so the point is the
+     * latest earlier CNES coordinate for the same address (see `referenceMonth`).
+     * `municipality`: no usable point exists, so it is the municipality center.
+     * `manual`: an administrator set the position (see `correctedAt`).
+     */
+    precision: "source" | "history" | "municipality" | "manual";
+    /** The coordinate CNES declared, when the position shown replaced it. */
+    original?: { latitude: number; longitude: number } | null;
+    /** CNES monthly release (`YYYY-MM`) a `history` point comes from. */
+    referenceMonth: string | null;
+    /** Date (`YYYY-MM-DD`) an administrator set a `manual` position. */
+    correctedAt: string | null;
   };
   serviceHours: string | null;
   lastUpdatedAt: string;
+  sources: UnitSource[];
 }
 
 export interface UnitsResponse {
@@ -62,9 +86,40 @@ function isUnit(value: unknown): value is HealthUnit {
       "PRONTO SOCORRO GERAL",
       "PRONTO SOCORRO ESPECIALIZADO",
     ].includes(value.unitType as string) &&
+    // An API that predates the position check sends no precision at all.
+    (value.location.precision === undefined ||
+      value.location.precision === "source" ||
+      value.location.precision === "municipality" ||
+      (value.location.precision === "history" &&
+        typeof value.location.referenceMonth === "string") ||
+      (value.location.precision === "manual" &&
+        typeof value.location.correctedAt === "string")) &&
     typeof value.address.city === "string" &&
     typeof value.address.state === "string" &&
-    typeof value.lastUpdatedAt === "string"
+    typeof value.lastUpdatedAt === "string" &&
+    Array.isArray(value.sources) &&
+    value.sources.every(isSource)
+  );
+}
+
+function isSource(value: unknown): value is UnitSource {
+  const validFields: UnitSourceField[] = [
+    "identity",
+    "address",
+    "location",
+    "serviceHours",
+  ];
+  return (
+    isRecord(value) &&
+    typeof value.name === "string" &&
+    typeof value.url === "string" &&
+    Array.isArray(value.fields) &&
+    value.fields.every(
+      (field) =>
+        typeof field === "string" &&
+        validFields.includes(field as UnitSourceField),
+    ) &&
+    (value.lastUpdatedAt === null || typeof value.lastUpdatedAt === "string")
   );
 }
 
@@ -88,7 +143,12 @@ function parseUnitsResponse(value: unknown): UnitsResponse {
     throw new Error("A API retornou dados em um formato inesperado.");
   }
 
-  return value as unknown as UnitsResponse;
+  const response = value as unknown as UnitsResponse;
+  // Those older responses only carry the coordinates as CNES declared them. An
+  // unknown value is still rejected above, so a future kind of position is
+  // never shown as if it were the CNES coordinate.
+  for (const unit of response.data) unit.location.precision ??= "source";
+  return response;
 }
 
 export async function fetchUnits(
@@ -154,6 +214,12 @@ export function hasLocation(unit: HealthUnit): boolean {
   return unit.location.latitude !== null && unit.location.longitude !== null;
 }
 
+/** Formats a `YYYY-MM` monthly release as `MM/AAAA`. */
+export function formatReferenceMonth(value: string): string {
+  const match = /^(\d{4})-(\d{2})$/.exec(value);
+  return match ? `${match[2]}/${match[1]}` : value;
+}
+
 export function formatSourceDate(value: string): string {
   const date = new Date(`${value.slice(0, 10)}T12:00:00`);
   return Number.isNaN(date.getTime())
@@ -182,4 +248,21 @@ export function dataOriginNotice(
         text: `A fonte oficial está temporariamente indisponível. Exibimos a cópia de segurança atualizada até ${date}.`,
         isOutage: true,
       };
+}
+
+/** Says where the position on the map comes from. */
+export function formatPosition({ location }: HealthUnit): string {
+  if (location.latitude === null || location.longitude === null) {
+    return "Coordenadas não informadas na fonte pública";
+  }
+  if (location.precision === "municipality") {
+    return "Aproximada: centro do município (contorno do IBGE)";
+  }
+  if (location.precision === "manual" && location.correctedAt) {
+    return `Posição corrigida manualmente em ${formatSourceDate(location.correctedAt)}`;
+  }
+  if (location.precision === "history" && location.referenceMonth) {
+    return `Posição do CNES de ${formatReferenceMonth(location.referenceMonth)} (a coordenada atual não é utilizável)`;
+  }
+  return "Disponível";
 }

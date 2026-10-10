@@ -177,9 +177,18 @@ jobs:
           DROPLET_KNOWN_HOSTS: ${{ secrets.DROPLET_KNOWN_HOSTS }}
           APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          # Optional: only written when the secret exists. One login:token
+          # entry per administrator.
+          ADMIN_API_TOKENS: ${{ secrets.ADMIN_API_TOKENS }}
+          WEBHOOK_SOURCE_CONFIG: ${{ secrets.WEBHOOK_SOURCE_CONFIG }}
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
           set -eu
+          if grep -q 'WEBHOOK_SOURCE_CONFIG:?' deploy/compose.prod.yaml &&
+            [ -z "$WEBHOOK_SOURCE_CONFIG" ]; then
+            echo "::error::O secret WEBHOOK_SOURCE_CONFIG é obrigatório em produção" >&2
+            exit 1
+          fi
           umask 077
           mkdir -p "$HOME/.ssh"
           printf '%s\n' "$DEPLOY_SSH_KEY" > "$RUNNER_TEMP/deploy_key"
@@ -188,6 +197,10 @@ jobs:
             printf 'APP_DOMAIN=%s\n' "$APP_DOMAIN"
             printf 'POSTGRES_PASSWORD=%s\n' "$POSTGRES_PASSWORD"
             printf 'IMAGE_TAG=%s\n' "$TAG"
+            if [ -n "$ADMIN_API_TOKENS" ]; then
+              printf 'ADMIN_API_TOKENS=%s\n' "$ADMIN_API_TOKENS"
+            fi
+            printf 'WEBHOOK_SOURCE_CONFIG=%s\n' "$WEBHOOK_SOURCE_CONFIG"
           } > "$RUNNER_TEMP/production.env"
 
       - name: Copy deployment files
@@ -248,3 +261,85 @@ jobs:
         run: |
           ssh -i "$RUNNER_TEMP/deploy_key" "deploy@$DROPLET_HOST" \
             "/opt/filasaude/deploy.sh rollback"
+
+  notify:
+    name: Notificar resultado no Discord
+    needs: [prepare, images, deploy]
+    if: ${{ always() && needs.prepare.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check Discord configuration
+        id: webhook
+        env:
+          DISCORD_WEBHOOK_ID: ${{ secrets.DISCORD_WEBHOOK_ID }}
+          DISCORD_WEBHOOK_TOKEN: ${{ secrets.DISCORD_WEBHOOK_TOKEN }}
+        run: |
+          if [[ -n "$DISCORD_WEBHOOK_ID" && -n "$DISCORD_WEBHOOK_TOKEN" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Discord webhook secrets are not configured; notification skipped."
+          fi
+
+      - name: Build notification message
+        id: message
+        env:
+          PREPARE_RESULT: ${{ needs.prepare.result }}
+          IMAGES_RESULT: ${{ needs.images.result }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+          IMAGE_TAG: ${{ needs.prepare.outputs.tag }}
+          COMMIT: ${{ needs.prepare.outputs.commit }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          sanitize_mentions() {
+            sed -E 's/@(everyone|here)/@ \\1/g'
+          }
+
+          actor=$(printf '%s' "$TRIGGERING_ACTOR" | sanitize_mentions)
+          tag=${IMAGE_TAG:-"commit ${COMMIT:-desconhecido}"}
+
+          if [[ "$DEPLOY_RESULT" == "success" ]]; then
+            heading="✅ Deploy concluído em produção"
+            color="#22c55e"
+            details="A versão \`$tag\` passou pela verificação pública e foi confirmada."
+          elif [[ "$PREPARE_RESULT" == "cancelled" || "$IMAGES_RESULT" == "cancelled" || "$DEPLOY_RESULT" == "cancelled" ]]; then
+            heading="⏹️ Deploy cancelado"
+            color="#94a3b8"
+            details="A publicação da versão \`$tag\` foi cancelada."
+          elif [[ "$PREPARE_RESULT" != "success" ]]; then
+            heading="❌ Deploy não iniciado"
+            color="#ef4444"
+            details="A validação da versão \`$tag\` falhou."
+          elif [[ "$IMAGES_RESULT" != "success" ]]; then
+            heading="❌ Falha ao preparar o deploy"
+            color="#ef4444"
+            details="Não foi possível publicar as imagens da versão \`$tag\`."
+          else
+            heading="❌ Falha no deploy em produção"
+            color="#ef4444"
+            details="A versão \`$tag\` não foi confirmada em produção. Consulte a execução para verificar o rollback."
+          fi
+
+          message=$(printf '%s\n\n%s\n\n👤 Iniciado por: `%s`\n🔗 %s' \
+            "$heading" "$details" "$actor" "$RUN_URL")
+
+          delimiter="MESSAGE_$(date +%s%N)"
+          {
+            echo "text<<$delimiter"
+            printf '%s\n' "$message"
+            echo "$delimiter"
+            echo "color=$color"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Send Discord notification
+        if: steps.webhook.outputs.configured == 'true'
+        uses: appleboy/discord-action@afc227330777ad298156a1f5233dfa1e885616db # v1.2.0
+        with:
+          webhook_id: ${{ secrets.DISCORD_WEBHOOK_ID }}
+          webhook_token: ${{ secrets.DISCORD_WEBHOOK_TOKEN }}
+          username: FilaSaúde Bot
+          color: ${{ steps.message.outputs.color }}
+          message: ${{ steps.message.outputs.text }}

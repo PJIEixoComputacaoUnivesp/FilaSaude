@@ -2,11 +2,12 @@ import { useEffect, useMemo, useRef, useState, type Ref } from "react";
 import { BrazilianStateSelect } from "./BrazilianStateSelect";
 import { NationalStateCode, stateName } from "./brazilianStates";
 import { LiveStatus } from "./LiveStatus";
+import { UnitSources } from "./UnitSources";
 import {
   dataOriginNotice,
   filterUnits,
   formatAddress,
-  formatSourceDate,
+  formatPosition,
   sortUnits,
   type HealthUnit,
   type UnitsResponse,
@@ -39,11 +40,9 @@ function DataNotice({ metadata }: { metadata: UnitsResponse["metadata"] }) {
 
 function UnitCard({
   unit,
-  source,
   headingRef,
 }: {
   unit: HealthUnit;
-  source: UnitsResponse["metadata"]["source"];
   headingRef?: Ref<HTMLHeadingElement>;
 }) {
   return (
@@ -78,26 +77,15 @@ function UnitCard({
         <div>
           <dt className="font-semibold text-slate-900">Localização no mapa</dt>
           <dd>
-            {unit.location.latitude === null || unit.location.longitude === null
-              ? "Coordenadas não informadas na fonte pública"
-              : "Disponível"}
+            {formatPosition(unit)}
           </dd>
         </div>
       </dl>
 
-      <p className="mt-4 border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-600 sm:mt-5 sm:pt-4">
-        Fonte:{" "}
-        <a
-          className="underline hover:text-fila-blue"
-          href={source.url}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {source.name}
-          <span className="sr-only"> (abre em nova aba)</span>
-        </a>
-        {" · "}atualizado em {formatSourceDate(unit.lastUpdatedAt)}
-      </p>
+      <UnitSources
+        sources={unit.sources}
+        className="mt-4 space-y-1 border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-600 sm:mt-5 sm:pt-4"
+      />
     </article>
   );
 }
@@ -106,13 +94,7 @@ function UnitCard({
  * Cards with progressive loading. The parent remounts it (via `key`) when the
  * search changes, which resets the page size and the focus target.
  */
-function UnitResults({
-  units,
-  source,
-}: {
-  units: HealthUnit[];
-  source: UnitsResponse["metadata"]["source"];
-}) {
+function UnitResults({ units }: { units: HealthUnit[] }) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   // Index of the first card added by "Mostrar mais", which receives focus so
   // keyboard and screen reader users land on the new results.
@@ -130,7 +112,6 @@ function UnitResults({
           <UnitCard
             key={unit.id}
             unit={unit}
-            source={source}
             headingRef={index === focusIndex ? focusHeadingRef : undefined}
           />
         ))}
@@ -273,7 +254,6 @@ export function UnitsPage() {
               <UnitResults
                 key={`${stateCode}|${query}`}
                 units={filteredUnits}
-                source={state.response.metadata.source}
               />
             )}
           </div>

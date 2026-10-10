@@ -11,13 +11,36 @@ import {
   ZoomControl,
 } from "react-leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
+import { UnitSources } from "./UnitSources";
 import type { HealthUnit } from "./units";
-import { formatAddress, formatSourceDate } from "./units";
+import {
+  formatAddress,
+  formatReferenceMonth,
+  formatSourceDate,
+} from "./units";
 
 const brazilCenter: [number, number] = [-14.2, -51.9];
 // Canvas does not resolve CSS variables, so the brand blue is repeated here.
 const markerColor = "#1266cc";
 const fitPadding = 24;
+const preciseMarker = {
+  color: "white",
+  fillColor: markerColor,
+  fillOpacity: 0.8,
+  opacity: 1,
+  weight: 2,
+};
+// A hollow ring tells the position is only the municipality center. A
+// `history` point keeps the solid marker: it is still a CNES coordinate
+// registered for the unit's own address, and the popup says where it is from.
+const approximateMarker = {
+  color: markerColor,
+  fillColor: "white",
+  fillOpacity: 0.6,
+  opacity: 1,
+  weight: 2,
+};
+
 type BoundaryGeometry =
   | { type: "Polygon"; coordinates: number[][][] }
   | { type: "MultiPolygon"; coordinates: number[][][][] };
@@ -292,13 +315,11 @@ export function UnitsMap({ units, className = "", overlayRef, isCountryWide }: U
           key={unit.id}
           center={[unit.location.latitude!, unit.location.longitude!]}
           radius={markerRadius}
-          pathOptions={{
-            color: "white",
-            fillColor: markerColor,
-            fillOpacity: 0.8,
-            opacity: 1,
-            weight: 2,
-          }}
+          pathOptions={
+            unit.location.precision === "municipality"
+              ? approximateMarker
+              : preciseMarker
+          }
         >
           <Popup>
             <div className="min-w-48 max-w-[16rem]">
@@ -311,9 +332,34 @@ export function UnitsMap({ units, className = "", overlayRef, isCountryWide }: U
                   {unit.serviceHours}
                 </p>
               )}
-              <p className="mb-0 text-xs text-slate-500">
-                CNES · atualizado em {formatSourceDate(unit.lastUpdatedAt)}
-              </p>
+              {unit.location.precision === "manual" &&
+                unit.location.correctedAt && (
+                  <p className="my-2 text-xs font-medium text-amber-800">
+                    Posição corrigida manualmente em{" "}
+                    {formatSourceDate(unit.location.correctedAt)}.
+                  </p>
+                )}
+              {unit.location.precision === "history" &&
+                unit.location.referenceMonth && (
+                  <p className="my-2 text-xs font-medium text-amber-800">
+                    Posição registrada no CNES em{" "}
+                    {formatReferenceMonth(unit.location.referenceMonth)}. A
+                    coordenada atual do cadastro está ausente ou fora do
+                    município, então mostramos o ponto mais recente dentro do
+                    município informado para este mesmo endereço.
+                  </p>
+                )}
+              {unit.location.precision === "municipality" && (
+                <p className="my-2 text-xs font-medium text-amber-800">
+                  Localização aproximada: centro do município (contorno do
+                  IBGE). O cadastro do CNES não traz uma posição válida para
+                  esta unidade.
+                </p>
+              )}
+              <UnitSources
+                sources={unit.sources}
+                className="mb-0 space-y-1 text-xs text-slate-500"
+              />
             </div>
           </Popup>
         </CircleMarker>

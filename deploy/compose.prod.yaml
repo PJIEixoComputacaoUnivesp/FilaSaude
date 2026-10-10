@@ -32,6 +32,9 @@ services:
       DB_NAME: ${POSTGRES_DB:-filasaude}
       DB_USER: ${POSTGRES_USER:-filasaude}
       DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      # Optional. Without a valid list the admin endpoints do not exist (404).
+      ADMIN_API_TOKENS: ${ADMIN_API_TOKENS:-}
+      WEBHOOK_SOURCE_CONFIG: ${WEBHOOK_SOURCE_CONFIG:?WEBHOOK_SOURCE_CONFIG is required}
     expose:
       - "3000"
     healthcheck:

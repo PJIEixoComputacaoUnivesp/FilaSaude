@@ -83,3 +83,14 @@
     transition: none !important;
   }
 }
+
+/* Leaflet's zoom buttons are 30px; on touch screens the project uses 44px. The
+   selector is more specific than Leaflet's own, which loads after this file. */
+@media (pointer: coarse), (hover: none) {
+  .picker-map .leaflet-container .leaflet-bar a {
+    width: 44px;
+    height: 44px;
+    line-height: 44px;
+    font-size: 22px;
+  }
+}
