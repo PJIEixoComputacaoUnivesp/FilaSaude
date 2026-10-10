@@ -1055,7 +1055,7 @@ export function AdminPage() {
   }, []);
 
   return (
-    <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6 md:py-12">
+    <div className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6 md:py-12">
       <p className="mb-2 text-sm font-bold uppercase tracking-widest text-fila-green">
         Administração
       </p>
@@ -1080,6 +1080,6 @@ export function AdminPage() {
           />
         )}
       </div>
-    </main>
+    </div>
   );
 }
