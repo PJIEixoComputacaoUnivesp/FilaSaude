@@ -76,7 +76,7 @@ O valor de `WEBHOOK_SOURCE_CONFIG` deve seguir este formato, sem incluir
 segredos no repositório:
 
 ```json
-{"academic-simulator":{"secret":"<openssl rand -hex 32>","unitCnes":["1234567"]}}
+{"occupancy-feed":{"secret":"<openssl rand -hex 32>","unitCnes":["1234567"]}}
 ```
 
 O deploy de produção exige essa configuração; sem ela, o serviço não inicia
@@ -87,7 +87,7 @@ environment `production`:
 
 ```bash
 WEBHOOK_SECRET="$(openssl rand -hex 32)"
-printf '{"academic-simulator":{"secret":"%s","unitCnes":["1234567"]}}\n' "$WEBHOOK_SECRET"
+printf '{"occupancy-feed":{"secret":"%s","unitCnes":["1234567"]}}\n' "$WEBHOOK_SECRET"
 ```
 
 Em produção, o webhook é acessível pelo prefixo público da API:

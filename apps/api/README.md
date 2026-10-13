@@ -35,7 +35,7 @@ segredo e a lista de unidades CNES autorizadas:
 
 ```bash
 WEBHOOK_SECRET="$(openssl rand -hex 32)"
-printf '{"academic-simulator":{"secret":"%s","unitCnes":["1234567"]}}\n' "$WEBHOOK_SECRET"
+printf '{"occupancy-feed":{"secret":"%s","unitCnes":["1234567"]}}\n' "$WEBHOOK_SECRET"
 ```
 
 Os cabeçalhos obrigatórios são `X-Webhook-Source`,
