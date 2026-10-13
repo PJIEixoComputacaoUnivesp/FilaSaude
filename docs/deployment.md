@@ -1,11 +1,12 @@
 # Deploy na DigitalOcean
 
-A produção do FilaSaúde usa um único Droplet e três containers:
+A produção do FilaSaúde usa um único Droplet e quatro containers:
 
 - Caddy recebe o tráfego público, emite certificados TLS e encaminha as
   requisições;
 - o frontend é servido por Nginx em uma rede interna do Compose;
-- a API NestJS fica disponível externamente pelo prefixo `/api`.
+- a API NestJS fica disponível externamente pelo prefixo `/api`;
+- o PostgreSQL guarda os dados da API e só é acessível pela rede interna.
 
 As imagens são publicadas no GitHub Container Registry (GHCR) somente no
 deploy, identificadas pelo SHA do commit. O servidor não compila o projeto:
@@ -121,14 +122,25 @@ GitHub não têm IP de saída fixo. O servidor aceita somente autenticação por
 chave e não permite login de root. Para restringir também a origem da conexão,
 use um runner com IP fixo e atualize `ssh_allowed_cidrs`.
 
+### Notificações no Discord (opcional)
+
+O workflow `Deploy` avisa o resultado (sucesso, falha ou cancelamento) em um
+canal do Discord, e o workflow `Notificar pull requests` avisa quando um PR para
+a `main` é aberto, reaberto ou fechado. Os dois usam os secrets
+`DISCORD_WEBHOOK_ID` e `DISCORD_WEBHOOK_TOKEN`, que são do **repositório** e não
+do environment `production`, porque o job de notificação não usa esse
+environment. Sem eles, a notificação é ignorada com um aviso e o deploy não é
+afetado.
+
 ## 4. Publicação e rollback
 
-Pull requests e pushes na `main` executam lint, typecheck, testes, build e
-validação do Terraform (workflow `CI`). A CI não constrói as imagens Docker nem
-atualiza o Droplet: as imagens são construídas e publicadas só no deploy. Assim,
-o registro guarda apenas versões que foram de fato para produção, o que mantém
-os pacotes privados dentro da cota gratuita de armazenamento. Como
-consequência, um erro no `Dockerfile` só aparece no deploy.
+Pull requests e pushes na `main` executam o workflow `CI`: lint, typecheck,
+testes, build e os testes e2e da API (job "Qualidade do monorepo"), o fluxo da
+interface com Playwright e a validação do Terraform. A CI não constrói as
+imagens Docker nem atualiza o Droplet: as imagens são construídas e publicadas
+só no deploy. Assim, o registro guarda apenas versões que foram de fato para
+produção, o que mantém os pacotes privados dentro da cota gratuita de
+armazenamento. Como consequência, um erro no `Dockerfile` só aparece no deploy.
 
 O deploy é manual, pelo workflow `Deploy`: na aba Actions, clique em "Run
 workflow" na branch `main`. Pela linha de comando:
@@ -141,7 +153,7 @@ gh workflow run deploy.yml --ref main
 gh workflow run deploy.yml --ref main -f image_tag=sha-<commit completo>
 ```
 
-O workflow segue três etapas:
+O workflow segue quatro etapas:
 
 1. **Validar commit:** o commit precisa estar na `main` e ter passado no check
    "Qualidade do monorepo" da CI.
@@ -152,6 +164,8 @@ O workflow segue três etapas:
    deploys.
 3. **Deploy:** os arquivos de `deploy/` também vêm desse commit, para que o
    compose e os scripts correspondam à imagem.
+4. **Notificar:** avisa o resultado no Discord, inclusive quando uma etapa
+   anterior falha. É opcional; ver "Notificações no Discord".
 
 Qualquer commit da `main` com CI aprovada pode ser publicado ou usado num
 rollback (`git log --format='sha-%H' origin/main`).
@@ -162,12 +176,19 @@ aguardando os health checks do Compose. Depois, a CI verifica
 `https://<APP_DOMAIN>/api/health` pela internet, o que também cobre DNS,
 firewall, emissão do certificado TLS e roteamento do Caddy. Somente quando essa
 verificação pública passa, `deploy.sh confirm <tag>` registra a tag como a
-última versão bem-sucedida em `/opt/filasaude/.last-successful-tag`.
+última versão bem-sucedida em `/opt/filasaude/.last-successful-tag` e remove as
+imagens Docker sem uso (`docker image prune`).
 
 Se qualquer uma das verificações falhar e já existir uma versão anterior
 bem-sucedida, a tag anterior é reaplicada automaticamente. No primeiro deploy
 ainda não há versão anterior, então a falha apenas interrompe a publicação.
 Cada tag tem o formato `sha-<commit>`.
+
+O rollback troca só as imagens: as migrations que o deploy aplicou **não** são
+desfeitas, e a versão anterior da API volta a rodar sobre o schema novo. Antes
+de publicar uma migration que remove ou renomeia colunas ou tabelas, leve isso
+em conta: acrescentar costuma ser seguro, e uma remoção fica mais segura em duas
+versões (primeiro o código deixa de usar, depois a migration remove).
 
 Para voltar a uma versão específica, rode o workflow `Deploy` com o
 `image_tag` desejado, como acima. Para reaplicar direto no servidor a última
@@ -272,7 +293,11 @@ município da unidade (tolerância de 5 km) e no Brasil. A resposta pública mos
 apenas `precision: "manual"` e a data, e o login e o método ficam só para os
 administradores. A correção vale enquanto o município e o endereço da unidade no
 CNES forem os de quando ela foi feita. Se algum mudar, ela deixa de valer e o
-motivo vai para o log.
+motivo vai para o log. Se, em vez disso, a coordenada do CNES mudar depois da
+correção, ela continua valendo e a mudança só é registrada no log, para
+revisão. A visão nacional vem de um snapshot que pode atrasar em relação ao
+CNES, então uma correção feita contra um endereço mais novo pode ficar de fora
+dela até o snapshot ser atualizado.
 
 **Histórico.** Cada definição, substituição e remoção grava quem fez, quando, o
 método e a posição anterior e a nova, na tabela `unit_location_correction_events`,
@@ -309,6 +334,12 @@ usuário `deploy` (`crontab -e`):
 30 3 * * * /opt/filasaude/backup.sh >> /opt/filasaude/backups/backup.log 2>&1
 ```
 
+O cron não é criado pelo cloud-init: agende-o uma vez, depois do primeiro
+deploy, que é quando o `backup.sh` chega ao servidor. Os arquivos ficam no
+próprio Droplet, então um Droplet perdido leva os backups junto. O Terraform tem
+a variável `enable_backups` (desligada por padrão) para os backups do Droplet na
+DigitalOcean; considere também copiar os dumps para fora do servidor.
+
 Para restaurar um backup (o dump recria as tabelas existentes):
 
 ```bash
@@ -318,7 +349,11 @@ gunzip -c backups/filasaude-AAAAMMDDTHHMMSSZ.sql.gz |
   sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" "$POSTGRES_DB"'
 ```
 
-Como os dados de unidades vêm do CNES, eles também podem ser reconstruídos por
-uma nova ingestão. O backup evita depender da disponibilidade da fonte.
+Hoje o banco guarda as posições corrigidas por administradores, o histórico de
+cada alteração e a inbox de snapshots do webhook. Nada disso vem do CNES, então
+não pode ser reconstruído por ele: **o backup é a única cópia**. O cadastro de
+unidades ainda não é gravado no banco; quando a ingestão (#23) existir, ele
+poderá ser refeito a partir do CNES, mas as correções continuarão dependendo do
+backup.
 
 O volume do Caddy guarda certificados e estado, e pode ser recriado.
