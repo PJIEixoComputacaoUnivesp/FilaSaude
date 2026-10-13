@@ -13,6 +13,9 @@
 @theme {
   --color-fila-blue: #1266cc;
   --color-fila-green: #00a88f;
+  /* Green for text: 5.0:1 or more on white and on fila-bg. fila-green alone is
+     about 3:1, so it stays for fills and graphics, never for small text. */
+  --color-fila-green-ink: #007a68;
   --color-fila-cyan: #00a5e3;
   --color-fila-bg: var(--color-slate-50);
 }
@@ -32,15 +35,58 @@
     font: inherit;
   }
 
+  /* Solid brand blue: 5.3:1 or more on white and on fila-bg (WCAG 2.4.13). Do
+     not remove it on controls; add a border change on top of it if needed. */
   :focus-visible {
-    outline: 3px solid
-      color-mix(in srgb, var(--color-fila-blue) 40%, transparent);
+    outline: 3px solid var(--color-fila-blue);
     outline-offset: 2px;
   }
 }
 
+/* Leaflet draws 30px zoom buttons and a 24px popup close button; keep the
+   project's 44px touch target on every touch-capable device. The picker map of
+   the admin page has its own rule at the end of the file; keep them in step. */
+.leaflet-container.leaflet-touch .leaflet-bar a {
+  width: 2.75rem;
+  height: 2.75rem;
+  line-height: 2.75rem;
+}
+
+/* leaflet.css is loaded after this file, so these selectors are one class more
+   specific instead of relying on order. */
+.leaflet-container .leaflet-popup a.leaflet-popup-close-button {
+  top: 0;
+  right: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  font-size: 1.5rem;
+  line-height: 2.75rem;
+}
+
+/* The map fills its area, so an outside focus ring is clipped. Draw it inside. */
+.leaflet-container:focus-visible {
+  outline-offset: -3px;
+}
+
+.leaflet-container .leaflet-popup-content {
+  /* Keeps long unit names clear of the 44px close button. */
+  margin-right: 2.75rem;
+}
+
+.leaflet-container .leaflet-control-attribution a {
+  display: inline-block;
+  padding-block: 0.375rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leaflet-zoom-anim .leaflet-zoom-animated,
+  .leaflet-fade-anim .leaflet-popup {
+    transition: none !important;
+  }
+}
+
 /* Leaflet's zoom buttons are 30px; on touch screens the project uses 44px. The
-   selector is more specific than Leaflet's own, which loads after this file. */
+   selectors are more specific than Leaflet's own, which loads after this file. */
 @media (pointer: coarse), (hover: none) {
   .picker-map .leaflet-container .leaflet-bar a {
     width: 44px;

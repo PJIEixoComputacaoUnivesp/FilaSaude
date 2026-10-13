@@ -16,14 +16,14 @@ export function BrazilianStateSelect({
   return (
     <label className="block">
       <span
-        className={`block font-semibold text-slate-800 ${compact ? "mb-1 text-xs sm:mb-2 sm:text-sm" : "mb-2 text-sm"}`}
+        className={`block font-semibold text-slate-800 ${compact ? "sr-only text-xs sm:not-sr-only sm:mb-2 sm:text-sm" : "mb-2 text-sm"}`}
       >
         Estado
       </span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className={`w-full border border-slate-300 bg-white text-slate-900 outline-none transition focus:border-fila-blue focus:ring-2 focus:ring-blue-100 ${compact ? "min-h-11 rounded-lg px-2 py-2 sm:px-3" : "rounded-xl px-4 py-3 shadow-sm"}`}
+        className={`min-h-11 w-full border border-slate-300 bg-white text-slate-900 focus-visible:border-fila-blue ${compact ? "rounded-lg px-2 py-2 sm:px-3" : "rounded-xl px-4 py-3"}`}
       >
         {allOptionLabel && (
           <option value={NationalStateCode.All}>{allOptionLabel}</option>

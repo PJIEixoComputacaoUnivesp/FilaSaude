@@ -24,6 +24,7 @@ export function UnitSources({ sources, className = "" }: UnitSourcesProps) {
             rel="noreferrer"
           >
             {source.name}
+            <span className="sr-only"> (abre em nova aba)</span>
           </a>
           {source.lastUpdatedAt
             ? ` · atualizado em ${formatSourceDate(source.lastUpdatedAt)}`

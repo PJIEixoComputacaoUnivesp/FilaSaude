@@ -87,7 +87,7 @@ async function openUnitsPage(page: Page) {
       body: JSON.stringify(unitsResponse),
     }),
   );
-  await page.goto("/units");
+  await page.goto("/units?uf=SP");
   await expect(page.getByText("2 unidades encontradas")).toBeVisible();
 }
 
@@ -138,4 +138,130 @@ test("informa quando a busca não encontra unidades", async ({ page }) => {
     ),
   ).toBeVisible();
   await expect(page.getByRole("article")).toHaveCount(0);
+});
+
+test("leva a busca do mapa para a lista", async ({ page }) => {
+  await page.route("**/api/units?state=ALL", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...unitsResponse,
+        metadata: {
+          ...unitsResponse.metadata,
+          state: "BR",
+          dataOrigin: "fallback",
+          isStale: true,
+        },
+      }),
+    }),
+  );
+
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", {
+      level: 1,
+      name: "Mapa das unidades de pronto atendimento",
+    }),
+  ).toBeAttached();
+  await expect(page.getByText("2 unidades no mapa.")).toBeVisible();
+
+  await page
+    .getByRole("searchbox", { name: "Buscar no mapa" })
+    .fill("Vila Mariana");
+  await expect(page.getByText("1 unidade no mapa.")).toBeVisible();
+  // The URL follows the field once typing pauses.
+  await expect(page).toHaveURL(/\?q=Vila\+Mariana$/);
+
+  await page
+    .getByRole("navigation", { name: "Forma de visualização" })
+    .getByRole("link", { name: "Lista" })
+    .click();
+
+  await expect(page).toHaveURL(/\/units\?q=Vila\+Mariana$/);
+  await expect(
+    page.getByRole("searchbox", {
+      name: "Buscar por unidade, cidade ou bairro",
+    }),
+  ).toHaveValue("Vila Mariana");
+  await expect(page.getByText("1 unidade encontrada")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 2, name: "UPA Vila Mariana" }),
+  ).toBeVisible();
+});
+
+test("redireciona /map e caminhos desconhecidos para o mapa, mantendo a busca", async ({
+  page,
+}) => {
+  await page.route("**/api/units?state=ALL", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...unitsResponse,
+        metadata: { ...unitsResponse.metadata, state: "BR" },
+      }),
+    }),
+  );
+
+  await page.goto("/map?uf=SP&q=osasco");
+  await expect(page).toHaveURL(/\/\?uf=SP&q=osasco$/);
+  await expect(page.getByRole("searchbox", { name: "Buscar no mapa" })).toHaveValue(
+    "osasco",
+  );
+
+  await page.goto("/caminho-que-nao-existe");
+  await expect(page).toHaveURL(/\/$/);
+});
+
+test("mantém a busca ao ler Sobre os dados e voltar ao mapa", async ({ page }) => {
+  await page.route("**/api/units?state=ALL", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...unitsResponse,
+        metadata: { ...unitsResponse.metadata, state: "BR" },
+      }),
+    }),
+  );
+
+  await page.goto("/");
+  const field = page.getByRole("searchbox", { name: "Buscar no mapa" });
+  await field.fill("Osasco");
+  await expect(page.getByText("1 unidade no mapa.")).toBeVisible();
+
+  await page.getByRole("link", { name: "Sobre os dados" }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Sobre os dados" }),
+  ).toBeFocused();
+
+  await page.getByRole("link", { name: "Voltar ao mapa" }).click();
+  await expect(page).toHaveURL(/\/\?q=Osasco$/);
+  await expect(
+    page.getByRole("searchbox", { name: "Buscar no mapa" }),
+  ).toHaveValue("Osasco");
+  await expect(page.getByText("1 unidade no mapa.")).toBeVisible();
+});
+
+test("trata /units/ com barra final como a lista e grava a busca na URL", async ({
+  page,
+}) => {
+  await page.route("**/api/units?state=SP", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(unitsResponse),
+    }),
+  );
+
+  await page.goto("/units/?uf=SP");
+  await expect(page.getByText("2 unidades encontradas")).toBeVisible();
+
+  await page
+    .getByRole("searchbox", { name: "Buscar por unidade, cidade ou bairro" })
+    .fill("Osasco");
+
+  await expect(page.getByText("1 unidade encontrada")).toBeVisible();
+  await expect(page).toHaveURL(/\?uf=SP&q=Osasco$/);
 });
