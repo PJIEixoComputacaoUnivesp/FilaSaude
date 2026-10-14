@@ -136,3 +136,29 @@ test("não pede tiles fora do Brasil ao arrastar o mapa", async ({ page }) => {
 
   expect(whileDragging.every(overlapsBrazil)).toBe(true);
 });
+
+test("recorta na caixa do Brasil os tiles da borda", async ({ page }) => {
+  const tiles = await recordTiles(page);
+  await page.goto("/");
+  await expect.poll(() => tiles.length).toBe(25);
+
+  const clipOf = (tile: string) =>
+    page
+      .locator(`img.leaflet-tile[src$="/${tile}.png"]`)
+      .evaluate((img) => img.style.clipPath);
+  const inset = (clip: string) =>
+    (/inset\((.+)\)/.exec(clip)?.[1] ?? "0px 0px 0px 0px")
+      .split(" ")
+      .map((value) => Number.parseFloat(value));
+
+  // Top-left corner: the box starts inside it from the north and the west.
+  const [top, , , left] = inset(await clipOf("5/9/15"));
+  expect(top).toBeGreaterThan(0);
+  expect(left).toBeGreaterThan(0);
+  // Bottom-right corner: the box ends inside it to the south and the east.
+  const [, right, bottom] = inset(await clipOf("5/13/19"));
+  expect(right).toBeGreaterThan(0);
+  expect(bottom).toBeGreaterThan(0);
+  // A tile fully inside the box is not clipped.
+  expect(await clipOf("5/11/17")).toBe("");
+});

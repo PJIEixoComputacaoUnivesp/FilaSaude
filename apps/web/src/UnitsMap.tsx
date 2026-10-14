@@ -60,12 +60,11 @@ const BRAZIL_BOUNDS: LatLngBoundsExpression = [
 ];
 // The outline's own box, oceanic islands included (BRAZIL_BOUNDS stops at
 // -34 and would cut Fernando de Noronha and Trindade). Tiles are only
-// requested inside it, so the world beyond it is never downloaded, and a drag
-// past the mask canvas shows the background color there, not raw tiles.
-const TILE_BOUNDS: LatLngBoundsExpression = [
+// requested inside it, so the world beyond it is never downloaded.
+const TILE_BOUNDS = L.latLngBounds([
   [-33.8, -74],
   [5.3, -28.8],
-];
+]);
 
 /**
  * Carrega o GeoJSON do Brasil:
@@ -258,6 +257,48 @@ function MapLocalization() {
   return null;
 }
 
+/**
+ * A tile on the edge of TILE_BOUNDS still reaches past it (at zoom 4 the row
+ * over the north of Brazil goes up to the Caribbean). Each such tile is
+ * clipped to the box, so a drag past the mask canvas shows the background
+ * color there, not raw tiles. The clip lives on the tile, so it follows drags
+ * and zoom animations without any redraw.
+ */
+function BrazilTileLayer() {
+  const map = useMap();
+  const clipToBrazil = useCallback(
+    ({ tile, coords }: L.TileEvent) => {
+      const size = 256;
+      const box = L.bounds(
+        map.project(TILE_BOUNDS.getNorthWest(), coords.z),
+        map.project(TILE_BOUNDS.getSouthEast(), coords.z),
+      );
+      const top = Math.max(0, box.min!.y - coords.y * size);
+      const left = Math.max(0, box.min!.x - coords.x * size);
+      const bottom = Math.max(0, (coords.y + 1) * size - box.max!.y);
+      const right = Math.max(0, (coords.x + 1) * size - box.max!.x);
+      if (top || left || bottom || right) {
+        tile.style.clipPath = `inset(${top}px ${right}px ${bottom}px ${left}px)`;
+      }
+    },
+    [map],
+  );
+  const eventHandlers = useMemo(
+    () => ({ tileloadstart: clipToBrazil }),
+    [clipToBrazil],
+  );
+
+  return (
+    <TileLayer
+      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      bounds={TILE_BOUNDS}
+      noWrap
+      eventHandlers={eventHandlers}
+    />
+  );
+}
+
 function EnforceCountryZoom() {
   const map = useMap();
 
@@ -315,14 +356,7 @@ export function UnitsMap({ units, className = "", overlayRef, isCountryWide }: U
       renderer={renderer}
       style={{ background: "#d6e4f0" }}
     >
-      {isBaseReady && (
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          bounds={TILE_BOUNDS}
-          noWrap
-        />
-      )}
+      {isBaseReady && <BrazilTileLayer />}
       <BrazilBorderLayer onSettled={showBase} />
       <MapLocalization />
       <EnforceCountryZoom />
