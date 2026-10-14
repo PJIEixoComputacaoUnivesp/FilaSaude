@@ -1,0 +1,138 @@
+import { expect, test, type Page } from "@playwright/test";
+
+// Same box as TILE_BOUNDS in apps/web/src/UnitsMap.tsx: south, west, north, east.
+const tileBounds = { south: -33.8, west: -74, north: 5.3, east: -28.8 };
+
+// A 1×1 transparent PNG, so the test never reaches the OpenStreetMap servers.
+const emptyTile = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+  "base64",
+);
+
+interface Tile {
+  z: number;
+  x: number;
+  y: number;
+}
+
+function tileLongitude(x: number, z: number) {
+  return (x / 2 ** z) * 360 - 180;
+}
+
+function tileLatitude(y: number, z: number) {
+  const n = Math.PI - (2 * Math.PI * y) / 2 ** z;
+  return (Math.atan(Math.sinh(n)) * 180) / Math.PI;
+}
+
+/** True when the tile overlaps the box, so part of it can be inside Brazil. */
+function overlapsBrazil({ z, x, y }: Tile) {
+  return (
+    tileLongitude(x, z) < tileBounds.east &&
+    tileLongitude(x + 1, z) > tileBounds.west &&
+    tileLatitude(y + 1, z) < tileBounds.north &&
+    tileLatitude(y, z) > tileBounds.south
+  );
+}
+
+async function recordTiles(page: Page) {
+  const tiles: Tile[] = [];
+  await page.route("https://*.tile.openstreetmap.org/**", (route) => {
+    const match = /\/(\d+)\/(\d+)\/(\d+)\.png$/.exec(route.request().url());
+    if (match) {
+      const [z, x, y] = match.slice(1).map(Number);
+      tiles.push({ z, x, y });
+    }
+    return route.fulfill({ status: 200, contentType: "image/png", body: emptyTile });
+  });
+  await page.route("**/api/units?state=ALL", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: [],
+        metadata: {
+          count: 0,
+          state: "BR",
+          dataOrigin: "live",
+          isStale: false,
+          retrievedAt: "2026-09-21T12:00:00-03:00",
+          latestSourceUpdate: "2026-09-20",
+          source: {
+            name: "Cadastro Nacional de Estabelecimentos de Saúde (CNES)",
+            url: "https://cnes.datasus.gov.br/",
+          },
+        },
+      }),
+    }),
+  );
+  return tiles;
+}
+
+const key = ({ z, x, y }: Tile) => `${z}/${x}/${y}`;
+
+test.use({ viewport: { width: 1920, height: 1080 } });
+
+test("pede só os tiles do Brasil, no zoom final", async ({ page }) => {
+  const tiles = await recordTiles(page);
+  await page.goto("/");
+
+  // Zoom 5 is the minimum for this window: columns 9 to 13, rows 15 to 19.
+  const expected = [];
+  for (let x = 9; x <= 13; x++) {
+    for (let y = 15; y <= 19; y++) expected.push(`5/${x}/${y}`);
+  }
+  await expect
+    .poll(() => new Set(tiles.map(key)).size)
+    .toBe(expected.length);
+  expect(new Set(tiles.map(key))).toEqual(new Set(expected));
+  expect(tiles.every(overlapsBrazil)).toBe(true);
+});
+
+test("só pede tiles depois que a máscara do Brasil chega", async ({ page }) => {
+  let isBoundaryServed = false;
+  let tilesBeforeBoundary = 0;
+  const tiles = await recordTiles(page);
+  await page.route("**/brazil.geojson", async (route) => {
+    const response = await route.fetch();
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    isBoundaryServed = true;
+    // StrictMode aborts the first request; it can no longer be fulfilled.
+    await route.fulfill({ response }).catch(() => {});
+  });
+  page.on("request", (request) => {
+    if (request.url().includes("tile.openstreetmap.org") && !isBoundaryServed) {
+      tilesBeforeBoundary += 1;
+    }
+  });
+
+  await page.goto("/");
+
+  await expect.poll(() => tiles.length).toBeGreaterThan(0);
+  expect(tilesBeforeBoundary).toBe(0);
+});
+
+test("mostra a base mesmo sem o contorno do Brasil", async ({ page }) => {
+  const tiles = await recordTiles(page);
+  await page.route("**/brazil.geojson", (route) => route.abort());
+
+  await page.goto("/");
+
+  await expect.poll(() => tiles.length).toBeGreaterThan(0);
+  expect(tiles.every(overlapsBrazil)).toBe(true);
+});
+
+test("não pede tiles fora do Brasil ao arrastar o mapa", async ({ page }) => {
+  const tiles = await recordTiles(page);
+  await page.goto("/");
+  await expect.poll(() => tiles.length).toBeGreaterThan(0);
+
+  // Right of the filter panel, which sits on the left in a wide window.
+  await page.mouse.move(1400, 540);
+  await page.mouse.down();
+  await page.mouse.move(600, 540, { steps: 20 });
+  await page.waitForTimeout(500);
+  const whileDragging = [...tiles];
+  await page.mouse.up();
+
+  expect(whileDragging.every(overlapsBrazil)).toBe(true);
+});
