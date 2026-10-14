@@ -235,6 +235,10 @@ test("mostra o anel de foco do mapa só para o teclado", async ({ page }) => {
   await map.click({ position: { x: 1100, y: 500 } });
   expect(await ring()).toBe("none");
 
+  // Shift alone belongs to a mouse gesture (Shift+drag zooms to a box).
+  await page.keyboard.press("Shift");
+  expect(await ring()).toBe("none");
+
   // Panning with the arrows is keyboard use, so the ring comes back.
   await page.keyboard.press("ArrowLeft");
   expect(await ring()).toContain("3px");
