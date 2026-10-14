@@ -121,6 +121,21 @@ test("mostra a base mesmo sem o contorno do Brasil", async ({ page }) => {
   expect(tiles.every(overlapsBrazil)).toBe(true);
 });
 
+test("mostra a base se o contorno do Brasil travar", async ({ page }) => {
+  const tiles = await recordTiles(page);
+  // Never answered, like a request stuck behind a proxy.
+  await page.route("**/brazil.geojson", () => {});
+  await page.clock.install();
+
+  await page.goto("/");
+  await page.clock.fastForward(5_000);
+  expect(tiles).toHaveLength(0);
+  await page.clock.fastForward(5_000);
+
+  await expect.poll(() => tiles.length).toBeGreaterThan(0);
+  expect(tiles.every(overlapsBrazil)).toBe(true);
+});
+
 test("não pede tiles fora do Brasil ao arrastar o mapa", async ({ page }) => {
   const tiles = await recordTiles(page);
   await page.goto("/");

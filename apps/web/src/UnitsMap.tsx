@@ -87,6 +87,7 @@ const boundaryOptions: L.PolylineOptions = { smoothFactor: 1 };
 // Its own pane, above the tiles (200) and below the markers (overlay, 400),
 // so the mask canvas never hides a marker or takes its clicks.
 const boundaryPane = "brazilBoundary";
+const boundaryTimeout = 10_000;
 
 const BRAZIL_BOUNDS: LatLngBoundsExpression = [
   [-34, -74],
@@ -112,6 +113,10 @@ function BrazilBorderLayer({ onSettled }: { onSettled: () => void }) {
   useEffect(() => {
     let group: L.LayerGroup | null = null;
     const controller = new AbortController();
+
+    // The tiles wait for this file. If it is slow or stalls without failing,
+    // the base map shows anyway and the mask comes in when the file does.
+    const timeout = window.setTimeout(onSettled, boundaryTimeout);
 
     fetch("/brazil.geojson", { signal: controller.signal })
       .then((response) => {
@@ -178,9 +183,11 @@ function BrazilBorderLayer({ onSettled }: { onSettled: () => void }) {
         // failure lets the base map show without the mask.
         if (controller.signal.aborted) return;
         onSettled();
-      });
+      })
+      .finally(() => window.clearTimeout(timeout));
 
     return () => {
+      window.clearTimeout(timeout);
       controller.abort();
       group?.remove();
     };
@@ -309,16 +316,16 @@ function MapLocalization() {
 function BrazilTileLayer() {
   const map = useMap();
   const clipToBrazil = useCallback(
-    ({ tile, coords }: L.TileEvent) => {
-      const size = 256;
+    ({ tile, coords, target }: L.TileEvent & { target: L.GridLayer }) => {
+      const size = target.getTileSize();
       const box = L.bounds(
         map.project(TILE_BOUNDS.getNorthWest(), coords.z),
         map.project(TILE_BOUNDS.getSouthEast(), coords.z),
       );
-      const top = Math.max(0, box.min!.y - coords.y * size);
-      const left = Math.max(0, box.min!.x - coords.x * size);
-      const bottom = Math.max(0, (coords.y + 1) * size - box.max!.y);
-      const right = Math.max(0, (coords.x + 1) * size - box.max!.x);
+      const top = Math.max(0, box.min!.y - coords.y * size.y);
+      const left = Math.max(0, box.min!.x - coords.x * size.x);
+      const bottom = Math.max(0, (coords.y + 1) * size.y - box.max!.y);
+      const right = Math.max(0, (coords.x + 1) * size.x - box.max!.x);
       if (top || left || bottom || right) {
         tile.style.clipPath = `inset(${top}px ${right}px ${bottom}px ${left}px)`;
       }
