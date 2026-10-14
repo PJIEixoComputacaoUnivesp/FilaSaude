@@ -1,4 +1,4 @@
-import { useEffect, useMemo, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
@@ -58,6 +58,14 @@ const BRAZIL_BOUNDS: LatLngBoundsExpression = [
   [-34, -74],
   [6, -34],
 ];
+// The outline's own box, oceanic islands included (BRAZIL_BOUNDS stops at
+// -34 and would cut Fernando de Noronha and Trindade). Tiles are only
+// requested inside it, so the world beyond it is never downloaded, and a drag
+// past the mask canvas shows the background color there, not raw tiles.
+const TILE_BOUNDS: LatLngBoundsExpression = [
+  [-33.8, -74],
+  [5.3, -28.8],
+];
 
 /**
  * Carrega o GeoJSON do Brasil:
@@ -65,7 +73,7 @@ const BRAZIL_BOUNDS: LatLngBoundsExpression = [
  * 2. Renderiza o contorno (borda) do Brasil, mantendo visíveis os detalhes
  *    do OpenStreetMap (cidades, ruas, estados) dentro do território nacional.
  */
-function BrazilBorderLayer() {
+function BrazilBorderLayer({ onSettled }: { onSettled: () => void }) {
   const map = useMap();
 
   useEffect(() => {
@@ -122,16 +130,20 @@ function BrazilBorderLayer() {
         });
 
         group = L.layerGroup([maskLayer, borderLayer]).addTo(map);
+        onSettled();
       })
       .catch(() => {
-        /* silencioso — o mapa funciona sem a camada do Brasil */
+        // An unmount (StrictMode included) aborts the fetch; only a real
+        // failure lets the base map show without the mask.
+        if (controller.signal.aborted) return;
+        onSettled();
       });
 
     return () => {
       controller.abort();
       group?.remove();
     };
-  }, [map]);
+  }, [map, onSettled]);
 
   return null;
 }
@@ -255,7 +267,8 @@ function EnforceCountryZoom() {
       const boundsZoom = map.getBoundsZoom(BRAZIL_BOUNDS, false);
       map.setMinZoom(boundsZoom);
       if (map.getZoom() < boundsZoom) {
-        map.setZoom(boundsZoom);
+        // Without animation the zoom applies now, before any tile is asked.
+        map.setZoom(boundsZoom, { animate: false });
       }
     };
 
@@ -275,6 +288,11 @@ export function UnitsMap({ units, className = "", overlayRef, isCountryWide }: U
   // Canvas draws hundreds of markers cheaply, and the tolerance widens each
   // marker's hit area so small points remain easy to tap.
   const renderer = useMemo(() => L.canvas({ tolerance: 10 }), []);
+  // Tiles wait for the mask (or its failure), so the world never shows
+  // before it, and for the minimum zoom, so no tile is fetched and dropped.
+  const [isBaseReady, setBaseReady] = useState(false);
+  // Stable, so the boundary is not fetched again on each render.
+  const showBase = useCallback(() => setBaseReady(true), []);
   // Leaflet reads its animation options once, when the map is created.
   const animate = useMemo(
     () => !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -297,13 +315,15 @@ export function UnitsMap({ units, className = "", overlayRef, isCountryWide }: U
       renderer={renderer}
       style={{ background: "#d6e4f0" }}
     >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        noWrap
-
-      />
-      <BrazilBorderLayer />
+      {isBaseReady && (
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          bounds={TILE_BOUNDS}
+          noWrap
+        />
+      )}
+      <BrazilBorderLayer onSettled={showBase} />
       <MapLocalization />
       <EnforceCountryZoom />
       <ZoomControl
