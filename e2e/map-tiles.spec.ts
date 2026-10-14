@@ -197,3 +197,30 @@ test("a máscara acompanha o arrasto com o mapa aproximado", async ({
     mapBox!.y + mapBox!.height,
   );
 });
+
+test("mostra o anel de foco do mapa só para o teclado", async ({ page }) => {
+  const tiles = await recordTiles(page);
+  await page.goto("/");
+  await expect.poll(() => tiles.length).toBeGreaterThan(0);
+
+  const map = page.locator(".leaflet-container");
+  const ring = () =>
+    map.evaluate((element) => getComputedStyle(element, "::after").boxShadow);
+
+  // Keyboard focus: the map follows the filter panel in the tab order.
+  await page.getByRole("searchbox", { name: "Buscar no mapa" }).focus();
+  const isMapFocused = () =>
+    map.evaluate((element) => element === document.activeElement);
+  for (let presses = 0; presses < 10 && !(await isMapFocused()); presses++) {
+    await page.keyboard.press("Tab");
+  }
+  expect(await isMapFocused()).toBe(true);
+  expect(await ring()).toContain("3px");
+
+  await map.click({ position: { x: 1100, y: 500 } });
+  expect(await ring()).toBe("none");
+
+  // Panning with the arrows is keyboard use, so the ring comes back.
+  await page.keyboard.press("ArrowLeft");
+  expect(await ring()).toContain("3px");
+});

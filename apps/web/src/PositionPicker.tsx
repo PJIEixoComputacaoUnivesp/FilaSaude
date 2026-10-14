@@ -9,6 +9,7 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import type { Coordinate } from "./admin";
+import { MapFocusRing } from "./MapFocusRing";
 
 const brazilCenter: [number, number] = [-14.2, -51.9];
 const unitZoom = 16;
@@ -162,6 +163,7 @@ export function PositionPicker({
             maxZoom={19}
           />
           <ZoomControl position="bottomleft" />
+          <MapFocusRing />
           <RecenterOnUnit focusKey={focusKey} center={current} />
           <ClickToPick onPick={onPick} />
           <ShowProposed proposed={proposed} />

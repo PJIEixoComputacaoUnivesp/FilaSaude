@@ -11,6 +11,7 @@ import {
   ZoomControl,
 } from "react-leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
+import { MapFocusRing } from "./MapFocusRing";
 import { UnitSources } from "./UnitSources";
 import type { HealthUnit } from "./units";
 import {
@@ -400,6 +401,7 @@ export function UnitsMap({ units, className = "", overlayRef, isCountryWide }: U
       {isBaseReady && <BrazilTileLayer />}
       <BrazilBorderLayer onSettled={showBase} />
       <MapLocalization />
+      <MapFocusRing />
       <EnforceCountryZoom />
       <ZoomControl
         position="bottomleft"

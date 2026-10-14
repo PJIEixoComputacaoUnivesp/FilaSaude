@@ -63,9 +63,21 @@
   line-height: 2.75rem;
 }
 
-/* The map fills its area, so an outside focus ring is clipped. Draw it inside. */
+/* The map fills its area, so an outside focus ring is clipped, and an outline
+   drawn inside is painted over by the tiles and the boundary canvas. The ring
+   is drawn on top instead: above the panes (up to 700), below the controls
+   (800). MapFocusRing marks focus that came from a pointer, which hides it. */
 .leaflet-container:focus-visible {
-  outline-offset: -3px;
+  outline: none;
+}
+
+.leaflet-container:focus-visible:not([data-pointer-focus])::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 750;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 3px var(--color-fila-blue);
 }
 
 .leaflet-container .leaflet-popup-content {
