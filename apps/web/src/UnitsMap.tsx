@@ -52,7 +52,40 @@ interface BoundaryFeature {
   properties: Record<string, unknown>;
   geometry: BoundaryGeometry;
 }
-const boundaryOptions: L.PolylineOptions = { smoothFactor: 0 };
+// Private Leaflet members FollowingCanvas relies on (stable across 1.x).
+type CanvasInternals = L.Canvas & {
+  _bounds?: L.Bounds;
+  _map: L.Map;
+  _update: () => void;
+  _redrawIfUncovered: () => void;
+};
+// Leaflet redraws a canvas only on moveend, so a drag longer than its padding
+// would reveal tiles the mask does not cover yet (a neighbor country, when
+// zoomed in near the border). This one also redraws while the map moves, once
+// the view leaves the area the canvas covers.
+const FollowingCanvas: new (options?: L.RendererOptions) => L.Canvas =
+  L.Canvas.extend({
+    getEvents(this: CanvasInternals) {
+      return {
+        ...L.Canvas.prototype.getEvents!.call(this),
+        move: this._redrawIfUncovered,
+      };
+    },
+    _redrawIfUncovered(this: CanvasInternals) {
+      const map = this._map;
+      const view = L.bounds(
+        map.containerPointToLayerPoint([0, 0]),
+        map.containerPointToLayerPoint(map.getSize()),
+      );
+      if (!this._bounds || !this._bounds.contains(view)) this._update();
+    },
+  });
+// Leaflet's default simplification (about one pixel at each zoom). Drawing all
+// ~144k points of the outline on every redraw is too slow to follow a drag.
+const boundaryOptions: L.PolylineOptions = { smoothFactor: 1 };
+// Its own pane, above the tiles (200) and below the markers (overlay, 400),
+// so the mask canvas never hides a marker or takes its clicks.
+const boundaryPane = "brazilBoundary";
 
 const BRAZIL_BOUNDS: LatLngBoundsExpression = [
   [-34, -74],
@@ -107,9 +140,16 @@ function BrazilBorderLayer({ onSettled }: { onSettled: () => void }) {
           },
         };
 
+        if (!map.getPane(boundaryPane)) {
+          const pane = map.createPane(boundaryPane);
+          pane.style.zIndex = "350";
+          pane.style.pointerEvents = "none";
+        }
+        const renderer = new FollowingCanvas({ pane: boundaryPane });
         const maskLayer = L.geoJSON(maskGeoJson, {
           style: {
             ...boundaryOptions,
+            renderer,
             fillColor: "#d6e4f0",
             fillOpacity: 1,
             stroke: false,
@@ -120,6 +160,7 @@ function BrazilBorderLayer({ onSettled }: { onSettled: () => void }) {
         const borderLayer = L.geoJSON(geojson, {
           style: {
             ...boundaryOptions,
+            renderer,
             fill: false,
             color: "#1d4ed8",
             weight: 2,
@@ -128,7 +169,7 @@ function BrazilBorderLayer({ onSettled }: { onSettled: () => void }) {
           interactive: false,
         });
 
-        group = L.layerGroup([maskLayer, borderLayer]).addTo(map);
+        group = L.layerGroup([renderer, maskLayer, borderLayer]).addTo(map);
         onSettled();
       })
       .catch(() => {

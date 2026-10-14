@@ -162,3 +162,38 @@ test("recorta na caixa do Brasil os tiles da borda", async ({ page }) => {
   // A tile fully inside the box is not clipped.
   expect(await clipOf("5/11/17")).toBe("");
 });
+
+test("a máscara acompanha o arrasto com o mapa aproximado", async ({
+  page,
+}) => {
+  const tiles = await recordTiles(page);
+  await page.goto("/");
+  await expect.poll(() => tiles.length).toBeGreaterThan(0);
+
+  const map = page.locator(".leaflet-container");
+  await map.hover({ position: { x: 1100, y: 700 } });
+  await page.mouse.wheel(0, -120);
+  await page.mouse.wheel(0, -120);
+  await page.waitForTimeout(1000);
+
+  // Longer than the canvas padding (10% of the view) in both directions.
+  await page.mouse.move(600, 300);
+  await page.mouse.down();
+  await page.mouse.move(1400, 900, { steps: 20 });
+  // With no units there are no markers, so the only canvas is the mask's.
+  const mask = page.locator(".leaflet-map-pane canvas");
+  const [canvasBox, mapBox] = await Promise.all([
+    mask.boundingBox(),
+    map.boundingBox(),
+  ]);
+  await page.mouse.up();
+
+  expect(canvasBox!.x).toBeLessThanOrEqual(mapBox!.x);
+  expect(canvasBox!.y).toBeLessThanOrEqual(mapBox!.y);
+  expect(canvasBox!.x + canvasBox!.width).toBeGreaterThanOrEqual(
+    mapBox!.x + mapBox!.width,
+  );
+  expect(canvasBox!.y + canvasBox!.height).toBeGreaterThanOrEqual(
+    mapBox!.y + mapBox!.height,
+  );
+});
