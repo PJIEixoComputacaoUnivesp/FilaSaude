@@ -23,7 +23,7 @@ describe('OccupancyWebhookService', () => {
   };
   const rawBody = Buffer.from(JSON.stringify(snapshot));
   const authentication = {
-    authenticate: vi.fn().mockReturnValue('academic-simulator'),
+    authenticate: vi.fn().mockReturnValue('occupancy-feed'),
   } as unknown as WebhookAuthenticationService;
   const sourceConfig = {
     find: vi.fn().mockReturnValue({
@@ -38,7 +38,7 @@ describe('OccupancyWebhookService', () => {
   let service: OccupancyWebhookService;
   const headers = {
     contentType: 'application/json',
-    source: 'academic-simulator',
+    source: 'occupancy-feed',
     timestamp: '1790000000',
     signature: 'sha256=' + '0'.repeat(64),
   };
@@ -46,7 +46,7 @@ describe('OccupancyWebhookService', () => {
   beforeEach(() => {
     vi.mocked(authentication.authenticate)
       .mockReset()
-      .mockReturnValue('academic-simulator');
+      .mockReturnValue('occupancy-feed');
     vi.mocked(sourceConfig.find)
       .mockReset()
       .mockReturnValue({
@@ -76,7 +76,7 @@ describe('OccupancyWebhookService', () => {
   it('returns success for an identical duplicate', async () => {
     const existing = new OccupancyWebhookInboxEntity();
     existing.eventId = snapshot.eventId;
-    existing.sourceId = 'academic-simulator';
+    existing.sourceId = 'occupancy-feed';
     existing.rawBody = rawBody.toString('utf8');
     vi.mocked(repository.findByEventId).mockResolvedValue(existing);
 
@@ -86,7 +86,7 @@ describe('OccupancyWebhookService', () => {
   it('rejects a duplicate event with a different body', async () => {
     const existing = new OccupancyWebhookInboxEntity();
     existing.eventId = snapshot.eventId;
-    existing.sourceId = 'academic-simulator';
+    existing.sourceId = 'occupancy-feed';
     existing.rawBody = '{"different":true}';
     vi.mocked(repository.findByEventId).mockResolvedValue(existing);
 

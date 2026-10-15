@@ -9,14 +9,14 @@ describe('WebhookSourceConfigService', () => {
     vi.stubEnv(
       'WEBHOOK_SOURCE_CONFIG',
       JSON.stringify({
-        'academic-simulator': {
+        'occupancy-feed': {
           secret: 'a-secret-that-is-at-least-32-characters',
           unitCnes: ['1234567', '7654321'],
         },
       }),
     );
 
-    expect(new WebhookSourceConfigService().find('academic-simulator')).toEqual(
+    expect(new WebhookSourceConfigService().find('occupancy-feed')).toEqual(
       {
         secret: 'a-secret-that-is-at-least-32-characters',
         unitCnes: ['1234567', '7654321'],

@@ -289,6 +289,7 @@ backups e o passo a passo.
 - [ADR 0002](docs/adr/0002-additional-public-data-sources.md): fontes públicas adicionais.
 - [Proposta 0001](docs/proposals/0001-operational-occupancy-simulation.md): simulação de ocupação operacional.
 - [Contrato do snapshot de ocupação v1](docs/contracts/occupancy-snapshot-v1.md) e seu [JSON Schema](docs/contracts/occupancy-snapshot-v1.schema.json).
+- [Roteiro de teste do `occupancy-feed`](docs/simulator-testing.md).
 - [Visão geral da pesquisa](docs/research/README.md).
 - [Sistema de interface](.interface-design/system.md): jornada, acessibilidade e mobile.
 - [Guia de deploy](docs/deployment.md) e [infraestrutura](infra/terraform/README.md).

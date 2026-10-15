@@ -151,7 +151,7 @@ export function loadConfig(
 
   return {
     apiUrl: value('api-url', 'SIMULATOR_API_URL', DEFAULT_API_URL)!,
-    sourceId: value('source-id', 'SIMULATOR_SOURCE_ID', 'academic-simulator')!,
+    sourceId: value('source-id', 'SIMULATOR_SOURCE_ID', 'occupancy-feed')!,
     sourceSecret: environment.SIMULATOR_SOURCE_SECRET ?? null,
     state: value('state', 'SIMULATOR_STATE')?.toUpperCase() ?? null,
     municipalityCode: value('municipality-code', 'SIMULATOR_MUNICIPALITY_CODE') ?? null,

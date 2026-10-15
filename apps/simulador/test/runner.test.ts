@@ -7,7 +7,7 @@ import type { SimulatorUnit } from '../src/units.ts';
 
 const config: SimulatorConfig = {
   apiUrl: 'http://localhost:3000',
-  sourceId: 'academic-simulator',
+  sourceId: 'occupancy-feed',
   sourceSecret: 'test-secret',
   state: 'SP',
   municipalityCode: '3550308',

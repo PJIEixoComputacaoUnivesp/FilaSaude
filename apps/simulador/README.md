@@ -38,9 +38,9 @@ ser os mesmos nos dois processos. Não versione nenhum segredo.
 Exemplo somente para desenvolvimento local, usando valores fictícios:
 
 ```bash
-export SIMULATOR_SOURCE_ID=academic-simulator
+export SIMULATOR_SOURCE_ID=occupancy-feed
 export SIMULATOR_SOURCE_SECRET='local-simulator-secret-32-chars-min'
-export WEBHOOK_SOURCE_CONFIG='{"academic-simulator":{"secret":"local-simulator-secret-32-chars-min","unitCnes":["1234567"]}}'
+export WEBHOOK_SOURCE_CONFIG='{"occupancy-feed":{"secret":"local-simulator-secret-32-chars-min","unitCnes":["1234567"]}}'
 ```
 
 No PowerShell, use `$env:NOME='valor'` no lugar de `export NOME='valor'`.
@@ -66,7 +66,7 @@ parâmetros são:
 | Opção | Variável | Padrão | Finalidade |
 | --- | --- | ---: | --- |
 | `--api-url` | `SIMULATOR_API_URL` | `http://localhost:3000` | URL base da API |
-| `--source-id` | `SIMULATOR_SOURCE_ID` | `academic-simulator` | Fonte autenticada |
+| `--source-id` | `SIMULATOR_SOURCE_ID` | `occupancy-feed` | Fonte autenticada |
 | `--state` | `SIMULATOR_STATE` | — | UF usada no catálogo |
 | `--municipality-code` | `SIMULATOR_MUNICIPALITY_CODE` | — | Município prioritário |
 | `--city` | `SIMULATOR_CITY` | — | Cidade alternativa |
@@ -102,6 +102,9 @@ pnpm --filter @filasaude/simulador build
 Para validar apenas o contrato de assinatura, consulte o
 [contrato `occupancy.snapshot.v1`](../../docs/contracts/occupancy-snapshot-v1.md),
 que contém um vetor fixo independente da API.
+
+Para o teste completo com PostgreSQL e API, consulte o
+[roteiro de teste do `occupancy-feed`](../../docs/simulator-testing.md).
 
 ## Próximas extensões
 

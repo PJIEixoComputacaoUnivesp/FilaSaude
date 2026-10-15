@@ -39,7 +39,7 @@ test('envia o mesmo corpo e repete com novo timestamp após 429', async () => {
 
   const result = await sendSnapshot(snapshot, {
     apiUrl: 'http://localhost:3000',
-    sourceId: 'academic-simulator',
+    sourceId: 'occupancy-feed',
     sourceSecret: 'test-secret',
     now: () => new Date('2026-10-15T12:00:00.000Z'),
     sleep: async (milliseconds) => {
@@ -65,7 +65,7 @@ test('repete falhas transitórias com backoff e não repete erros 4xx', async ()
   await assert.rejects(
     sendSnapshot(snapshot, {
       apiUrl: 'http://localhost:3000',
-      sourceId: 'academic-simulator',
+      sourceId: 'occupancy-feed',
       sourceSecret: 'test-secret',
       maxAttempts: 3,
       baseDelayMs: 10,
@@ -83,7 +83,7 @@ test('repete falhas transitórias com backoff e não repete erros 4xx', async ()
   await assert.rejects(
     sendSnapshot(snapshot, {
       apiUrl: 'http://localhost:3000',
-      sourceId: 'academic-simulator',
+      sourceId: 'occupancy-feed',
       sourceSecret: 'test-secret',
       fetchImpl: async () => {
         calls += 1;
@@ -99,7 +99,7 @@ test('exige o segredo da fonte antes de enviar', async () => {
   await assert.rejects(
     sendSnapshot(snapshot, {
       apiUrl: 'http://localhost:3000',
-      sourceId: 'academic-simulator',
+      sourceId: 'occupancy-feed',
       sourceSecret: null,
     }),
     /SIMULATOR_SOURCE_SECRET é obrigatória/,
