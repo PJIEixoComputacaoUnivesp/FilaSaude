@@ -4,7 +4,7 @@
   "sourceRoot": "src",
   "compilerOptions": {
     "deleteOutDir": true,
-    "assets": ["units/*.json"],
+    "assets": ["units/*.json", "boundaries/*.json"],
     "watchAssets": true
   }
 }

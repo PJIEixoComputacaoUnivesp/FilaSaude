@@ -21,6 +21,25 @@ A API inicia em `http://localhost:3000`.
 | `GET /units?state=SP`  | Lista unidades públicas de pronto atendimento da UF informada.  |
 | `GET /units?state=ALL` | Lista unidades de todo o Brasil a partir do snapshot local.      |
 | `POST /webhooks/v1/occupancy` | Recebe snapshots de ocupação assinados.              |
+| `GET /boundaries/brazil` | Contorno do Brasil (IBGE) para a máscara do mapa, simplificado (`detail=low`, padrão). |
+| `GET /boundaries/brazil?detail=high` | Contorno do Brasil com o detalhe completo do arquivo do IBGE. |
+
+### Contorno do Brasil
+
+O contorno vem da malha `BR_Pais_2025` do IBGE e fica em
+`src/boundaries/brazil-boundary.json`, com a fonte e o ano nas propriedades.
+Para atualizá-lo, baixe o shapefile do país no site do IBGE e rode
+`node apps/api/scripts/generate-brazil-boundary.mjs BR_Pais_2025.shp`.
+A API lê o arquivo ao subir e prepara dois níveis:
+
+- `low`: tolerância de 0,01° (cerca de 1 px até o zoom 7 do mapa) e
+  coordenadas com 3 casas, por volta de 55 KB com gzip. É o nível que o mapa
+  espera antes de mostrar a base.
+- `high`: o arquivo completo, por volta de 1 MB com gzip. O mapa só o baixa
+  quando o zoom passa do 7.
+
+As respostas seguem o formato `{ data, metadata }`, com `Cache-Control` de um
+dia e `ETag`.
 
 ### Webhook de ocupação
 
