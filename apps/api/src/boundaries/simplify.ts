@@ -59,7 +59,8 @@ function simplifyLine(
  * Simplifies a closed ring. Douglas-Peucker cannot start from a segment whose
  * ends are the same point, so the ring is split at the position farthest from
  * its start and each half is simplified as an open line. A ring that would
- * collapse below a triangle is kept as it is: small islands stay on the map.
+ * collapse below a triangle becomes the widest triangle of its own positions,
+ * so small islands stay on the map without their full detail.
  */
 export function simplifyRing(
   ring: readonly Position[],
@@ -82,7 +83,19 @@ export function simplifyRing(
   const head = simplifyLine(ring.slice(0, split + 1), toleranceSquared);
   const tail = simplifyLine(ring.slice(split), toleranceSquared);
   const simplified = [...head, ...tail.slice(1)];
-  return simplified.length >= 4 ? simplified : [...ring];
+  if (simplified.length >= 4) return simplified;
+
+  let apex = 1;
+  let apexDistance = -1;
+  for (let i = 1; i < ring.length - 1; i++) {
+    const distance = segmentDistanceSquared(ring[i]!, start, ring[split]!);
+    if (distance > apexDistance) {
+      apex = i;
+      apexDistance = distance;
+    }
+  }
+  const [first, second] = apex < split ? [apex, split] : [split, apex];
+  return [start, ring[first]!, ring[second]!, start];
 }
 
 /**
@@ -101,8 +114,8 @@ export function simplifyPolygons(
 
 /**
  * Rounds a ring to a number of decimals and drops the repeated positions that
- * rounding creates. A ring that would collapse below a triangle is kept as it
- * is, like in simplifyRing.
+ * rounding creates. A ring that would collapse below a triangle is kept
+ * unrounded; after simplifyRing that is a triangle at most.
  */
 export function roundRing(
   ring: readonly Position[],

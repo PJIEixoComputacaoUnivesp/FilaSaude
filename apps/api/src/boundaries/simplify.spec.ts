@@ -65,7 +65,7 @@ describe('simplifyRing', () => {
     expect(simplifyRing(bumpySquare, 0.0005)).toContainEqual([2, 0.001]);
   });
 
-  it('keeps a ring that would collapse below a triangle', () => {
+  it('turns a ring that would collapse into its widest triangle', () => {
     const islet: Position[] = [
       [0, 0],
       [0.001, 0],
@@ -75,7 +75,12 @@ describe('simplifyRing', () => {
       [0, 0],
     ];
 
-    expect(simplifyRing(islet, 0.01)).toEqual(islet);
+    expect(simplifyRing(islet, 0.01)).toEqual([
+      [0, 0],
+      [0.001, 0],
+      [0.0005, 0.0015],
+      [0, 0],
+    ]);
   });
 });
 

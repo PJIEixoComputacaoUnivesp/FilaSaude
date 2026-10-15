@@ -33,7 +33,7 @@ Para atualizá-lo, baixe o shapefile do país no site do IBGE e rode
 A API lê o arquivo ao subir e prepara dois níveis:
 
 - `low`: tolerância de 0,01° (cerca de 1 px até o zoom 7 do mapa) e
-  coordenadas com 3 casas, por volta de 55 KB com gzip. É o nível que o mapa
+  coordenadas com 3 casas, por volta de 40 KB com gzip. É o nível que o mapa
   espera antes de mostrar a base.
 - `high`: o arquivo completo, por volta de 1 MB com gzip. O mapa só o baixa
   quando o zoom passa do 7.
