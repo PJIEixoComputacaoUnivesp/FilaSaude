@@ -1,0 +1,152 @@
+import { signSnapshot } from './signing.ts';
+import type { OccupancySnapshot } from './simulation.ts';
+
+const WEBHOOK_PATH = '/webhooks/v1/occupancy';
+const DEFAULT_MAX_ATTEMPTS = 3;
+const DEFAULT_TIMEOUT_MS = 10_000;
+const DEFAULT_BASE_DELAY_MS = 1_000;
+const DEFAULT_MAX_DELAY_MS = 30_000;
+
+export interface SnapshotTransportOptions {
+  apiUrl: string;
+  sourceId: string;
+  sourceSecret: string | null;
+  maxAttempts?: number;
+  timeoutMs?: number;
+  baseDelayMs?: number;
+  maxDelayMs?: number;
+  now?: () => Date;
+  sleep?: (milliseconds: number) => Promise<void>;
+  fetchImpl?: typeof fetch;
+}
+
+export interface SnapshotTransportResult {
+  attempts: number;
+  status: number;
+}
+
+export async function sendSnapshot(
+  snapshot: OccupancySnapshot,
+  options: SnapshotTransportOptions,
+): Promise<SnapshotTransportResult> {
+  if (!options.sourceSecret) {
+    throw new Error('SIMULATOR_SOURCE_SECRET é obrigatória para enviar snapshots.');
+  }
+
+  const maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
+    throw new Error('maxAttempts deve ser um inteiro positivo.');
+  }
+
+  const rawBody = JSON.stringify(snapshot);
+  const url = new URL(WEBHOOK_PATH, options.apiUrl);
+  const now = options.now ?? (() => new Date());
+  const sleep = options.sleep ?? delay;
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const baseDelayMs = options.baseDelayMs ?? DEFAULT_BASE_DELAY_MS;
+  const maxDelayMs = options.maxDelayMs ?? DEFAULT_MAX_DELAY_MS;
+  let lastTimestamp = 0;
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const timestamp = nextTimestamp(now, lastTimestamp);
+    lastTimestamp = timestamp;
+    const signature = signSnapshot(
+      options.sourceSecret,
+      timestamp.toString(),
+      rawBody,
+    );
+
+    let response: Response;
+    try {
+      response = await postSnapshot(
+        fetchImpl,
+        url,
+        rawBody,
+        options.sourceId,
+        timestamp,
+        signature,
+        timeoutMs,
+      );
+    } catch (error) {
+      lastError = error;
+      if (attempt === maxAttempts) break;
+      await sleep(backoffDelay(attempt, baseDelayMs, maxDelayMs));
+      continue;
+    }
+
+    if (response.ok) return { attempts: attempt, status: response.status };
+    if (!isRetryable(response.status)) {
+      throw new Error(`Webhook rejeitado pela API com status ${response.status}.`);
+    }
+    if (attempt === maxAttempts) {
+      throw new Error(`Webhook não aceito após ${attempt} tentativas.`);
+    }
+
+    await sleep(
+      response.status === 429
+        ? retryAfterDelay(response, maxDelayMs)
+        : backoffDelay(attempt, baseDelayMs, maxDelayMs),
+    );
+  }
+
+  throw new Error(
+    `Não foi possível enviar o webhook após ${maxAttempts} tentativas.`,
+    { cause: lastError },
+  );
+}
+
+async function postSnapshot(
+  fetchImpl: typeof fetch,
+  url: URL,
+  rawBody: string,
+  sourceId: string,
+  timestamp: number,
+  signature: string,
+  timeoutMs: number,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetchImpl(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Webhook-Source': sourceId,
+        'X-Webhook-Timestamp': timestamp.toString(),
+        'X-Webhook-Signature': `sha256=${signature}`,
+      },
+      body: rawBody,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function nextTimestamp(now: () => Date, previous: number): number {
+  return Math.max(Math.floor(now().getTime() / 1000), previous + 1);
+}
+
+function isRetryable(status: number): boolean {
+  return status === 429 || status >= 500;
+}
+
+function retryAfterDelay(response: Response, maxDelayMs: number): number {
+  const value = response.headers.get('retry-after');
+  const seconds = value && /^\d+$/.test(value) ? Number(value) : 1;
+  return Math.min(seconds * 1000, maxDelayMs);
+}
+
+function backoffDelay(
+  attempt: number,
+  baseDelayMs: number,
+  maxDelayMs: number,
+): number {
+  return Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs);
+}
+
+function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
