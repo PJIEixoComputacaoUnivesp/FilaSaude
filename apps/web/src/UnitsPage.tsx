@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type Ref } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { BrazilianStateSelect } from "./BrazilianStateSelect";
 import { NationalStateCode, stateName } from "./brazilianStates";
 import { LiveStatus } from "./LiveStatus";
@@ -9,6 +10,7 @@ import {
   formatAddress,
   formatCount,
   formatPosition,
+  hasLocation,
   LOADING_MESSAGE,
   sortUnits,
   type HealthUnit,
@@ -17,6 +19,7 @@ import {
 import { usePageHeading } from "./usePageHeading";
 import { useSearchFilters } from "./useSearchFilters";
 import { useUnits } from "./useUnits";
+import { unitDetailLink, unitMapLink } from "./unitLinks";
 
 const PAGE_SIZE = 24;
 
@@ -43,23 +46,29 @@ function DataNotice({ metadata }: { metadata: UnitsResponse["metadata"] }) {
 function UnitCard({
   unit,
   headingRef,
+  search,
 }: {
   unit: HealthUnit;
   headingRef?: Ref<HTMLHeadingElement>;
+  search: string;
 }) {
   return (
-    <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+    <article
+      id={`unit-${unit.id}`}
+      className="flex h-full scroll-mt-4 flex-col rounded-2xl border border-slate-200 bg-white p-4 sm:p-5"
+    >
       <div className="mb-3 flex flex-wrap items-start justify-between gap-x-3 gap-y-1 sm:mb-4">
         <div className="min-w-0">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-fila-green-ink">
             {unit.unitType}
           </p>
-          <h2
-            ref={headingRef}
-            tabIndex={headingRef ? -1 : undefined}
-            className="break-words text-lg font-bold leading-snug text-slate-900 sm:text-xl"
-          >
-            {unit.name}
+          <h2 ref={headingRef} tabIndex={headingRef ? -1 : undefined}>
+            <Link
+              to={unitDetailLink(unit.id, search)}
+              className="break-words text-lg font-bold leading-snug text-slate-900 underline decoration-slate-300 underline-offset-4 hover:text-fila-blue sm:text-xl"
+            >
+              {unit.name}
+            </Link>
           </h2>
         </div>
         <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-fila-blue">
@@ -78,9 +87,7 @@ function UnitCard({
         </div>
         <div>
           <dt className="font-semibold text-slate-900">Localização no mapa</dt>
-          <dd>
-            {formatPosition(unit)}
-          </dd>
+          <dd>{formatPosition(unit)}</dd>
         </div>
       </dl>
 
@@ -88,28 +95,85 @@ function UnitCard({
         sources={unit.sources}
         className="mt-4 space-y-1 border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-600 sm:mt-5 sm:pt-4"
       />
+      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 border-t border-slate-100 pt-2">
+        <Link
+          to={unitDetailLink(unit.id, search)}
+          className="inline-flex min-h-11 items-center font-semibold text-fila-blue underline underline-offset-2"
+        >
+          Ver detalhes
+          <span className="sr-only">: {unit.name}</span>
+        </Link>
+        {hasLocation(unit) && (
+          <Link
+            to={unitMapLink(unit.id, search)}
+            className="inline-flex min-h-11 items-center font-semibold text-fila-blue underline underline-offset-2"
+          >
+            Ver no mapa
+            <span className="sr-only">: {unit.name}</span>
+          </Link>
+        )}
+      </div>
     </article>
   );
 }
 
 /** Cards with progressive loading ("Mostrar mais"). */
-function UnitResults({ units }: { units: HealthUnit[] }) {
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+function UnitResults({
+  units,
+  focusedUnitId,
+  search,
+}: {
+  units: HealthUnit[];
+  focusedUnitId?: string;
+  search: string;
+}) {
+  const focusedIndex = focusedUnitId
+    ? units.findIndex((unit) => unit.id === focusedUnitId)
+    : -1;
+  const initialVisibleCount = Math.max(PAGE_SIZE, focusedIndex + 1);
+  const [visibleCount, setVisibleCount] = useState(initialVisibleCount);
   // Index of the first card added by "Mostrar mais", which receives focus so
   // keyboard and screen reader users land on the new results.
   const [focusIndex, setFocusIndex] = useState<number | null>(null);
   const focusHeadingRef = useRef<HTMLHeadingElement>(null);
+  const targetHeadingRef = useRef<HTMLHeadingElement>(null);
+  const lastFocusedUnitId = useRef<string | undefined>(undefined);
   // A different result list starts again from the first page.
   const [shownUnits, setShownUnits] = useState(units);
   if (shownUnits !== units) {
     setShownUnits(units);
-    setVisibleCount(PAGE_SIZE);
+    setVisibleCount(initialVisibleCount);
     setFocusIndex(null);
   }
 
   useEffect(() => {
-    if (focusIndex !== null) focusHeadingRef.current?.focus();
+    if (focusIndex === null) return;
+    const frame = window.requestAnimationFrame(() =>
+      focusHeadingRef.current?.focus(),
+    );
+    return () => window.cancelAnimationFrame(frame);
   }, [focusIndex]);
+
+  useEffect(() => {
+    if (
+      focusedIndex < 0 ||
+      focusedUnitId === undefined ||
+      lastFocusedUnitId.current === focusedUnitId
+    ) {
+      return;
+    }
+    lastFocusedUnitId.current = focusedUnitId;
+    // A URL fragment is an external navigation target. Reveal its progressive
+    // page and move focus once. Later filtering must leave focus in the field.
+    // oxlint-disable-next-line react/set-state-in-effect
+    setVisibleCount((count) => Math.max(count, focusedIndex + 1));
+    setFocusIndex(focusedIndex);
+    // Run after the state update attaches the heading ref and after the page
+    // heading's navigation focus effect.
+    window.requestAnimationFrame(() =>
+      window.requestAnimationFrame(() => targetHeadingRef.current?.focus()),
+    );
+  }, [focusedIndex, focusedUnitId]);
 
   return (
     <>
@@ -118,7 +182,14 @@ function UnitResults({ units }: { units: HealthUnit[] }) {
           <UnitCard
             key={unit.id}
             unit={unit}
-            headingRef={index === focusIndex ? focusHeadingRef : undefined}
+            search={search}
+            headingRef={
+              unit.id === focusedUnitId
+                ? targetHeadingRef
+                : index === focusIndex
+                  ? focusHeadingRef
+                  : undefined
+            }
           />
         ))}
       </div>
@@ -148,8 +219,10 @@ const title = "Unidades de pronto atendimento";
 
 export function UnitsPage() {
   const headingRef = usePageHeading(title);
-  const { stateCode, query, setStateCode, setQuery, flush } =
+  const { stateCode, query, setStateCode, setQuery, flush, search } =
     useSearchFilters();
+  const { hash } = useLocation();
+  const focusedUnitId = /^#unit-(\d+)$/.exec(hash)?.[1];
   const searchRef = useRef<HTMLInputElement>(null);
   const { state, retry } = useUnits(stateCode);
 
@@ -284,7 +357,11 @@ export function UnitsPage() {
                 )}
               </div>
             ) : (
-              <UnitResults units={filteredUnits} />
+              <UnitResults
+                units={filteredUnits}
+                focusedUnitId={focusedUnitId}
+                search={search}
+              />
             )}
           </div>
         )}

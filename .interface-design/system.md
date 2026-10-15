@@ -26,6 +26,10 @@
   throws after 100 `replaceState` calls in 30 seconds. The URL is followed only
   when something else changes it (a link, Voltar); reading the page's own writes
   back drops characters while typing.
+- Every unit has a stable detail route at `/units/:cnes`. Cards link to that
+  detail and to a selected marker on the map. The marker popup links back to
+  the same card, preserving the live UF and text filters; a target beyond the
+  first progressive page is revealed and focused.
 - Navigation has two destinations, "Mapa" and "Lista", visible at every width
   with no menu button. "Sobre os dados" lives in the footer. Removed or unknown
   paths (`/map`, anything else) redirect to `/` and keep the query string.

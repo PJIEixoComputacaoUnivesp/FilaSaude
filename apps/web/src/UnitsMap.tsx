@@ -1,6 +1,15 @@
-import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { Link } from "react-router-dom";
 import {
   CircleMarker,
   MapContainer,
@@ -13,6 +22,7 @@ import {
 import type { LatLngBoundsExpression } from "leaflet";
 import { MapFocusRing } from "./MapFocusRing";
 import { UnitSources } from "./UnitSources";
+import { unitListLink } from "./unitLinks";
 import type { HealthUnit } from "./units";
 import {
   formatAddress,
@@ -199,10 +209,243 @@ function BrazilBorderLayer({ onSettled }: { onSettled: () => void }) {
 interface UnitsMapProps {
   units: HealthUnit[];
   className?: string;
+  selectedUnitId?: string;
+  listSearch?: string;
   /** When true, the map fits Brazil; otherwise fits the current unit set. */
   isCountryWide?: boolean;
   /** Element drawn over the map; fitted units are kept out from under it. */
   overlayRef?: RefObject<HTMLElement | null>;
+}
+
+function UnitMarker({
+  unit,
+  radius,
+  renderer,
+  selected,
+  overlayRef,
+  listSearch,
+  autoPanPaddingTopLeft,
+  popupMaxWidth,
+  popupMaxHeight,
+}: {
+  unit: HealthUnit;
+  radius: number;
+  renderer: L.Renderer;
+  selected: boolean;
+  overlayRef?: RefObject<HTMLElement | null>;
+  listSearch: string;
+  autoPanPaddingTopLeft: [number, number];
+  popupMaxWidth: number;
+  popupMaxHeight: number;
+}) {
+  const map = useMap();
+  const markerRef = useRef<L.CircleMarker>(null);
+  const popupHeadingRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!selected || !markerRef.current) return;
+
+    const marker = markerRef.current;
+    let opened = false;
+    let stopSettling: number | undefined;
+    const keepSelectedPopupVisible = () => {
+      window.requestAnimationFrame(() =>
+        keepPopupClearOfOverlay(map, marker.getPopup(), overlayRef?.current),
+      );
+    };
+    const openPopup = () => {
+      if (opened) return;
+      opened = true;
+      marker.openPopup();
+      keepSelectedPopupVisible();
+      // Other map effects can finish just after the popup opens. Follow only
+      // that initial settling period; later drags remain under user control.
+      map.on("moveend", keepSelectedPopupVisible);
+      stopSettling = window.setTimeout(() => {
+        map.off("moveend", keepSelectedPopupVisible);
+      }, 500);
+    };
+    map.once("moveend", openPopup);
+    map.fitBounds([[unit.location.latitude!, unit.location.longitude!]], {
+      ...overlayPadding(map, overlayRef?.current),
+      maxZoom: 15,
+      animate: map.options.zoomAnimation !== false,
+    });
+    // With motion disabled Leaflet can finish before the event listener is
+    // observed by React, so this also opens the popup on the next frame.
+    if (map.options.zoomAnimation === false) {
+      window.requestAnimationFrame(openPopup);
+    }
+
+    return () => {
+      if (stopSettling !== undefined) window.clearTimeout(stopSettling);
+      map.off("moveend", openPopup);
+      map.off("moveend", keepSelectedPopupVisible);
+    };
+  }, [map, overlayRef, selected, unit]);
+
+  return (
+    <CircleMarker
+      ref={markerRef}
+      center={[unit.location.latitude!, unit.location.longitude!]}
+      radius={radius}
+      renderer={renderer}
+      eventHandlers={{
+        popupopen: () => {
+          window.requestAnimationFrame(() => {
+            keepPopupClearOfOverlay(
+              map,
+              markerRef.current?.getPopup(),
+              overlayRef?.current,
+            );
+            if (selected) popupHeadingRef.current?.focus();
+          });
+        },
+      }}
+      pathOptions={
+        unit.location.precision === "municipality"
+          ? approximateMarker
+          : preciseMarker
+      }
+    >
+      <Popup
+        autoPanPaddingTopLeft={autoPanPaddingTopLeft}
+        autoPanPaddingBottomRight={[fitPadding, fitPadding]}
+        maxWidth={popupMaxWidth}
+      >
+        <div
+          className="min-w-48 max-w-full overflow-y-auto pr-1"
+          style={{ maxHeight: popupMaxHeight }}
+        >
+          <strong
+            ref={popupHeadingRef}
+            tabIndex={selected ? -1 : undefined}
+            className="text-sm text-slate-900 focus:outline-none"
+          >
+            {unit.name}
+          </strong>
+          <p className="my-2 text-sm text-slate-600">
+            {formatAddress(unit.address)}
+          </p>
+          {unit.serviceHours && (
+            <p className="my-2 text-sm text-slate-600">{unit.serviceHours}</p>
+          )}
+          {unit.location.precision === "manual" &&
+            unit.location.correctedAt && (
+              <p className="my-2 text-xs font-medium text-amber-800">
+                Posição corrigida manualmente em{" "}
+                {formatSourceDate(unit.location.correctedAt)}.
+              </p>
+            )}
+          {unit.location.precision === "history" &&
+            unit.location.referenceMonth && (
+              <p className="my-2 text-xs font-medium text-amber-800">
+                Posição registrada no CNES em{" "}
+                {formatReferenceMonth(unit.location.referenceMonth)}. A
+                coordenada atual do cadastro está ausente ou fora do município,
+                então mostramos o ponto mais recente dentro do município
+                informado para este mesmo endereço.
+              </p>
+            )}
+          {unit.location.precision === "municipality" && (
+            <p className="my-2 text-xs font-medium text-amber-800">
+              Localização aproximada: centro do município (contorno do IBGE). O
+              cadastro do CNES não traz uma posição válida para esta unidade.
+            </p>
+          )}
+          <UnitSources
+            sources={unit.sources}
+            className="mb-0 space-y-1 text-xs text-slate-500"
+          />
+          <Link
+            to={unitListLink(unit.id, listSearch)}
+            className="mt-2 inline-flex min-h-11 items-center font-semibold text-fila-blue underline underline-offset-2"
+          >
+            Ver na lista
+            <span className="sr-only">: {unit.name}</span>
+          </Link>
+        </div>
+      </Popup>
+    </CircleMarker>
+  );
+}
+
+function UnitMarkers({
+  units,
+  radius,
+  renderer,
+  selectedUnitId,
+  overlayRef,
+  listSearch,
+}: {
+  units: HealthUnit[];
+  radius: number;
+  renderer: L.Renderer;
+  selectedUnitId?: string;
+  overlayRef?: RefObject<HTMLElement | null>;
+  listSearch: string;
+}) {
+  const map = useMap();
+  const [layout, setLayout] = useState<{
+    autoPanPaddingTopLeft: [number, number];
+    popupMaxWidth: number;
+    popupMaxHeight: number;
+  } | null>(null);
+
+  useLayoutEffect(() => {
+    const updateLayout = () => {
+      const popupMaxWidth = Math.max(
+        192,
+        Math.min(256, map.getSize().x - fitPadding * 2 - 72),
+      );
+      const mapBox = map.getContainer().getBoundingClientRect();
+      const autoPanPaddingTopLeft = popupAutoPanPadding(
+        map,
+        overlayRef?.current,
+      );
+      // Leaflet adds about 28px of vertical chrome around popup content.
+      const popupMaxHeight = Math.max(
+        128,
+        Math.min(
+          448,
+          mapBox.height - autoPanPaddingTopLeft[1] - fitPadding - 28,
+        ),
+      );
+      // This state mirrors the current DOM geometry of the responsive panel.
+      // oxlint-disable-next-line react/set-state-in-effect
+      setLayout({
+        autoPanPaddingTopLeft,
+        popupMaxWidth,
+        popupMaxHeight,
+      });
+    };
+    updateLayout();
+    const resizeObserver = new ResizeObserver(updateLayout);
+    resizeObserver.observe(map.getContainer());
+    if (overlayRef?.current) resizeObserver.observe(overlayRef.current);
+    window.addEventListener("resize", updateLayout);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateLayout);
+    };
+  }, [map, overlayRef]);
+
+  if (layout === null) return null;
+
+  return units.map((unit) => (
+    <UnitMarker
+      key={unit.id}
+      unit={unit}
+      radius={radius}
+      renderer={renderer}
+      selected={unit.id === selectedUnitId}
+      overlayRef={overlayRef}
+      listSearch={listSearch}
+      autoPanPaddingTopLeft={layout.autoPanPaddingTopLeft}
+      popupMaxWidth={layout.popupMaxWidth}
+      popupMaxHeight={layout.popupMaxHeight}
+    />
+  ));
 }
 
 /** Map padding that keeps fitted points clear of an overlay panel. */
@@ -230,6 +473,57 @@ function overlayPadding(
     paddingBottomRight: [fitPadding, fitPadding],
     maxZoom: 13,
   };
+}
+
+/** Keeps an opened popup clear of the search panel and viewport edges. */
+function popupAutoPanPadding(
+  map: L.Map,
+  overlay: HTMLElement | null | undefined,
+): [number, number] {
+  if (!overlay) return [fitPadding, fitPadding];
+
+  const mapBox = map.getContainer().getBoundingClientRect();
+  const box = overlay.getBoundingClientRect();
+  return box.width > mapBox.width * 0.6
+    ? [fitPadding, box.bottom - mapBox.top + fitPadding]
+    : [box.right - mapBox.left + fitPadding, fitPadding];
+}
+
+/** Leaflet's automatic pan does not account reliably for an HTML overlay. */
+function keepPopupClearOfOverlay(
+  map: L.Map,
+  popup: L.Popup | undefined,
+  overlay: HTMLElement | null | undefined,
+): void {
+  if (!popup?.isOpen()) return;
+  const element = popup?.getElement();
+  if (!element) return;
+
+  const mapBox = map.getContainer().getBoundingClientRect();
+  const popupBox = element.getBoundingClientRect();
+  const [leftPadding, topPadding] = popupAutoPanPadding(map, overlay);
+  const safe = {
+    left: mapBox.left + leftPadding,
+    top: mapBox.top + topPadding,
+    right: mapBox.right - fitPadding,
+    bottom: mapBox.bottom - fitPadding,
+  };
+  const moveX =
+    popupBox.left < safe.left
+      ? safe.left - popupBox.left
+      : popupBox.right > safe.right
+        ? safe.right - popupBox.right
+        : 0;
+  const moveY =
+    popupBox.top < safe.top
+      ? safe.top - popupBox.top
+      : popupBox.bottom > safe.bottom
+        ? safe.bottom - popupBox.bottom
+        : 0;
+
+  if (moveX !== 0 || moveY !== 0) {
+    map.panBy([-moveX, -moveY], { animate: false });
+  }
 }
 
 function FitUnits({
@@ -370,7 +664,14 @@ function EnforceCountryZoom() {
   return null;
 }
 
-export function UnitsMap({ units, className = "", overlayRef, isCountryWide }: UnitsMapProps) {
+export function UnitsMap({
+  units,
+  className = "",
+  overlayRef,
+  isCountryWide,
+  selectedUnitId,
+  listSearch = "",
+}: UnitsMapProps) {
   // Stable between renders: FitUnits re-fits the map whenever this changes.
   const unitsWithLocation = useMemo(() => units.filter(hasLocation), [units]);
   const unitsToFit = isCountryWide ? noUnits : unitsWithLocation;
@@ -416,60 +717,14 @@ export function UnitsMap({ units, className = "", overlayRef, isCountryWide }: U
         zoomOutTitle="Afastar o mapa"
       />
       <FitUnits units={unitsToFit} overlayRef={overlayRef} />
-      {unitsWithLocation.map((unit) => (
-        <CircleMarker
-          key={unit.id}
-          center={[unit.location.latitude!, unit.location.longitude!]}
-          radius={markerRadius}
-          pathOptions={
-            unit.location.precision === "municipality"
-              ? approximateMarker
-              : preciseMarker
-          }
-        >
-          <Popup>
-            <div className="min-w-48 max-w-[16rem]">
-              <strong className="text-sm text-slate-900">{unit.name}</strong>
-              <p className="my-2 text-sm text-slate-600">
-                {formatAddress(unit.address)}
-              </p>
-              {unit.serviceHours && (
-                <p className="my-2 text-sm text-slate-600">
-                  {unit.serviceHours}
-                </p>
-              )}
-              {unit.location.precision === "manual" &&
-                unit.location.correctedAt && (
-                  <p className="my-2 text-xs font-medium text-amber-800">
-                    Posição corrigida manualmente em{" "}
-                    {formatSourceDate(unit.location.correctedAt)}.
-                  </p>
-                )}
-              {unit.location.precision === "history" &&
-                unit.location.referenceMonth && (
-                  <p className="my-2 text-xs font-medium text-amber-800">
-                    Posição registrada no CNES em{" "}
-                    {formatReferenceMonth(unit.location.referenceMonth)}. A
-                    coordenada atual do cadastro está ausente ou fora do
-                    município, então mostramos o ponto mais recente dentro do
-                    município informado para este mesmo endereço.
-                  </p>
-                )}
-              {unit.location.precision === "municipality" && (
-                <p className="my-2 text-xs font-medium text-amber-800">
-                  Localização aproximada: centro do município (contorno do
-                  IBGE). O cadastro do CNES não traz uma posição válida para
-                  esta unidade.
-                </p>
-              )}
-              <UnitSources
-                sources={unit.sources}
-                className="mb-0 space-y-1 text-xs text-slate-500"
-              />
-            </div>
-          </Popup>
-        </CircleMarker>
-      ))}
+      <UnitMarkers
+        units={unitsWithLocation}
+        radius={markerRadius}
+        renderer={renderer}
+        selectedUnitId={selectedUnitId}
+        overlayRef={overlayRef}
+        listSearch={listSearch}
+      />
     </MapContainer>
   );
 }

@@ -32,6 +32,12 @@ function isFilterRoute(pathname: string): boolean {
   return FILTER_ROUTES.has(pathname.replace(/\/+$/, "") || "/");
 }
 
+/** Detail URLs also carry the filter context, but never write to themselves. */
+function readsFilters(pathname: string): boolean {
+  const normalized = pathname.replace(/\/+$/, "") || "/";
+  return isFilterRoute(normalized) || /^\/units\/[^/]+$/.test(normalized);
+}
+
 /**
  * Holds the search filters for the whole app and mirrors them to the URL
  * (`?uf=SP&q=osasco`).
@@ -46,13 +52,14 @@ function isFilterRoute(pathname: string): boolean {
 export function SearchFiltersProvider({ children }: { children: ReactNode }) {
   const [params, setParams] = useSearchParams();
   const { pathname } = useLocation();
-  const onFilterRoute = isFilterRoute(pathname);
+  const onFilterRoute = readsFilters(pathname);
   const fromUrl = readFilters(params);
 
   const [filters, setFilters] = useState<Filters>(fromUrl);
   const current = useRef(fromUrl);
   const tracker = useRef<ReturnType<typeof createOwnWriteTracker> | null>(null);
-  if (tracker.current === null) tracker.current = createOwnWriteTracker(fromUrl);
+  if (tracker.current === null)
+    tracker.current = createOwnWriteTracker(fromUrl);
   const pendingWrite = useRef<ReturnType<typeof setTimeout> | null>(null);
   // The timer fires later; it must use the router's current setter, not the
   // one from the render that scheduled it.

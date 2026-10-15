@@ -1,5 +1,5 @@
 import { useDeferredValue, useMemo, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { BrazilianStateSelect } from "./BrazilianStateSelect";
 import { NationalStateCode, stateName } from "./brazilianStates";
 import { LiveStatus } from "./LiveStatus";
@@ -14,6 +14,7 @@ import {
 import { usePageHeading } from "./usePageHeading";
 import { useSearchFilters } from "./useSearchFilters";
 import { useUnits } from "./useUnits";
+import { SELECTED_UNIT_PARAM } from "./unitLinks";
 
 const title = "Mapa das unidades de pronto atendimento";
 
@@ -21,7 +22,15 @@ export function MapPage() {
   const headingRef = usePageHeading(title);
   const { stateCode, query, setStateCode, setQuery, flush, search } =
     useSearchFilters();
-  const { state, retry } = useUnits(NationalStateCode.All);
+  const [searchParams] = useSearchParams();
+  const selectedUnitId = searchParams.get(SELECTED_UNIT_PARAM) ?? undefined;
+  // A selected unit coming from a state list may be newer than the national
+  // snapshot. Read that UF while the deep link is open so the marker exists.
+  const requestState =
+    selectedUnitId && stateCode !== NationalStateCode.All
+      ? stateCode
+      : NationalStateCode.All;
+  const { state, retry } = useUnits(requestState);
   const panelRef = useRef<HTMLElement>(null);
 
   // The fields answer at once; filtering and redrawing the markers can lag
@@ -68,7 +77,11 @@ export function MapPage() {
 
   return (
     <div className="relative min-h-[28rem] w-full flex-1">
-      <h1 ref={headingRef} tabIndex={-1} className="sr-only">
+      <h1
+        ref={selectedUnitId ? undefined : headingRef}
+        tabIndex={-1}
+        className="sr-only"
+      >
         {title}
       </h1>
 
@@ -146,6 +159,8 @@ export function MapPage() {
 
       <UnitsMap
         units={filteredUnits}
+        selectedUnitId={selectedUnitId}
+        listSearch={search}
         isCountryWide={isCountryWide}
         overlayRef={panelRef}
         className="absolute inset-0"
