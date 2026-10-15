@@ -55,6 +55,11 @@ municípios vêm da API de localidades do IBGE. O campo
 `metadata.dataOrigin` indica `live` ou `fallback`, e `metadata.isStale` informa
 quando a cópia de segurança está sendo exibida.
 
+Para executar uma fonte sintética contra esta API, use o
+[README do simulador](../../apps/simulador/README.md). O webhook grava os
+eventos recebidos na inbox, mas ainda não os transforma em ocupação atual ou em
+histórico público.
+
 ### Posição das unidades
 
 O CNES é autodeclarado e algumas coordenadas apontam para fora do município. A
