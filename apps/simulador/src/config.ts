@@ -9,6 +9,9 @@ export interface OccupancyOverride {
   occupied: number;
 }
 
+export const SIMULATION_SCENARIOS = ['normal', 'duplicate', 'delayed'] as const;
+export type SimulationScenario = (typeof SIMULATION_SCENARIOS)[number];
+
 export interface SimulatorConfig {
   apiUrl: string;
   sourceId: string;
@@ -24,6 +27,8 @@ export interface SimulatorConfig {
   seed: string;
   intervalSeconds: number;
   occupancyOverrides: OccupancyOverride[];
+  scenario: SimulationScenario;
+  delaySeconds: number;
 }
 
 export interface ParsedArguments {
@@ -96,6 +101,23 @@ function readOccupancyOverrides(value: string | undefined): OccupancyOverride[] 
   });
 }
 
+function readScenario(value: string | undefined): SimulationScenario {
+  if (!value) return 'normal';
+  if (!SIMULATION_SCENARIOS.includes(value as SimulationScenario)) {
+    throw new Error(`scenario deve ser um destes valores: ${SIMULATION_SCENARIOS.join(', ')}.`);
+  }
+  return value as SimulationScenario;
+}
+
+function readNonNegativeNumber(value: string | undefined, name: string): number {
+  if (value === undefined) return 0;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 0) {
+    throw new Error(`${name} deve ser um inteiro não negativo.`);
+  }
+  return parsed;
+}
+
 export function parseArguments(argv: readonly string[]): ParsedArguments {
   const values: Record<string, string> = {};
   let help = false;
@@ -144,9 +166,17 @@ export function loadConfig(
     ) ?? DEFAULT_INTERVAL_SECONDS;
   const latitude = readCoordinate(value('latitude', 'SIMULATOR_LATITUDE'), 'latitude');
   const longitude = readCoordinate(value('longitude', 'SIMULATOR_LONGITUDE'), 'longitude');
+  const scenario = readScenario(value('scenario', 'SIMULATOR_SCENARIO'));
+  const delaySeconds = readNonNegativeNumber(
+    value('delay-seconds', 'SIMULATOR_DELAY_SECONDS'),
+    'delay-seconds',
+  );
 
   if ((latitude === null) !== (longitude === null)) {
     throw new Error('latitude e longitude devem ser informadas juntas.');
+  }
+  if (scenario === 'delayed' && delaySeconds === 0) {
+    throw new Error('scenario delayed exige --delay-seconds maior que zero.');
   }
 
   return {
@@ -166,6 +196,8 @@ export function loadConfig(
     occupancyOverrides: readOccupancyOverrides(
       value('set-occupied', 'SIMULATOR_SET_OCCUPIED'),
     ),
+    scenario,
+    delaySeconds,
   };
 }
 
@@ -186,6 +218,8 @@ Opções:
   --seed VALUE               Seed do cenário (padrão: fila-saude-v1)
   --interval-seconds NUMBER  Intervalo entre ciclos (padrão: 120)
   --set-occupied VALUES      Ocupações iniciais CNES:CATEGORIA:VALOR
+  --scenario NAME            Cenário: normal, duplicate ou delayed
+  --delay-seconds NUMBER     Atraso dos timestamps no cenário delayed
   --help                     Exibe esta ajuda
 
 As opções também podem ser informadas pelas variáveis SIMULATOR_* equivalentes.

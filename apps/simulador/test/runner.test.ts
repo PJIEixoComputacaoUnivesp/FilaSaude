@@ -20,6 +20,8 @@ const config: SimulatorConfig = {
   seed: 'runner-test',
   intervalSeconds: 30,
   occupancyOverrides: [],
+  scenario: 'normal',
+  delaySeconds: 0,
 };
 
 const units: SimulatorUnit[] = [
@@ -79,4 +81,49 @@ test('não envia novos snapshots depois do cancelamento', async () => {
   await runner.run(controller.signal);
 
   assert.equal(sends, 0);
+});
+
+test('reenvia o mesmo snapshot no cenário duplicate', async () => {
+  const controller = new AbortController();
+  const sent: string[] = [];
+  const runner = new SimulationRunner(
+    { ...config, scenario: 'duplicate' },
+    [units[0]],
+    new SimulationState(config.seed),
+    {
+      sleep: async () => controller.abort(),
+      send: async (snapshot) => {
+        sent.push(snapshot.eventId);
+        return { attempts: 1, status: 202 };
+      },
+    },
+  );
+
+  await runner.run(controller.signal);
+
+  assert.equal(sent.length, 2);
+  assert.equal(sent[0], sent[1]);
+});
+
+test('gera timestamps atrasados no cenário delayed', async () => {
+  const controller = new AbortController();
+  let observedAt = '';
+  const now = new Date('2026-10-15T12:00:00.000Z');
+  const runner = new SimulationRunner(
+    { ...config, scenario: 'delayed', delaySeconds: 600 },
+    [units[0]],
+    new SimulationState(config.seed),
+    {
+      now: () => now,
+      sleep: async () => controller.abort(),
+      send: async (snapshot) => {
+        observedAt = snapshot.observedAt;
+        return { attempts: 1, status: 202 };
+      },
+    },
+  );
+
+  await runner.run(controller.signal);
+
+  assert.equal(observedAt, '2026-10-15T11:50:00.000Z');
 });

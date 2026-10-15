@@ -188,6 +188,34 @@ Para mais de uma unidade ou categoria:
 
 Os CNES do override precisam estar entre as unidades selecionadas.
 
+Para demonstrar idempotência, execute o primeiro ciclo com o cenário
+`duplicate`. Cada unidade será enviada duas vezes com o mesmo `eventId` e o
+mesmo corpo; a segunda ocorrência deve ser aceita como duplicidade idêntica:
+
+```powershell
+node --experimental-strip-types apps/simulador/src/main.ts `
+  --api-url http://localhost:3000 `
+  --state ALL `
+  --unit-cnes $unitList `
+  --scenario duplicate `
+  --interval-seconds 120
+```
+
+Para demonstrar um evento atrasado:
+
+```powershell
+node --experimental-strip-types apps/simulador/src/main.ts `
+  --api-url http://localhost:3000 `
+  --state ALL `
+  --unit-cnes $unitList `
+  --scenario delayed `
+  --delay-seconds 600 `
+  --interval-seconds 120
+```
+
+No cenário `delayed`, a API ainda pode aceitar o evento na inbox, mas o
+processamento posterior deverá decidir como tratar sua precedência temporal.
+
 ## 8. Interpretação dos resultados
 
 Este roteiro confirma:

@@ -76,6 +76,8 @@ parâmetros são:
 | `--seed` | `SIMULATOR_SEED` | `fila-saude-v1` | Reprodutibilidade do cenário |
 | `--interval-seconds` | `SIMULATOR_INTERVAL_SECONDS` | `120` | Intervalo entre ciclos |
 | `--set-occupied` | `SIMULATOR_SET_OCCUPIED` | — | Valores iniciais `CNES:CATEGORIA:VALOR`, separados por vírgula |
+| `--scenario` | `SIMULATOR_SCENARIO` | `normal` | Cenário `normal`, `duplicate` ou `delayed` |
+| `--delay-seconds` | `SIMULATOR_DELAY_SECONDS` | `0` | Atraso dos timestamps no cenário `delayed` |
 
 As unidades são selecionadas uma vez no início da execução e permanecem fixas.
 O estado é mantido somente em memória e é perdido ao encerrar o processo.
@@ -89,6 +91,23 @@ pnpm --filter @filasaude/simulador dev --unit-cnes 1234567,7654321 --set-occupie
 Os CNES informados em `--set-occupied` precisam estar entre as unidades
 selecionadas, e a ocupação não pode exceder a capacidade determinística da
 categoria.
+
+Para demonstrar idempotência, o cenário `duplicate` reenvia cada snapshot do
+primeiro ciclo com o mesmo `eventId` e corpo:
+
+```bash
+pnpm --filter @filasaude/simulador dev --unit-cnes 1234567 --scenario duplicate --interval-seconds 120
+```
+
+Para demonstrar um evento atrasado, informe o atraso em segundos:
+
+```bash
+pnpm --filter @filasaude/simulador dev --unit-cnes 1234567 --scenario delayed --delay-seconds 600
+```
+
+O cenário `delayed` mantém a cadência normal, mas gera `occurredAt` e
+`observedAt` no passado. O cenário `duplicate` atua somente no primeiro ciclo;
+os ciclos seguintes seguem o comportamento normal.
 
 ## Validação local
 

@@ -44,9 +44,16 @@ export class SimulationRunner {
       const observedAt = this.now();
       for (const unit of this.units) {
         if (signal?.aborted) return;
-        const snapshot = this.state.snapshotFor(unit, observedAt);
+        const snapshot = this.state.snapshotFor(
+          unit,
+          new Date(observedAt.getTime() - this.config.delaySeconds * 1000),
+        );
         const result = await this.send(snapshot);
         this.onSnapshotSent?.(snapshot, result);
+        if (cycle === 0 && this.config.scenario === 'duplicate') {
+          const duplicateResult = await this.send(snapshot);
+          this.onSnapshotSent?.(snapshot, duplicateResult);
+        }
       }
 
       cycle += 1;
