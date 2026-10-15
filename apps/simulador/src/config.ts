@@ -1,3 +1,14 @@
+import {
+  SIMULATION_CATEGORY_CODES,
+  type SimulationCategoryCode,
+} from './simulation.ts';
+
+export interface OccupancyOverride {
+  unitCnes: string;
+  category: SimulationCategoryCode;
+  occupied: number;
+}
+
 export interface SimulatorConfig {
   apiUrl: string;
   sourceId: string;
@@ -12,6 +23,7 @@ export interface SimulatorConfig {
   unitCnes: string[];
   seed: string;
   intervalSeconds: number;
+  occupancyOverrides: OccupancyOverride[];
 }
 
 export interface ParsedArguments {
@@ -54,6 +66,34 @@ function readUnitCnes(value: string | undefined): string[] {
     throw new Error('unit-cnes deve conter somente códigos CNES com sete dígitos.');
   }
   return codes.sort();
+}
+
+function readOccupancyOverrides(value: string | undefined): OccupancyOverride[] {
+  if (!value) return [];
+
+  return value.split(',').map((entry) => {
+    const [unitCnes, category, occupiedValue, ...extra] = entry.trim().split(':');
+    if (
+      extra.length > 0 ||
+      !/^\d{7}$/.test(unitCnes ?? '') ||
+      !SIMULATION_CATEGORY_CODES.includes(category as SimulationCategoryCode)
+    ) {
+      throw new Error(
+        'set-occupied deve usar CNES:CATEGORIA:OCUPAÇÃO, com categoria válida.',
+      );
+    }
+
+    const occupied = Number(occupiedValue);
+    if (!Number.isSafeInteger(occupied) || occupied < 0) {
+      throw new Error('A ocupação inicial deve ser um inteiro não negativo.');
+    }
+
+    return {
+      unitCnes,
+      category: category as SimulationCategoryCode,
+      occupied,
+    };
+  });
 }
 
 export function parseArguments(argv: readonly string[]): ParsedArguments {
@@ -123,6 +163,9 @@ export function loadConfig(
     unitCnes: readUnitCnes(value('unit-cnes', 'SIMULATOR_UNIT_CNES')),
     seed: value('seed', 'SIMULATOR_SEED', 'fila-saude-v1')!,
     intervalSeconds,
+    occupancyOverrides: readOccupancyOverrides(
+      value('set-occupied', 'SIMULATOR_SET_OCCUPIED'),
+    ),
   };
 }
 
@@ -142,6 +185,7 @@ Opções:
   --source-id ID             Identificador da fonte simuladora
   --seed VALUE               Seed do cenário (padrão: fila-saude-v1)
   --interval-seconds NUMBER  Intervalo entre ciclos (padrão: 120)
+  --set-occupied VALUES      Ocupações iniciais CNES:CATEGORIA:VALOR
   --help                     Exibe esta ajuda
 
 As opções também podem ser informadas pelas variáveis SIMULATOR_* equivalentes.

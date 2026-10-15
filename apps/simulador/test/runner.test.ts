@@ -19,6 +19,7 @@ const config: SimulatorConfig = {
   unitCnes: [],
   seed: 'runner-test',
   intervalSeconds: 30,
+  occupancyOverrides: [],
 };
 
 const units: SimulatorUnit[] = [

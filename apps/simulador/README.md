@@ -17,6 +17,7 @@ O simulador já oferece:
 - retentativas para falhas transitórias e `429`, respeitando `Retry-After`;
 - envio periódico, com primeiro ciclo imediato;
 - encerramento gracioso com `Ctrl+C`.
+- ocupações iniciais manuais por unidade e categoria para demonstrações.
 
 O simulador ainda não altera o estado atual exibido pela aplicação. A API, nesta
 etapa, autentica, valida e guarda os eventos na inbox; o processamento de
@@ -74,9 +75,20 @@ parâmetros são:
 | `--max-units` | `SIMULATOR_MAX_UNITS` | `10` | Limite de unidades |
 | `--seed` | `SIMULATOR_SEED` | `fila-saude-v1` | Reprodutibilidade do cenário |
 | `--interval-seconds` | `SIMULATOR_INTERVAL_SECONDS` | `120` | Intervalo entre ciclos |
+| `--set-occupied` | `SIMULATOR_SET_OCCUPIED` | — | Valores iniciais `CNES:CATEGORIA:VALOR`, separados por vírgula |
 
 As unidades são selecionadas uma vez no início da execução e permanecem fixas.
 O estado é mantido somente em memória e é perdido ao encerrar o processo.
+
+Exemplo de cenário com ocupação inicial controlada:
+
+```bash
+pnpm --filter @filasaude/simulador dev --unit-cnes 1234567,7654321 --set-occupied 1234567:observation:13,7654321:inpatient:4
+```
+
+Os CNES informados em `--set-occupied` precisam estar entre as unidades
+selecionadas, e a ocupação não pode exceder a capacidade determinística da
+categoria.
 
 ## Validação local
 
@@ -93,8 +105,6 @@ que contém um vetor fixo independente da API.
 
 ## Próximas extensões
 
-- comandos ou configuração para alterar manualmente a ocupação durante uma
-  demonstração;
 - comando de rollback/limpeza de dados simulados, quando houver processamento
   de ocupação na API;
 - cenário integrado com API, inbox, processamento e interface;

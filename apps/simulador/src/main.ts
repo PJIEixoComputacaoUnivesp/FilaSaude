@@ -16,6 +16,15 @@ async function main(): Promise<void> {
   const catalog = await fetchUnits(config.apiUrl, config.state);
   const selected = selectUnits(catalog, config);
   const state = new SimulationState(config.seed);
+  const selectedCnes = new Set(selected.map((unit) => unit.id));
+  for (const override of config.occupancyOverrides) {
+    if (!selectedCnes.has(override.unitCnes)) {
+      throw new Error(
+        `O CNES ${override.unitCnes} do cenário não está entre as unidades selecionadas.`,
+      );
+    }
+    state.setOccupied(override.unitCnes, override.category, override.occupied);
+  }
   const controller = new AbortController();
 
   const stop = () => {
