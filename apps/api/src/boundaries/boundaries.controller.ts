@@ -2,9 +2,10 @@ import {
   BadRequestException,
   Controller,
   Get,
-  Header,
   Query,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import {
   BOUNDARY_DETAILS,
   type BoundaryDetail,
@@ -26,13 +27,21 @@ export class BoundariesController {
   /**
    * The outline of Brazil. `low` (the default) is enough up to zoom 7 of the
    * map; `high` keeps the detail of the IBGE file. It only changes with a new
-   * release, so it can be cached for a day; Express adds the ETag that
-   * revalidates it after that.
+   * release, so it can be cached for a day and revalidated with its ETag
+   * after that. The headers are set here, after validation, so an error is
+   * never cached.
    */
   @Get('brazil')
-  @Header('Content-Type', 'application/json; charset=utf-8')
-  @Header('Cache-Control', 'public, max-age=86400')
-  brazil(@Query('detail') detail?: string): string {
-    return this.brazilBoundary.response(parseDetail(detail));
+  brazil(
+    @Query('detail') detail: string | undefined,
+    @Res({ passthrough: true }) response: Response,
+  ): string {
+    const { body, etag } = this.brazilBoundary.response(parseDetail(detail));
+    response.set({
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'public, max-age=86400',
+      ETag: etag,
+    });
+    return body;
   }
 }

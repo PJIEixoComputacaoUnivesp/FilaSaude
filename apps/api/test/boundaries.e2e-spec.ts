@@ -85,19 +85,22 @@ describe('BoundariesController (e2e)', () => {
     const first = await request(app.getHttpServer()).get('/boundaries/brazil');
     const etag = first.headers.etag as string;
 
-    expect(etag).toBeTruthy();
+    // Computed once at startup: strong, not Express's weak per-request hash.
+    expect(etag).toMatch(/^"[\w-]+"$/);
     await request(app.getHttpServer())
       .get('/boundaries/brazil')
       .set('If-None-Match', etag)
       .expect(304);
   });
 
-  it('rejects an unknown level of detail', () => {
-    return request(app.getHttpServer())
+  it('rejects an unknown level of detail, without caching the error', async () => {
+    const response = await request(app.getHttpServer())
       .get('/boundaries/brazil?detail=max')
-      .expect(400)
-      .expect(({ body }: { body: { message: string } }) => {
-        expect(body.message).toBe('Invalid boundary detail');
-      });
+      .expect(400);
+
+    expect((response.body as { message: string }).message).toBe(
+      'Invalid boundary detail',
+    );
+    expect(response.headers['cache-control']).toBeUndefined();
   });
 });

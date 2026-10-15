@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { Injectable, type OnModuleInit } from '@nestjs/common';
 import type { Polygon } from '../units/geometry.js';
@@ -11,8 +12,8 @@ export type BoundaryDetail = (typeof BOUNDARY_DETAILS)[number];
 // `high` above that. Latitude is stretched by Mercator (about 1.2x at -34°),
 // which keeps it close to a pixel there too.
 const LOW_DETAIL_TOLERANCE_DEGREES = 0.01;
-// 0.001° is about 0.1 px at zoom 7, and three decimals instead of six cut the
-// light outline from about 120 KB to 55 KB with gzip.
+// 0.001° is about 0.1 px at zoom 7, and three decimals instead of six make
+// the light outline about half as large.
 const LOW_DETAIL_DECIMALS = 3;
 
 interface BoundaryFile {
@@ -40,14 +41,20 @@ function parseBoundaryFile(text: string): BoundaryFile {
   return file as BoundaryFile;
 }
 
+export interface BoundaryResponse {
+  body: string;
+  /** Strong ETag of the body, so Express does not hash 3 MB per request. */
+  etag: string;
+}
+
 /**
  * The outline of Brazil from IBGE, which the map uses as a mask. The file is
- * read and simplified once, at startup, and each level is kept serialized, so
- * a request only sends a string.
+ * read and simplified once, at startup, and each level is kept serialized
+ * with its ETag, so a request only sends a string.
  */
 @Injectable()
 export class BrazilBoundaryService implements OnModuleInit {
-  private readonly responses = new Map<BoundaryDetail, string>();
+  private readonly responses = new Map<BoundaryDetail, BoundaryResponse>();
 
   async onModuleInit(): Promise<void> {
     const file = parseBoundaryFile(
@@ -64,26 +71,25 @@ export class BrazilBoundaryService implements OnModuleInit {
     };
 
     for (const detail of BOUNDARY_DETAILS) {
-      this.responses.set(
-        detail,
-        JSON.stringify({
-          data: {
-            type: 'Feature',
-            properties: {},
-            geometry: { type: 'MultiPolygon', coordinates: coordinates[detail] },
-          },
-          metadata: {
-            detail,
-            boundaryYear,
-            source: { name: source, url: sourceUrl },
-          },
-        }),
-      );
+      const body = JSON.stringify({
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: { type: 'MultiPolygon', coordinates: coordinates[detail] },
+        },
+        metadata: {
+          detail,
+          boundaryYear,
+          source: { name: source, url: sourceUrl },
+        },
+      });
+      const hash = createHash('sha1').update(body).digest('base64url');
+      this.responses.set(detail, { body, etag: `"${hash}"` });
     }
   }
 
   /** The serialized response for one level of detail. */
-  response(detail: BoundaryDetail): string {
+  response(detail: BoundaryDetail): BoundaryResponse {
     const response = this.responses.get(detail);
     if (response === undefined) throw new Error('Boundary not loaded');
     return response;
