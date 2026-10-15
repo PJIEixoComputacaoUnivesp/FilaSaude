@@ -78,6 +78,34 @@ test('respeita Retry-After mesmo acima do limite do backoff', async () => {
   assert.deepEqual(waits, [60_000]);
 });
 
+test('interrompe o envio quando o sinal é abortado', async () => {
+  const controller = new AbortController();
+  let calls = 0;
+  const fetchImpl: typeof fetch = async (_input, init) => {
+    calls += 1;
+    return new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener(
+        'abort',
+        () => reject(new Error('fetch cancelado')),
+        { once: true },
+      );
+      queueMicrotask(() => controller.abort());
+    });
+  };
+
+  await assert.rejects(
+    sendSnapshot(snapshot, {
+      apiUrl: 'http://localhost:3000',
+      sourceId: 'occupancy-feed',
+      sourceSecret: 'test-secret',
+      signal: controller.signal,
+      fetchImpl,
+    }),
+    /fetch cancelado/,
+  );
+  assert.equal(calls, 1);
+});
+
 test('repete falhas transitórias com backoff e não repete erros 4xx', async () => {
   let calls = 0;
   const waits: number[] = [];

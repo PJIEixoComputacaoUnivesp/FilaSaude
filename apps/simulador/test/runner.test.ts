@@ -83,6 +83,30 @@ test('não envia novos snapshots depois do cancelamento', async () => {
   assert.equal(sends, 0);
 });
 
+test('interrompe a espera entre ciclos quando o sinal é abortado', async () => {
+  const controller = new AbortController();
+  let sleepAborted = false;
+  const runner = new SimulationRunner(config, [units[0]], new SimulationState(config.seed), {
+    sleep: async (_milliseconds, signal) =>
+      new Promise<void>((resolve) => {
+        signal?.addEventListener(
+          'abort',
+          () => {
+            sleepAborted = true;
+            resolve();
+          },
+          { once: true },
+        );
+        queueMicrotask(() => controller.abort());
+      }),
+    send: async () => ({ attempts: 1, status: 202 }),
+  });
+
+  await runner.run(controller.signal);
+
+  assert.equal(sleepAborted, true);
+});
+
 test('reenvia o mesmo snapshot no cenário duplicate', async () => {
   const controller = new AbortController();
   const sent: string[] = [];

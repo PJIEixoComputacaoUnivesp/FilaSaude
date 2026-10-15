@@ -16,8 +16,9 @@ export interface SnapshotTransportOptions {
   baseDelayMs?: number;
   maxDelayMs?: number;
   now?: () => Date;
-  sleep?: (milliseconds: number) => Promise<void>;
+  sleep?: (milliseconds: number, signal?: AbortSignal) => Promise<void>;
   fetchImpl?: typeof fetch;
+  signal?: AbortSignal;
 }
 
 export interface SnapshotTransportResult {
@@ -43,6 +44,7 @@ export async function sendSnapshot(
   const now = options.now ?? (() => new Date());
   const sleep = options.sleep ?? delay;
   const fetchImpl = options.fetchImpl ?? fetch;
+  const signal = options.signal;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const baseDelayMs = options.baseDelayMs ?? DEFAULT_BASE_DELAY_MS;
   const maxDelayMs = options.maxDelayMs ?? DEFAULT_MAX_DELAY_MS;
@@ -68,11 +70,13 @@ export async function sendSnapshot(
         timestamp,
         signature,
         timeoutMs,
+        signal,
       );
     } catch (error) {
+      if (signal?.aborted) throw error;
       lastError = error;
       if (attempt === maxAttempts) break;
-      await sleep(backoffDelay(attempt, baseDelayMs, maxDelayMs));
+      await sleep(backoffDelay(attempt, baseDelayMs, maxDelayMs), signal);
       continue;
     }
 
@@ -88,6 +92,7 @@ export async function sendSnapshot(
       response.status === 429
         ? retryAfterDelay(response)
         : backoffDelay(attempt, baseDelayMs, maxDelayMs),
+      signal,
     );
   }
 
@@ -105,8 +110,15 @@ async function postSnapshot(
   timestamp: number,
   signature: string,
   timeoutMs: number,
+  signal?: AbortSignal,
 ): Promise<Response> {
   const controller = new AbortController();
+  const onAbort = () => controller.abort(signal?.reason);
+  if (signal?.aborted) {
+    controller.abort(signal.reason);
+  } else {
+    signal?.addEventListener('abort', onAbort, { once: true });
+  }
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetchImpl(url, {
@@ -122,6 +134,7 @@ async function postSnapshot(
     });
   } finally {
     clearTimeout(timeout);
+    signal?.removeEventListener('abort', onAbort);
   }
 }
 
@@ -147,6 +160,19 @@ function backoffDelay(
   return Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs);
 }
 
-function delay(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+function delay(milliseconds: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, milliseconds);
+    const onAbort = () => {
+      clearTimeout(timeout);
+      signal?.removeEventListener('abort', onAbort);
+      reject(new Error('Envio cancelado.'));
+    };
+
+    signal?.addEventListener('abort', onAbort, { once: true });
+    if (signal?.aborted) onAbort();
+  });
 }
