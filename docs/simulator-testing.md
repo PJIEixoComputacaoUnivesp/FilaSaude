@@ -216,7 +216,22 @@ node --experimental-strip-types apps/simulador/src/main.ts `
 No cenário `delayed`, a API ainda pode aceitar o evento na inbox, mas o
 processamento posterior deverá decidir como tratar sua precedência temporal.
 
-## 8. Interpretação dos resultados
+## 8. Teste automatizado contra a API
+
+Com a API em execução e o segredo já definido no terminal do simulador:
+
+```powershell
+$env:SIMULATOR_INTEGRATION_API_URL = 'http://localhost:3000'
+$env:SIMULATOR_INTEGRATION_UNIT_CNES = $cnes[0]
+pnpm.cmd --filter @filasaude/simulador test:integration
+```
+
+O teste usa o transporte real do simulador, envia um snapshot ao endpoint real
+e espera `202`. A persistência pode ser confirmada na inbox com a consulta da
+seção anterior. Sem essas variáveis, o teste é ignorado para permitir a execução
+da suíte padrão sem uma API externa.
+
+## 9. Interpretação dos resultados
 
 Este roteiro confirma:
 
@@ -241,7 +256,7 @@ Este roteiro ainda não confirma:
 Esses comportamentos dependem do processamento de ocupação da API e das
 respectivas entregas do frontend.
 
-## 9. Encerramento do ambiente
+## 10. Encerramento do ambiente
 
 Para parar os contêineres sem remover os dados locais:
 

@@ -118,6 +118,20 @@ pnpm --filter @filasaude/simulador test
 pnpm --filter @filasaude/simulador build
 ```
 
+Com a API já iniciada e a fonte configurada, o teste automatizado de integração
+pode ser executado com:
+
+```powershell
+$env:SIMULATOR_INTEGRATION_API_URL = 'http://localhost:3000'
+$env:SIMULATOR_INTEGRATION_UNIT_CNES = '6439837'
+pnpm.cmd --filter @filasaude/simulador test:integration
+```
+
+O teste usa `SIMULATOR_SOURCE_ID` e `SIMULATOR_SOURCE_SECRET` do terminal atual.
+Sem `SIMULATOR_INTEGRATION_API_URL`, `SIMULATOR_SOURCE_SECRET` ou
+`SIMULATOR_INTEGRATION_UNIT_CNES`, ele fica marcado como ignorado para não
+falhar na CI sem uma API externa.
+
 Para validar apenas o contrato de assinatura, consulte o
 [contrato `occupancy.snapshot.v1`](../../docs/contracts/occupancy-snapshot-v1.md),
 que contém um vetor fixo independente da API.
