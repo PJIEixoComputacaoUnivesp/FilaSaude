@@ -39,8 +39,8 @@ Exemplo somente para desenvolvimento local, usando valores fictícios:
 
 ```bash
 export SIMULATOR_SOURCE_ID=academic-simulator
-export SIMULATOR_SOURCE_SECRET='segredo-local'
-export WEBHOOK_SOURCE_CONFIG='{"academic-simulator":{"secret":"segredo-local","unitCnes":["1234567"]}}'
+export SIMULATOR_SOURCE_SECRET='local-simulator-secret-32-chars-min'
+export WEBHOOK_SOURCE_CONFIG='{"academic-simulator":{"secret":"local-simulator-secret-32-chars-min","unitCnes":["1234567"]}}'
 ```
 
 No PowerShell, use `$env:NOME='valor'` no lugar de `export NOME='valor'`.
