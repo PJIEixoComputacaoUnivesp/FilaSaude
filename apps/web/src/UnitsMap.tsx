@@ -101,81 +101,110 @@ const TILE_BOUNDS = L.latLngBounds([
   [5.3, -28.8],
 ]);
 
+type BoundaryDetail = "low" | "high";
+interface BoundaryResponse {
+  data: BoundaryFeature;
+  metadata: {
+    detail: BoundaryDetail;
+    boundaryYear: number;
+    source: { name: string; url: string };
+  };
+}
+// The light outline is within about a pixel up to zoom 7 (see the API); from
+// here on the map fetches the full one.
+const highDetailZoom = 8;
+
+async function fetchBoundary(
+  detail: BoundaryDetail,
+  signal: AbortSignal,
+): Promise<BoundaryResponse> {
+  const response = await fetch(`/api/boundaries/brazil?detail=${detail}`, {
+    signal,
+  });
+  if (!response.ok) throw new Error("Unable to load Brazil boundary");
+  return (await response.json()) as BoundaryResponse;
+}
+
+/** The world with Brazil cut out, so only the country shows the tiles. */
+function maskOf(feature: BoundaryFeature): BoundaryFeature {
+  const worldOuterRing = [
+    [-180, -90],
+    [-180, 90],
+    [180, 90],
+    [180, -90],
+    [-180, -90],
+  ];
+  const holes =
+    feature.geometry.type === "MultiPolygon"
+      ? feature.geometry.coordinates.map((polygon) => polygon[0])
+      : [feature.geometry.coordinates[0]];
+  return {
+    type: "Feature",
+    properties: {},
+    geometry: { type: "Polygon", coordinates: [worldOuterRing, ...holes] },
+  };
+}
+
 /**
- * Carrega o GeoJSON do Brasil:
+ * Carrega o contorno do Brasil pela API:
  * 1. Aplica uma máscara com #d6e4f0 em todas as regiões fora do Brasil.
  * 2. Renderiza o contorno (borda) do Brasil, mantendo visíveis os detalhes
  *    do OpenStreetMap (cidades, ruas, estados) dentro do território nacional.
+ *
+ * O contorno leve chega primeiro e libera a base; o completo é baixado só
+ * quando o zoom passa de 7 e substitui o leve.
  */
 function BrazilBorderLayer({ onSettled }: { onSettled: () => void }) {
   const map = useMap();
 
   useEffect(() => {
-    let group: L.LayerGroup | null = null;
     const controller = new AbortController();
+    if (!map.getPane(boundaryPane)) {
+      const pane = map.createPane(boundaryPane);
+      pane.style.zIndex = "350";
+      pane.style.pointerEvents = "none";
+    }
+    const renderer = new FollowingCanvas({ pane: boundaryPane }).addTo(map);
+    let group: L.LayerGroup | null = null;
+    let shownDetail: BoundaryDetail | null = null;
+    let isHighRequested = false;
 
-    // The tiles wait for this file. If it is slow or stalls without failing,
-    // the base map shows anyway and the mask comes in when the file does.
+    const show = ({ data, metadata }: BoundaryResponse) => {
+      // The full outline is never replaced by the light one.
+      if (controller.signal.aborted || shownDetail === "high") return;
+      const maskLayer = L.geoJSON(maskOf(data), {
+        style: {
+          ...boundaryOptions,
+          renderer,
+          fillColor: "#d6e4f0",
+          fillOpacity: 1,
+          stroke: false,
+        },
+        interactive: false,
+      });
+      const borderLayer = L.geoJSON(data, {
+        style: {
+          ...boundaryOptions,
+          renderer,
+          fill: false,
+          color: "#1d4ed8",
+          weight: 2,
+          opacity: 0.85,
+        },
+        interactive: false,
+        attribution: `Contorno: <a href="${metadata.source.url}">IBGE ${metadata.boundaryYear}</a>`,
+      });
+      group?.remove();
+      group = L.layerGroup([maskLayer, borderLayer]).addTo(map);
+      shownDetail = metadata.detail;
+    };
+
+    // The tiles wait for the light outline. If it is slow or stalls without
+    // failing, the base map shows anyway and the mask comes in when it does.
     const timeout = window.setTimeout(onSettled, boundaryTimeout);
-
-    fetch("/brazil.geojson", { signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) throw new Error("Unable to load Brazil boundary");
-        return response.json() as Promise<BoundaryFeature>;
-      })
-      .then((geojson) => {
-        if (controller.signal.aborted) return;
-        const worldOuterRing = [
-          [-180, -90],
-          [-180, 90],
-          [180, 90],
-          [180, -90],
-          [-180, -90],
-        ];
-        const holes =
-          geojson.geometry.type === "MultiPolygon"
-            ? geojson.geometry.coordinates.map((polygon) => polygon[0])
-            : [geojson.geometry.coordinates[0]];
-
-        const maskGeoJson: BoundaryFeature = {
-          type: "Feature",
-          properties: {},
-          geometry: {
-            type: "Polygon",
-            coordinates: [worldOuterRing, ...holes],
-          },
-        };
-
-        if (!map.getPane(boundaryPane)) {
-          const pane = map.createPane(boundaryPane);
-          pane.style.zIndex = "350";
-          pane.style.pointerEvents = "none";
-        }
-        const renderer = new FollowingCanvas({ pane: boundaryPane });
-        const maskLayer = L.geoJSON(maskGeoJson, {
-          style: {
-            ...boundaryOptions,
-            renderer,
-            fillColor: "#d6e4f0",
-            fillOpacity: 1,
-            stroke: false,
-          },
-          interactive: false,
-        });
-
-        const borderLayer = L.geoJSON(geojson, {
-          style: {
-            ...boundaryOptions,
-            renderer,
-            fill: false,
-            color: "#1d4ed8",
-            weight: 2,
-            opacity: 0.85,
-          },
-          interactive: false,
-        });
-
-        group = L.layerGroup([renderer, maskLayer, borderLayer]).addTo(map);
+    fetchBoundary("low", controller.signal)
+      .then((boundary) => {
+        show(boundary);
         onSettled();
       })
       .catch(() => {
@@ -186,10 +215,23 @@ function BrazilBorderLayer({ onSettled }: { onSettled: () => void }) {
       })
       .finally(() => window.clearTimeout(timeout));
 
+    // A failure keeps the light outline, which is only a few pixels off.
+    const loadHighDetail = () => {
+      if (isHighRequested || map.getZoom() < highDetailZoom) return;
+      isHighRequested = true;
+      fetchBoundary("high", controller.signal)
+        .then(show)
+        .catch(() => {});
+    };
+    loadHighDetail();
+    map.on("zoomend", loadHighDetail);
+
     return () => {
       window.clearTimeout(timeout);
       controller.abort();
+      map.off("zoomend", loadHighDetail);
       group?.remove();
+      renderer.remove();
     };
   }, [map, onSettled]);
 
