@@ -125,6 +125,19 @@ async function fetchBoundary(
   return (await response.json()) as BoundaryResponse;
 }
 
+/**
+ * Credit for the outline. Leaflet renders attributions as HTML, so the values
+ * from the response are escaped and only an http(s) link is kept.
+ */
+function boundaryAttribution({ source, boundaryYear }: BoundaryResponse["metadata"]) {
+  const escape = (text: string) =>
+    text.replace(/[&<>"']/g, (character) => `&#${character.charCodeAt(0)};`);
+  const label = `IBGE ${escape(String(boundaryYear))}`;
+  return /^https?:\/\//.test(source.url)
+    ? `Contorno: <a href="${escape(source.url)}">${label}</a>`
+    : `Contorno: ${label}`;
+}
+
 /** The world with Brazil cut out, so only the country shows the tiles. */
 function maskOf(feature: BoundaryFeature): BoundaryFeature {
   const worldOuterRing = [
@@ -192,7 +205,7 @@ function BrazilBorderLayer({ onSettled }: { onSettled: () => void }) {
           opacity: 0.85,
         },
         interactive: false,
-        attribution: `Contorno: <a href="${metadata.source.url}">IBGE ${metadata.boundaryYear}</a>`,
+        attribution: boundaryAttribution(metadata),
       });
       group?.remove();
       group = L.layerGroup([maskLayer, borderLayer]).addTo(map);
