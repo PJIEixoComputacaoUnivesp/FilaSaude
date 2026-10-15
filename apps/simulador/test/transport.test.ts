@@ -54,6 +54,30 @@ test('envia o mesmo corpo e repete com novo timestamp após 429', async () => {
   assert.deepEqual(waits, [2000]);
 });
 
+test('respeita Retry-After mesmo acima do limite do backoff', async () => {
+  const waits: number[] = [];
+  let calls = 0;
+  const fetchImpl: typeof fetch = async () => {
+    calls += 1;
+    return calls === 1
+      ? new Response(null, { status: 429, headers: { 'Retry-After': '60' } })
+      : new Response(null, { status: 202 });
+  };
+
+  await sendSnapshot(snapshot, {
+    apiUrl: 'http://localhost:3000',
+    sourceId: 'occupancy-feed',
+    sourceSecret: 'test-secret',
+    maxDelayMs: 30_000,
+    sleep: async (milliseconds) => {
+      waits.push(milliseconds);
+    },
+    fetchImpl,
+  });
+
+  assert.deepEqual(waits, [60_000]);
+});
+
 test('repete falhas transitórias com backoff e não repete erros 4xx', async () => {
   let calls = 0;
   const waits: number[] = [];

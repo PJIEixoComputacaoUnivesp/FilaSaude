@@ -86,7 +86,7 @@ export async function sendSnapshot(
 
     await sleep(
       response.status === 429
-        ? retryAfterDelay(response, maxDelayMs)
+        ? retryAfterDelay(response)
         : backoffDelay(attempt, baseDelayMs, maxDelayMs),
     );
   }
@@ -133,10 +133,10 @@ function isRetryable(status: number): boolean {
   return status === 429 || status >= 500;
 }
 
-function retryAfterDelay(response: Response, maxDelayMs: number): number {
+function retryAfterDelay(response: Response): number {
   const value = response.headers.get('retry-after');
   const seconds = value && /^\d+$/.test(value) ? Number(value) : 1;
-  return Math.min(seconds * 1000, maxDelayMs);
+  return seconds * 1000;
 }
 
 function backoffDelay(
