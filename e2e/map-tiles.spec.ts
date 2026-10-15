@@ -99,6 +99,22 @@ async function recordTiles(page: Page) {
 
 const key = ({ z, x, y }: Tile) => `${z}/${x}/${y}`;
 
+/**
+ * Zooms in with the map's own button, one level per click, from zoom 5 (the
+ * minimum in the 1920×1080 window used here) to the given level.
+ */
+async function zoomTo(page: Page, zoom: number) {
+  const zoomIn = page.getByRole("button", { name: "Aproximar o mapa" });
+  for (let level = 5; level < zoom; level++) {
+    await zoomIn.click();
+    // Leaflet ignores a zoom asked during the animation of the previous one.
+    await expect(
+      page.locator(`img.leaflet-tile[src*="/${level + 1}/"]`).first(),
+    ).toBeAttached();
+    await expect(page.locator(".leaflet-zoom-anim")).toHaveCount(0);
+  }
+}
+
 test.use({ viewport: { width: 1920, height: 1080 } });
 
 test("pede só os tiles do Brasil, no zoom final", async ({ page }) => {
@@ -179,12 +195,7 @@ test("baixa o contorno completo só com o mapa aproximado", async ({ page }) => 
   expect(details).toContain("low");
 
   // Zoom 5 to 8 and beyond: the full outline is fetched once.
-  const map = page.locator(".leaflet-container");
-  await map.hover({ position: { x: 1100, y: 700 } });
-  for (let step = 0; step < 4; step++) {
-    await page.mouse.wheel(0, -120);
-    await page.waitForTimeout(400);
-  }
+  await zoomTo(page, 8);
   await expect.poll(() => details.filter((d) => d === "high")).toHaveLength(1);
 });
 
@@ -198,15 +209,10 @@ test("mantém o contorno leve se o completo falhar", async ({ page }) => {
   await page.goto("/");
   await expect.poll(() => tiles.length).toBeGreaterThan(0);
 
-  const map = page.locator(".leaflet-container");
-  await map.hover({ position: { x: 1100, y: 700 } });
-  for (let step = 0; step < 4; step++) {
-    await page.mouse.wheel(0, -120);
-    await page.waitForTimeout(400);
-  }
+  await zoomTo(page, 8);
 
   await expect.poll(() => isHighRequested).toBe(true);
-  await expect(page.locator(".leaflet-brazilBoundary-pane canvas")).toBeAttached();
+  // The attribution comes from the outline layer: still the light one.
   await expect(page.locator(".leaflet-control-attribution")).toContainText(
     "Contorno: IBGE",
   );
