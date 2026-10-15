@@ -84,6 +84,21 @@ describe('simplifyRing', () => {
   });
 });
 
+describe('simplifyRing on a flat ring', () => {
+  it('keeps a ring whose positions are all on one line', () => {
+    const flat: Position[] = [
+      [0, 0],
+      [0.001, 0],
+      [0.002, 0],
+      [0.003, 0],
+      [0.001, 0],
+      [0, 0],
+    ];
+
+    expect(simplifyRing(flat, 0.01)).toEqual(flat);
+  });
+});
+
 describe('simplifyPolygons', () => {
   it('returns closed rings with at least four positions', () => {
     const hole: Position[] = [

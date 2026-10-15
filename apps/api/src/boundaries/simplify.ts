@@ -88,12 +88,15 @@ export function simplifyRing(
   let apex = 1;
   let apexDistance = -1;
   for (let i = 1; i < ring.length - 1; i++) {
+    if (i === split) continue;
     const distance = segmentDistanceSquared(ring[i]!, start, ring[split]!);
     if (distance > apexDistance) {
       apex = i;
       apexDistance = distance;
     }
   }
+  // Every position on one line: there is no triangle to keep.
+  if (apexDistance <= 0) return [...ring];
   const [first, second] = apex < split ? [apex, split] : [split, apex];
   return [start, ring[first]!, ring[second]!, start];
 }
