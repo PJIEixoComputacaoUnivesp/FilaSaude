@@ -39,6 +39,14 @@ export class HealthUnitEntity {
   @Column({ name: 'postal_code', type: 'varchar', length: 8, nullable: true })
   postalCode!: string | null;
 
+  @Column({
+    name: 'municipality_code',
+    type: 'varchar',
+    length: 6,
+    nullable: true,
+  })
+  municipalityCode!: string | null;
+
   @Column({ type: 'varchar', length: 128 })
   city!: string;
 

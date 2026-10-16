@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { signSnapshot } from '../src/signing.ts';
-import { sendSnapshot } from '../src/transport.ts';
+import {
+  sendSnapshot,
+  SnapshotTransportNetworkError,
+} from '../src/transport.ts';
 import type { OccupancySnapshot } from '../src/simulation.ts';
 
 const snapshot: OccupancySnapshot = {
@@ -145,6 +148,28 @@ test('repete falhas transitórias com backoff e não repete erros 4xx', async ()
     /status 422/,
   );
   assert.equal(calls, 1);
+});
+
+test('preserva tentativas ao esgotar falhas de rede', async () => {
+  await assert.rejects(
+    sendSnapshot(snapshot, {
+      apiUrl: 'http://localhost:3000',
+      sourceId: 'occupancy-feed',
+      sourceSecret: 'test-secret',
+      maxAttempts: 3,
+      sleep: async () => undefined,
+      fetchImpl: async () => {
+        throw new Error('timeout');
+      },
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof SnapshotTransportNetworkError);
+      assert.equal(error.attempts, 3);
+      return /Não foi possível enviar o webhook após 3 tentativas/.test(
+        error.message,
+      );
+    },
+  );
 });
 
 test('exige o segredo da fonte antes de enviar', async () => {

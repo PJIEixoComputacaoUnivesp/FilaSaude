@@ -100,8 +100,8 @@ pnpm --filter @filasaude/simulador dev \
 As fontes sintéticas precisam estar configuradas no `WEBHOOK_SOURCE_CONFIG`,
 com o mesmo segredo local e com os CNES que cada fonte poderá atualizar. O
 particionamento das unidades entre fontes é determinístico para a mesma seed.
-O cenário imprime relatórios parciais por ciclo e um relatório JSON final com
-eventos gerados, respostas, retries e percentis de latência. Para permitir um
+O cenário imprime relatórios parciais conforme `--report-interval-seconds` e um
+relatório JSON final com eventos gerados, respostas, retries e percentis de latência. Para permitir um
 ambiente controlado não local, use `--allow-nonlocal-target` explicitamente.
 
 Há dois modos de duração. Com um valor positivo em `--duration-seconds`, a
@@ -164,7 +164,9 @@ parâmetros são:
 | `--source-ids` | `SIMULATOR_SOURCE_IDS` | fonte única | Fontes sintéticas separadas por vírgula |
 | `--duration-seconds` | `SIMULATOR_DURATION_SECONDS` | `300` | Duração; `0` mantém o `national` até cancelamento |
 | `--concurrency` | `SIMULATOR_CONCURRENCY` | `10` | Envios simultâneos máximos |
+| `--report-interval-seconds` | `SIMULATOR_REPORT_INTERVAL_SECONDS` | `10` | Intervalo dos relatórios parciais |
 | `--allow-load-test` | `SIMULATOR_ALLOW_LOAD_TEST` | `false` | Autoriza a carga nacional |
+| `--allow-nonlocal-target` | `SIMULATOR_ALLOW_NONLOCAL_TARGET` | `false` | Permite destino não local em ambiente controlado |
 
 As unidades são selecionadas uma vez no início da execução e permanecem fixas.
 O estado é mantido somente em memória e é perdido ao encerrar o processo.

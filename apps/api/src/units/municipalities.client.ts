@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import snapshot from './units.snapshot.json' with { type: 'json' };
 import type { BrazilianState } from './states.js';
 
 const IBGE_API_URL = 'https://servicodados.ibge.gov.br/api/v1/localidades';
@@ -11,8 +12,26 @@ function isRecord(value: unknown): value is JsonRecord {
 
 @Injectable()
 export class MunicipalitiesClient {
+  private readonly logger = new Logger(MunicipalitiesClient.name);
+
   /** Fetches municipality names of one state, or of the whole country when state is null. */
   async fetchNames(state: BrazilianState | null): Promise<Map<string, string>> {
+    try {
+      return await this.fetchRemote(state);
+    } catch (error: unknown) {
+      const fallback = this.fallbackNames(state);
+      if (fallback.size === 0) throw error;
+      const reason = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `IBGE municipalities unavailable; using embedded names for ${state?.abbreviation ?? 'Brazil'}: ${reason}`,
+      );
+      return fallback;
+    }
+  }
+
+  private async fetchRemote(
+    state: BrazilianState | null,
+  ): Promise<Map<string, string>> {
     const path = state
       ? `/estados/${state.abbreviation}/municipios`
       : '/municipios';
@@ -46,5 +65,13 @@ export class MunicipalitiesClient {
     }
 
     return municipalities;
+  }
+
+  private fallbackNames(state: BrazilianState | null): Map<string, string> {
+    return new Map(
+      snapshot
+        .filter((unit) => !state || unit.address.state === state.abbreviation)
+        .map((unit) => [unit.address.municipalityCode, unit.address.city]),
+    );
   }
 }
