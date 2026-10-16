@@ -1,6 +1,7 @@
 import { HealthUnitEntity } from '../database/entities/health-unit.entity.js';
 import type { HealthUnitRepository } from '../database/repositories/health-unit.repository.js';
 import { GeoSampaClient } from './geosampa.client.js';
+import { brazilianStates } from './states.js';
 import { UnitsService } from './units.service.js';
 import type { UnitLocationsService } from './unit-locations.service.js';
 import type { HealthUnit } from './units.types.js';
@@ -58,6 +59,14 @@ const storedEntity = Object.assign(new HealthUnitEntity(), {
   ingestedAt: new Date('2026-09-21T12:00:00Z'),
   isActive: true,
 });
+
+const nationalStoredEntities = brazilianStates().map(
+  ({ abbreviation }, index) =>
+    Object.assign(new HealthUnitEntity(), storedEntity, {
+      cnesCode: String(index).padStart(7, '0'),
+      state: abbreviation,
+    }),
+);
 
 const passthrough = {
   apply: vi.fn((units: HealthUnit[]) =>
@@ -204,17 +213,32 @@ describe('UnitsService', () => {
   });
 
   it('returns all country units for ALL/BR', async () => {
-    const findActive = vi.fn().mockResolvedValue([storedEntity]);
+    const findActive = vi.fn().mockResolvedValue(nationalStoredEntities);
     const repository = { findActive } as unknown as HealthUnitRepository;
     const geoSampaClient = createGeoSampaClient();
     const service = createService(repository, passthrough, geoSampaClient);
 
     const response = await service.findAll('ALL');
-    expect(response.data).toEqual([liveUnit]);
+    expect(response.data).toHaveLength(nationalStoredEntities.length);
     expect(response.metadata.state).toBe('BR');
     expect(response.metadata.dataOrigin).toBe('live');
     expect(findActive).toHaveBeenCalledWith(undefined);
     expect(geoSampaClient.enrichLocations).not.toHaveBeenCalled();
+  });
+
+  it('uses the fallback snapshot when the stored national catalog is partial', async () => {
+    const findActive = vi.fn().mockResolvedValue([storedEntity]);
+    const repository = { findActive } as unknown as HealthUnitRepository;
+    const service = createService(repository, passthrough);
+
+    const response = await service.findAll('BR');
+
+    expect(response.data.length).toBeGreaterThan(1_000);
+    expect(response.metadata).toMatchObject({
+      state: 'BR',
+      dataOrigin: 'fallback',
+      isStale: true,
+    });
   });
 
   it('keeps validated locations when GeoSampa is unavailable', async () => {
@@ -488,12 +512,12 @@ describe('UnitsService', () => {
     });
 
     it.each([
-      ['everything loaded', true, true, 6 * 60],
-      ['the history could not be fully loaded', true, false, 60],
-      ['the municipality boundaries are unavailable', false, true, 5],
+      ['everything loaded', true, true],
+      ['the history could not be fully loaded', true, false],
+      ['the municipality boundaries are unavailable', false, true],
     ])(
-      'rechecks at the right time when %s',
-      async (_label, validated, historyComplete, minutes) => {
+      'rechecks the fallback soon when %s',
+      async (_label, validated, historyComplete) => {
         vi.useFakeTimers();
         try {
           const apply = vi.fn((units: HealthUnit[]) =>
@@ -504,7 +528,7 @@ describe('UnitsService', () => {
           } as unknown as UnitLocationsService);
 
           await service.findAll('BR');
-          vi.advanceTimersByTime((minutes - 1) * 60 * 1000);
+          vi.advanceTimersByTime(4 * 60 * 1000);
           await service.findAll('BR');
           expect(apply).toHaveBeenCalledTimes(1);
 

@@ -5,6 +5,7 @@ import { HealthUnitRepository } from '../database/repositories/health-unit.repos
 import { GeoSampaClient } from './geosampa.client.js';
 import { UnitLocationsService } from './unit-locations.service.js';
 import {
+  brazilianStates,
   NationalStateCode,
   parseState,
   type BrazilianState,
@@ -18,6 +19,7 @@ const UNVALIDATED_CACHE_TTL_MS = 5 * 60 * 1000;
 // coordinate, which keep the municipality center meanwhile, so retrying it
 // does not justify refetching the whole list every few minutes.
 const INCOMPLETE_HISTORY_CACHE_TTL_MS = 60 * 60 * 1000;
+const FALLBACK_CACHE_TTL_MS = 5 * 60 * 1000;
 const FALLBACK_RETRIEVED_AT = '2026-09-24T00:00:00-03:00';
 export const CNES_SOURCE_URL =
   'https://apidadosabertos.saude.gov.br/cnes/estabelecimentos';
@@ -231,6 +233,21 @@ export class UnitsService {
           `Ignored ${rows.length - units.length} stored unit(s) without municipality code`,
         );
       }
+      if (state.abbreviation === NationalStateCode.Brazil) {
+        const loadedStates = new Set(
+          units.map((unit) => unit.address.state),
+        );
+        const missingStates = brazilianStates().filter(
+          ({ abbreviation }) => !loadedStates.has(abbreviation),
+        );
+        if (missingStates.length > 0) {
+          throw new Error(
+            `database is missing ${missingStates.length} state catalog(s): ${missingStates
+              .map(({ abbreviation }) => abbreviation)
+              .join(', ')}`,
+          );
+        }
+      }
       if (units.length === 0) {
         throw new Error('database returned no public urgent care units');
       }
@@ -296,7 +313,7 @@ export class UnitsService {
         this.remember(
           state.abbreviation,
           generation,
-          cacheTtl(located),
+          FALLBACK_CACHE_TTL_MS,
           response,
         );
         return response;
