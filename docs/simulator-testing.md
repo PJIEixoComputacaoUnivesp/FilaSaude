@@ -1,14 +1,19 @@
 # Roteiro de teste do `occupancy-feed`
 
-Este roteiro valida o fluxo disponível atualmente:
+Este roteiro valida o gerador nacional da PR #105 e sua integração ao site na
+PR #104:
 
 ```text
-occupancy-feed → assinatura HMAC → API → validação → inbox PostgreSQL
+fontes nacionais → HMAC → webhook → inbox → processador → ocupação atual/histórico → site
 ```
 
-O teste ainda não valida a exibição de ocupação no frontend. Nesta etapa, a API
-guarda os snapshots na inbox, mas ainda não os transforma em ocupação atual ou
-histórico público. Essa parte depende das issues [#78](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/78) e [#79](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/79).
+O agendamento de eventos é independente dos visitantes. UF, busca, localização
+e camada de ocupação mudam somente as consultas e a apresentação de cada pessoa.
+Os dados de ocupação continuam sintéticos e identificados como simulação.
+
+As etapas iniciais mantêm os testes locais de assinatura e ingestão com poucos
+CNES. A seção 8 cobre a geração nacional; para exibir seus resultados, ligue
+`OCCUPANCY_SIMULATION_ENABLED=true` na API e mantenha o processador ativo.
 
 ## Pré-requisitos
 
@@ -268,8 +273,9 @@ node --experimental-strip-types apps/simulador/src/main.ts `
 ```
 
 O terminal exibe relatórios parciais e um relatório final. O teste mede a
-ingestão do simulador até a inbox. Processamento, estado atual e backlog
-dependem da issue #78. Não execute este cenário contra produção.
+ingestão do simulador até a inbox. Para validar o processamento e a interface,
+siga a seção de integração abaixo. Testes de carga devem usar ambiente isolado;
+a demonstração publicada tem execução contínua configurada pelo operador.
 
 O `--interval-seconds` é uma referência para a cadência de cada unidade, e não
 um ciclo em que todas enviam juntas. O simulador cria uma agenda determinística
@@ -463,16 +469,11 @@ Este roteiro confirma:
 - persistência na inbox;
 - encerramento gracioso.
 
-Este roteiro ainda não confirma:
-
-- ocupação atual em `GET /units`;
-- histórico de ocupação;
-- atualização do mapa ou da lista;
-- polling ou SSE;
-- rollback de dados processados.
-
-Esses comportamentos dependem do processamento de ocupação da API e das
-respectivas entregas do frontend.
+As métricas da CLI, isoladamente, não confirmam o tempo até a ocupação atual,
+o histórico nem a atualização do navegador. A seção de integração ao final
+explica como verificar essas etapas. Ocupação usa `GET /occupancy`, separada
+do catálogo de `GET /units`; rollback de dados processados continua fora do escopo.
+O stream SSE e sua recuperação são descritos no contrato abaixo.
 
 ## 11. Encerramento do ambiente
 
@@ -484,3 +485,32 @@ docker compose down
 
 Não use `docker compose down -v` sem a intenção explícita de remover o volume
 local do PostgreSQL e todos os dados nele armazenados.
+
+## Integração da carga nacional com a interface
+
+1. Prepare as fontes nacionais da seção 8, com a mesma ordem de IDs, seed e
+   autorização por CNES nos dois processos. Se o catálogo persistido diferir do
+   snapshot, use o resultado atual de `GET /units?state=ALL` para gerar as partições.
+2. Aplique as migrations da API e ligue `OCCUPANCY_SIMULATION_ENABLED=true`.
+   Mantenha `OCCUPANCY_PROCESSOR_ENABLED=true` (padrão).
+3. Execute `national` com `--duration-seconds 0`, mantendo a autorização de carga
+   explícita. O Compose já configura essa execução no perfil `simulation`.
+4. Aguarde os primeiros eventos distribuídos no tempo e consulte `GET /occupancy`.
+   Verifique unidades de UFs distintas, marca `simulated: true`, atualização e fonte.
+5. No site, ligue a camada e alterne entre UFs, mapa, lista e detalhe. Os filtros
+   devem preservar o restante do fluxo e as fontes continuam enviando sem visitas.
+6. Desligue a camada e confira que a inbox e a projeção continuam recebendo dados.
+   Não existe controle público para interromper ou alterar o gerador nacional.
+7. Em ambiente isolado, pare uma fonte e aguarde o limite de atualização para
+   verificar "sem confirmação recente". Não altere a projeção manualmente.
+
+Para testar a apresentação local sem o PowerShell, siga a
+[skill da stack local](../.agents/skills/run-local-stack/SKILL.md).
+
+As métricas do simulador medem o aceite no webhook, não o atraso até a projeção
+ou o navegador. O processamento roda a cada 2 segundos; os eventos SSE levam apenas as unidades
+alteradas ao site, sem polling ou novo GET nacional por atualização. A consulta
+REST completa ocorre na carga inicial e na reconexão. Valide no painel de rede
+uma conexão `occupancy/stream` ativa, eventos `occupancy.updated` e ausência de
+GETs repetidos de `occupancy`. O detalhe consulta o histórico quando seu CNES
+muda. Veja o [contrato SSE](contracts/occupancy-stream-v1.md).

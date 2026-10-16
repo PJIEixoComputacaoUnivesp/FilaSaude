@@ -1,6 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { NationalStateCode } from "./brazilianStates";
 import { LiveStatus } from "./LiveStatus";
+import { UnitOccupancySection } from "./UnitOccupancySection";
 import { UnitSources } from "./UnitSources";
 import { unitListLink, unitMapLink } from "./unitLinks";
 import {
@@ -138,6 +139,10 @@ export function UnitDetailPage() {
               <dd className="mt-1">{formatPosition(unit)}</dd>
             </div>
           </dl>
+
+          {/* Keyed: another unit starts from an empty history, never with
+              the previous unit's chart. */}
+          <UnitOccupancySection key={unit.id} unitCnes={unit.id} />
 
           <UnitSources
             sources={unit.sources}

@@ -45,7 +45,12 @@ export class NationalLoadRunner {
     this.send =
       options.send ??
       ((snapshot, sourceId, signal) =>
-        sendSnapshot(snapshot, { ...config, sourceId, signal }));
+        sendSnapshot(snapshot, {
+          ...config,
+          sourceId,
+          sourceSecret: config.sourceSecrets?.[sourceId] ?? config.sourceSecret,
+          signal,
+        }));
     this.onReport = options.onReport;
   }
 

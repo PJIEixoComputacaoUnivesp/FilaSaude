@@ -1,3 +1,4 @@
+import { OCCUPANCY_EXPLANATION, SIMULATION_NOTICE } from "./occupancy";
 import { Link } from "react-router-dom";
 import { usePageHeading } from "./usePageHeading";
 import { useSearchFilters } from "./useSearchFilters";
@@ -29,14 +30,33 @@ export function AboutPage() {
           De onde vêm as informações
         </h2>
         <p className="text-base leading-relaxed text-slate-700">
-          Os dados vêm do Cadastro Nacional de Estabelecimentos de Saúde
-          (CNES). Cada unidade mostra a fonte e a data da última atualização
-          registrada no cadastro oficial.
+          Os dados vêm do Cadastro Nacional de Estabelecimentos de Saúde (CNES).
+          Cada unidade mostra a fonte e a data da última atualização registrada
+          no cadastro oficial.
         </p>
         <p className="text-base leading-relaxed text-slate-700">
           Quando a consulta direta ao CNES não é usada, exibimos uma cópia de
           segurança. Nesse caso, um aviso indica até que data ela está
           atualizada. Endereço e horário podem ter mudado desde então.
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-3" aria-labelledby="sobre-leitos">
+        <h2 id="sobre-leitos" className="text-xl font-bold text-slate-900">
+          O que significa a ocupação simulada de leitos
+        </h2>
+        <p className="text-base leading-relaxed text-slate-700">
+          Quando disponível, essa camada apresenta uma demonstração acadêmica.
+          As capacidades e quantidades ocupadas são geradas pelo simulador; não
+          vêm do cadastro de leitos de cada unidade. {SIMULATION_NOTICE}
+        </p>
+        <p className="text-base leading-relaxed text-slate-700">
+          {OCCUPANCY_EXPLANATION} O detalhe mostra os valores por categoria. As
+          faixas de cor são convenções da simulação.
+        </p>
+        <p className="text-base leading-relaxed text-slate-700">
+          Esta entrega não informa pessoas em espera, pessoas em atendimento ou
+          atendimentos concluídos.
         </p>
       </section>
 

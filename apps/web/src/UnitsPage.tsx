@@ -3,6 +3,9 @@ import { Link, useLocation } from "react-router-dom";
 import { BrazilianStateSelect } from "./BrazilianStateSelect";
 import { NationalStateCode, stateName } from "./brazilianStates";
 import { LiveStatus } from "./LiveStatus";
+import { OccupancyBadge } from "./OccupancyBadge";
+import { OccupancyControls } from "./OccupancyControls";
+import type { UnitOccupancy } from "./occupancy";
 import { UnitSources } from "./UnitSources";
 import {
   dataOriginNotice,
@@ -17,6 +20,7 @@ import {
   type UnitsResponse,
 } from "./units";
 import { usePageHeading } from "./usePageHeading";
+import { useOccupancyLayer } from "./useOccupancyLayer";
 import { useSearchFilters } from "./useSearchFilters";
 import { useUnits } from "./useUnits";
 import { unitDetailLink, unitMapLink } from "./unitLinks";
@@ -45,10 +49,12 @@ function DataNotice({ metadata }: { metadata: UnitsResponse["metadata"] }) {
 
 function UnitCard({
   unit,
+  occupancy,
   headingRef,
   search,
 }: {
   unit: HealthUnit;
+  occupancy?: UnitOccupancy;
   headingRef?: Ref<HTMLHeadingElement>;
   search: string;
 }) {
@@ -89,6 +95,16 @@ function UnitCard({
           <dt className="font-semibold text-slate-900">Localização no mapa</dt>
           <dd>{formatPosition(unit)}</dd>
         </div>
+        {/* One more field, after the registry data: it must not stand out
+            as a highlight of the units in the simulation. */}
+        {occupancy && (
+          <div>
+            <dt className="font-semibold text-slate-900">Ocupação simulada de leitos</dt>
+            <dd className="mt-1">
+              <OccupancyBadge occupancy={occupancy} />
+            </dd>
+          </div>
+        )}
       </dl>
 
       <UnitSources
@@ -120,10 +136,12 @@ function UnitCard({
 /** Cards with progressive loading ("Mostrar mais"). */
 function UnitResults({
   units,
+  occupancy,
   focusedUnitId,
   search,
 }: {
   units: HealthUnit[];
+  occupancy: ReadonlyMap<string, UnitOccupancy>;
   focusedUnitId?: string;
   search: string;
 }) {
@@ -182,6 +200,7 @@ function UnitResults({
           <UnitCard
             key={unit.id}
             unit={unit}
+            occupancy={occupancy.get(unit.id)}
             search={search}
             headingRef={
               unit.id === focusedUnitId
@@ -225,6 +244,7 @@ export function UnitsPage() {
   const focusedUnitId = /^#unit-(\d+)$/.exec(hash)?.[1];
   const searchRef = useRef<HTMLInputElement>(null);
   const { state, retry } = useUnits(stateCode);
+  const { byUnit, simulatedFilter, setOnlySimulated } = useOccupancyLayer();
 
   // Sorted once per response; filtering keeps that order.
   const sortedUnits = useMemo(
@@ -232,10 +252,12 @@ export function UnitsPage() {
     [state],
   );
   const trimmedQuery = query.trim();
-  const filteredUnits = useMemo(
-    () => filterUnits(sortedUnits, trimmedQuery),
-    [sortedUnits, trimmedQuery],
-  );
+  const filteredUnits = useMemo(() => {
+    const matching = filterUnits(sortedUnits, trimmedQuery);
+    return simulatedFilter
+      ? matching.filter((unit) => simulatedFilter.has(unit.id))
+      : matching;
+  }, [sortedUnits, trimmedQuery, simulatedFilter]);
 
   const countText = formatCount(
     filteredUnits.length,
@@ -303,6 +325,10 @@ export function UnitsPage() {
         </label>
       </form>
 
+      <div className="mb-6 max-w-3xl empty:hidden md:mb-8">
+        <OccupancyControls />
+      </div>
+
       <LiveStatus message={liveMessage} />
 
       {/* Reserves the height of a results screen so the footer does not
@@ -337,10 +363,23 @@ export function UnitsPage() {
             {filteredUnits.length === 0 ? (
               <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-700">
                 <p>
-                  Nenhuma unidade corresponde à busca. Tente outro nome, cidade
-                  ou bairro.
+                  {simulatedFilter
+                    ? "Nenhuma unidade com ocupação simulada de leitos corresponde a este filtro."
+                    : "Nenhuma unidade corresponde à busca. Tente outro nome, cidade ou bairro."}
                 </p>
-                {query.trim() !== "" && (
+                {simulatedFilter && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOnlySimulated(false);
+                      searchRef.current?.focus();
+                    }}
+                    className="mt-4 min-h-11 rounded-xl border border-slate-300 bg-white px-6 py-2 font-semibold text-slate-800 hover:border-fila-blue hover:text-fila-blue"
+                  >
+                    Mostrar todas as unidades
+                  </button>
+                )}
+                {!simulatedFilter && query.trim() !== "" && (
                   <button
                     type="button"
                     onClick={() => {
@@ -359,6 +398,7 @@ export function UnitsPage() {
             ) : (
               <UnitResults
                 units={filteredUnits}
+                occupancy={byUnit}
                 focusedUnitId={focusedUnitId}
                 search={search}
               />

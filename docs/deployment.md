@@ -122,6 +122,49 @@ GitHub não têm IP de saída fixo. O servidor aceita somente autenticação por
 chave e não permite login de root. Para restringir também a origem da conexão,
 use um runner com IP fixo e atualize `ssh_allowed_cidrs`.
 
+### Ocupação simulada nacional (opcional)
+
+A demonstração fica desligada por padrão. Para ligá-la, configure a variável de
+Actions `OCCUPANCY_SIMULATION_ENABLED=true` e faça um novo deploy. A API publica
+`GET /api/occupancy`, o histórico e `GET /api/occupancy/stream` por SSE; `deploy.sh` inicia o serviço `simulator` no
+perfil `simulation`, com `national` e duração `0` (execução contínua).
+
+Antes do deploy, prepare `WEBHOOK_SOURCE_CONFIG` com as fontes sintéticas e os
+CNES atribuídos a cada uma pelo hash da seed, conforme o
+[roteiro nacional](simulator-testing.md#8-carga-nacional-controlada). Configure
+`SIMULATOR_SOURCE_IDS` nas variáveis de Actions com os mesmos IDs e na mesma
+ordem. O workflow copia essa lista ao ambiente do servidor; o simulador lê o
+segredo de cada fonte do mesmo `WEBHOOK_SOURCE_CONFIG` da API. Não é necessário
+um segundo secret para o simulador. O fallback de ID único `occupancy-feed`
+serve apenas a catálogos pequenos: as 1.793 unidades do teste nacional usam 24
+fontes e cadência média de 120 segundos por unidade para respeitar o limite por
+fonte. Revise as partições e a quantidade de fontes quando o catálogo mudar.
+
+- O simulador usa a rede interna do Compose. A autorização de execução nacional
+  e de destino interno é explícita no serviço.
+- O serviço inicia após a versão estar saudável e fora do `--wait`: se falhar,
+  o site continua no ar e o deploy não é revertido. Verifique também os logs do
+  simulador, o avanço da projeção e os eventos aceitos; saúde da API não comprova
+  a atualização da ocupação.
+- Para desligar a demonstração, remova a flag (ou use outro valor) e faça novo
+  deploy. A API oculta as consultas públicas e o deploy remove o simulador.
+  O processador da inbox permanece independente da visualização pública.
+- Não há seletor público nem endpoint de alteração de cenários. A posição,
+  busca, UF e camada de cada visitante não alteram a produção nacional de eventos.
+  Cenários de duplicidade e atraso são ferramentas de teste operadas pela CLI.
+
+O stream usa um listener PostgreSQL por instância da API, compartilhado entre
+os visitantes; considere essa conexão no orçamento de `max_connections` do banco.
+Notificações são entregues após commit e enviam apenas as unidades alteradas.
+REST completo fica para carga inicial/reconexão. O Nginx desliga buffering nessa
+rota e os heartbeats SSE mantêm o fluxo aberto. Consulte o
+[contrato SSE](contracts/occupancy-stream-v1.md), que entrega o item da #78 e o
+consumo previsto na #79.
+
+Os dados são sintéticos e identificados como simulação. O histórico de 24 horas,
+a retenção de 168 horas e a marca de atualização vencida após 20 minutos continuam
+configuráveis pelas variáveis `OCCUPANCY_*` de `.env.example`.
+
 ### Notificações no Discord (opcional)
 
 O workflow `Deploy` avisa o resultado (sucesso, falha ou cancelamento) em um

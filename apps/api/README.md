@@ -78,8 +78,17 @@ quando a cópia de segurança está sendo exibida.
 
 Para executar uma fonte sintética contra esta API, use o
 [README do simulador](../../apps/simulador/README.md). O webhook grava os
-eventos recebidos na inbox, mas ainda não os transforma em ocupação atual ou em
-histórico público.
+eventos recebidos na inbox. Um processador independente aplica a ocupação atual
+por CNES e mantém o histórico dos eventos processados. Com
+`OCCUPANCY_SIMULATION_ENABLED=true`, `GET /occupancy` e
+`GET /units/:cnes/occupancy-history` oferecem consultas públicas, com fonte,
+atualização e marca explícita de simulação. O processador recebe dados nacionais
+sem depender de visitas, UF ou localização; a flag pública controla somente a
+exposição dessas consultas. `GET /occupancy/stream` transmite via SSE somente as
+unidades alteradas, após commit, usando PostgreSQL LISTEN/NOTIFY entre instâncias.
+A reconexão refaz o snapshot REST; não há replay durável. Consulte o
+[contrato SSE](../../docs/contracts/occupancy-stream-v1.md) (issues #78 e #79).
+Não há endpoint público para mudar os cenários.
 
 ### Posição das unidades
 

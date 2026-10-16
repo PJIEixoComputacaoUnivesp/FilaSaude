@@ -35,6 +35,9 @@ services:
       # Optional. Without a valid list the admin endpoints do not exist (404).
       ADMIN_API_TOKENS: ${ADMIN_API_TOKENS:-}
       WEBHOOK_SOURCE_CONFIG: ${WEBHOOK_SOURCE_CONFIG:?WEBHOOK_SOURCE_CONFIG is required}
+      # Optional. "true" publishes the simulated occupancy to the site; the
+      # deploy also starts the simulator (see deploy.sh).
+      OCCUPANCY_SIMULATION_ENABLED: ${OCCUPANCY_SIMULATION_ENABLED:-false}
     expose:
       - "3000"
     healthcheck:
@@ -66,6 +69,31 @@ services:
       timeout: 3s
       retries: 5
       start_period: 5s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  # Synthetic occupancy source for the academic demonstration. It only runs
+  # with the "simulation" profile, which deploy.sh turns on together with
+  # OCCUPANCY_SIMULATION_ENABLED. It talks to the API inside the network and
+  # reads each signing secret from WEBHOOK_SOURCE_CONFIG.
+  simulator:
+    profiles: ["simulation"]
+    image: ${SIMULATOR_IMAGE:-ghcr.io/pjieixocomputacaounivesp/filasaude-simulador}:${IMAGE_TAG:?IMAGE_TAG is required}
+    environment:
+      SIMULATOR_API_URL: http://api:3000
+      SIMULATOR_SOURCE_IDS: ${SIMULATOR_SOURCE_IDS:-occupancy-feed}
+      SIMULATOR_SCENARIO: national
+      SIMULATOR_DURATION_SECONDS: "0"
+      SIMULATOR_ALLOW_LOAD_TEST: "true"
+      SIMULATOR_ALLOW_NONLOCAL_TARGET: "true"
+      SIMULATOR_INTERVAL_SECONDS: "120"
+      WEBHOOK_SOURCE_CONFIG: ${WEBHOOK_SOURCE_CONFIG:?WEBHOOK_SOURCE_CONFIG is required}
+    mem_limit: 96m
+    cpus: 0.25
+    depends_on:
+      api:
+        condition: service_healthy
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true

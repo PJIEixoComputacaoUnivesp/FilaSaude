@@ -17,6 +17,8 @@ services:
       # endpoints on.
       ADMIN_API_TOKENS: ${ADMIN_API_TOKENS:-}
       WEBHOOK_SOURCE_CONFIG: ${WEBHOOK_SOURCE_CONFIG:-}
+      # "true" publishes the simulated occupancy (GET /occupancy) to the site.
+      OCCUPANCY_SIMULATION_ENABLED: ${OCCUPANCY_SIMULATION_ENABLED:-false}
     ports:
       - "3000:3000"
     healthcheck:
@@ -52,6 +54,30 @@ services:
       timeout: 3s
       retries: 5
       start_period: 5s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  # Synthetic occupancy source, off unless the "simulation" profile is on:
+  # docker compose --profile simulation up --build
+  # Independent national sources; visitors only control their local view.
+  simulator:
+    profiles: ["simulation"]
+    build:
+      context: .
+      dockerfile: apps/simulador/Dockerfile
+    environment:
+      SIMULATOR_API_URL: http://api:3000
+      SIMULATOR_SOURCE_IDS: ${SIMULATOR_SOURCE_IDS:-occupancy-feed}
+      SIMULATOR_SCENARIO: national
+      SIMULATOR_DURATION_SECONDS: "0"
+      SIMULATOR_ALLOW_LOAD_TEST: "true"
+      SIMULATOR_ALLOW_NONLOCAL_TARGET: "true"
+      SIMULATOR_INTERVAL_SECONDS: ${SIMULATOR_INTERVAL_SECONDS:-120}
+      WEBHOOK_SOURCE_CONFIG: ${WEBHOOK_SOURCE_CONFIG:-}
+    depends_on:
+      api:
+        condition: service_healthy
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true

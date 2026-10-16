@@ -1,4 +1,4 @@
-# Simulador municipal de ocupação
+# Simulador de ocupação de leitos
 
 O `@filasaude/simulador` é uma CLI para gerar snapshots sintéticos de ocupação
 e enviá-los à API por meio do webhook assinado. Ele existe para testes e
@@ -21,9 +21,23 @@ O simulador já oferece:
   e métricas de envio.
 - ocupações iniciais manuais por unidade e categoria para demonstrações.
 
-O simulador ainda não altera o estado atual exibido pela aplicação. A API, nesta
-etapa, autentica, valida e guarda os eventos na inbox; o processamento de
-ocupação está planejado na issue [#78](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/78).
+A API autentica e guarda os eventos na inbox; um processador independente
+atualiza a ocupação atual e o histórico. Com `OCCUPANCY_SIMULATION_ENABLED=true`,
+o site apresenta esses dados no mapa, na lista e no detalhe, sempre como simulação.
+A geração nacional continua mesmo sem visitantes. Localização, UF, busca e
+interruptor da camada alteram apenas o que cada visitante consulta e visualiza.
+
+### O que a ocupação representa
+
+Nesta entrega, o simulador produz quantidades ocupadas e capacidades fictícias
+de leitos de observação, estabilização e internação. A cor do mapa usa o total
+ocupado dividido pela capacidade total das categorias informadas; o detalhe
+mostra cada categoria. As capacidades não vêm do cadastro CNES e não representam
+o inventário real de cada unidade.
+
+Não são geradas pessoas em espera, pessoas em atendimento nem atendimentos
+concluídos, e o percentual não estima fila, espera ou capacidade de atendimento.
+Essas métricas ficam para as issues #107, #108, #109 e #110. Refs #106.
 
 ## Pré-requisitos
 
@@ -50,7 +64,7 @@ Substitua `1234567` por CNES existentes no catálogo retornado pela API.
 
 ## Execução
 
-O simulador precisa de um critério de seleção. Por exemplo, por município:
+Nos cenários locais, o simulador precisa de um critério de seleção. Por exemplo, por município:
 
 ```bash
 pnpm --filter @filasaude/simulador dev --municipality-code 3550308 --interval-seconds 120
@@ -218,10 +232,25 @@ que contém um vetor fixo independente da API.
 Para o teste completo com PostgreSQL e API, consulte o
 [roteiro de teste do `occupancy-feed`](../../docs/simulator-testing.md).
 
-## Próximas extensões
+## Integração nacional com o site
 
-- comando de rollback/limpeza de dados simulados, quando houver processamento
-  de ocupação na API;
-- cenário integrado com API, inbox, processamento e interface;
-- roteiro de verificação dos impactos e da identificação visual de dados
-  simulados.
+A PR #104 consome o gerador nacional da PR #105. No Compose, o serviço do perfil
+`simulation` usa `national`, duração `0` e cadência média de 120 segundos por
+unidade. A lista de fontes vem de `SIMULATOR_SOURCE_IDS`; cada segredo é lido
+em `WEBHOOK_SOURCE_CONFIG`, compartilhado com a API. Fontes podem ter segredos
+diferentes. Um `SIMULATOR_SOURCE_SECRET` explícito continua disponível para
+substituir todos os segredos em testes locais.
+
+Antes de iniciar, configure a autorização de cada CNES para a fonte que o hash
+da seed lhe atribui, conforme o [roteiro nacional](../../docs/simulator-testing.md#8-carga-nacional-controlada).
+Mantenha a mesma seed, a mesma ordem de fontes e o catálogo atualizado. A execução
+validada com 1.793 unidades usa 24 fontes para distribuir as requisições abaixo
+do limite por fonte. A quantidade precisa ser revista se o catálogo ou a cadência
+mudar; reduzi-la a uma fonte não mantém a mesma vazão.
+
+O site oferece somente consultas: não há seletor público de cenários nem
+`PUT /occupancy/simulation`. Duplicidade e atraso ficam disponíveis na CLI para
+testes controlados. O calendário nacional não segue a posição do usuário.
+
+Para subir e validar a stack completa, consulte
+[run-local-stack](../../.agents/skills/run-local-stack/SKILL.md).
