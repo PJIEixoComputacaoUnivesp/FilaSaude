@@ -19,6 +19,25 @@ validate_tag() {
   fi
 }
 
+# The simulated occupancy is a switch in .env. The simulator (profile
+# "simulation") starts after the release is healthy and outside --wait, so a
+# failing simulator never rolls the site back. When the switch is off, a
+# simulator left from an earlier release is removed: --remove-orphans keeps
+# services that are still declared.
+simulation_enabled() {
+  grep -qx 'OCCUPANCY_SIMULATION_ENABLED=true' .env
+}
+
+update_simulator() {
+  if simulation_enabled; then
+    IMAGE_TAG="$1" docker compose --env-file .env -f compose.prod.yaml \
+      --profile simulation up --detach --no-deps simulator
+  else
+    IMAGE_TAG="$1" docker compose --env-file .env -f compose.prod.yaml \
+      --profile simulation rm --stop --force simulator || true
+  fi
+}
+
 compose_up() {
   IMAGE_TAG="$1" docker compose --env-file .env -f compose.prod.yaml up \
     --detach \
@@ -34,6 +53,7 @@ compose_up() {
     --remove-orphans \
     --wait \
     --wait-timeout 120
+  update_simulator "$1" || echo "The simulator did not start; the site is up without it." >&2
 }
 
 rollback() {
@@ -56,7 +76,12 @@ cd "$app_dir"
 case "$command" in
   deploy)
     validate_tag "$tag"
-    IMAGE_TAG="$tag" docker compose --env-file .env -f compose.prod.yaml pull
+    if simulation_enabled; then
+      IMAGE_TAG="$tag" docker compose --env-file .env -f compose.prod.yaml \
+        --profile simulation pull
+    else
+      IMAGE_TAG="$tag" docker compose --env-file .env -f compose.prod.yaml pull
+    fi
 
     if compose_up "$tag"; then
       exit 0

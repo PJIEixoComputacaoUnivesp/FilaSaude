@@ -122,6 +122,26 @@ GitHub não têm IP de saída fixo. O servidor aceita somente autenticação por
 chave e não permite login de root. Para restringir também a origem da conexão,
 use um runner com IP fixo e atualize `ssh_allowed_cidrs`.
 
+### Ocupação simulada (opcional)
+
+A demonstração acadêmica de ocupação fica desligada por padrão. Para ligá-la,
+crie a variável de Actions `OCCUPANCY_SIMULATION_ENABLED` com o valor `true` e
+faça um novo deploy. O workflow grava a flag no `.env` do servidor, a API passa
+a responder `GET /api/occupancy` e o `deploy.sh` sobe o serviço `simulator`
+(perfil `simulation` do `compose.prod.yaml`), com o cenário `showcase`.
+
+- O simulador fala com a API pela rede interna do Compose e lê o segredo e a
+  amostra de `WEBHOOK_SOURCE_CONFIG`. Use nesse secret a lista de CNES da
+  amostra de demonstração (`docs/simulator-testing.md`).
+- Ele sobe depois que o restante da versão está saudável e fora do `--wait`:
+  se falhar, o site continua no ar sem a camada atualizada, e o deploy não é
+  revertido.
+- Para desligar, remova a variável (ou use outro valor) e faça novo deploy: a
+  API volta a responder 404 nessas rotas, o site esconde a camada e o
+  `deploy.sh` remove o contêiner do simulador.
+
+Os dados são sintéticos e o site sempre os identifica como simulação.
+
 ### Notificações no Discord (opcional)
 
 O workflow `Deploy` avisa o resultado (sucesso, falha ou cancelamento) em um

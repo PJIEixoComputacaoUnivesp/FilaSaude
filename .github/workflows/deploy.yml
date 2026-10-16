@@ -102,6 +102,9 @@ jobs:
           - name: Web
             image: filasaude-web
             dockerfile: apps/web/Dockerfile
+          - name: Simulador
+            image: filasaude-simulador
+            dockerfile: apps/simulador/Dockerfile
 
     steps:
       - name: Authenticate to GHCR
@@ -181,6 +184,9 @@ jobs:
           # entry per administrator.
           ADMIN_API_TOKENS: ${{ secrets.ADMIN_API_TOKENS }}
           WEBHOOK_SOURCE_CONFIG: ${{ secrets.WEBHOOK_SOURCE_CONFIG }}
+          # Repository variable: "true" publishes the simulated occupancy and
+          # starts the simulator; anything else keeps both off.
+          OCCUPANCY_SIMULATION_ENABLED: ${{ vars.OCCUPANCY_SIMULATION_ENABLED }}
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
           set -eu
@@ -201,6 +207,9 @@ jobs:
               printf 'ADMIN_API_TOKENS=%s\n' "$ADMIN_API_TOKENS"
             fi
             printf 'WEBHOOK_SOURCE_CONFIG=%s\n' "$WEBHOOK_SOURCE_CONFIG"
+            if [ "$OCCUPANCY_SIMULATION_ENABLED" = "true" ]; then
+              printf 'OCCUPANCY_SIMULATION_ENABLED=true\n'
+            fi
           } > "$RUNNER_TEMP/production.env"
 
       - name: Copy deployment files
