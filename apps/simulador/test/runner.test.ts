@@ -22,6 +22,7 @@ const config: SimulatorConfig = {
   intervalSeconds: 30,
   occupancyOverrides: [],
   scenario: 'normal',
+  nationalEventScenario: 'normal',
   delaySeconds: 0,
   durationSeconds: 300,
   concurrency: 10,

@@ -11,6 +11,8 @@ export interface OccupancyOverride {
 
 export const SIMULATION_SCENARIOS = ['normal', 'duplicate', 'delayed', 'national'] as const;
 export type SimulationScenario = (typeof SIMULATION_SCENARIOS)[number];
+export const NATIONAL_EVENT_SCENARIOS = ['normal', 'duplicate', 'delayed'] as const;
+export type NationalEventScenario = (typeof NATIONAL_EVENT_SCENARIOS)[number];
 
 export interface SimulatorConfig {
   apiUrl: string;
@@ -29,6 +31,7 @@ export interface SimulatorConfig {
   intervalSeconds: number;
   occupancyOverrides: OccupancyOverride[];
   scenario: SimulationScenario;
+  nationalEventScenario: NationalEventScenario;
   delaySeconds: number;
   durationSeconds: number;
   concurrency: number;
@@ -119,6 +122,16 @@ function readScenario(value: string | undefined): SimulationScenario {
   return value as SimulationScenario;
 }
 
+function readNationalEventScenario(value: string | undefined): NationalEventScenario {
+  if (!value) return 'normal';
+  if (!NATIONAL_EVENT_SCENARIOS.includes(value as NationalEventScenario)) {
+    throw new Error(
+      `national-event-scenario deve ser um destes valores: ${NATIONAL_EVENT_SCENARIOS.join(', ')}.`,
+    );
+  }
+  return value as NationalEventScenario;
+}
+
 function readNonNegativeNumber(value: string | undefined, name: string): number {
   if (value === undefined) return 0;
   const parsed = Number(value);
@@ -196,6 +209,9 @@ export function loadConfig(
     parsed.values[name] ?? environment[environmentName] ?? fallback;
 
   const scenario = readScenario(value('scenario', 'SIMULATOR_SCENARIO'));
+  const nationalEventScenario = readNationalEventScenario(
+    value('national-event-scenario', 'SIMULATOR_NATIONAL_EVENT_SCENARIO'),
+  );
   const apiUrl = value('api-url', 'SIMULATOR_API_URL', DEFAULT_API_URL)!;
   const sourceId = value('source-id', 'SIMULATOR_SOURCE_ID', 'occupancy-feed')!;
   const allowLoadTest = readBoolean(value('allow-load-test', 'SIMULATOR_ALLOW_LOAD_TEST'));
@@ -233,7 +249,7 @@ export function loadConfig(
   if ((latitude === null) !== (longitude === null)) {
     throw new Error('latitude e longitude devem ser informadas juntas.');
   }
-  if (scenario === 'delayed' && delaySeconds === 0) {
+  if ((scenario === 'delayed' || nationalEventScenario === 'delayed') && delaySeconds === 0) {
     throw new Error('scenario delayed exige --delay-seconds maior que zero.');
   }
 
@@ -256,6 +272,7 @@ export function loadConfig(
       value('set-occupied', 'SIMULATOR_SET_OCCUPIED'),
     ),
     scenario,
+    nationalEventScenario,
     delaySeconds,
     durationSeconds:
       readPositiveNumber(
@@ -305,7 +322,8 @@ Opções:
   --seed VALUE               Seed do cenário (padrão: fila-saude-v1)
   --interval-seconds NUMBER  Intervalo entre ciclos (padrão: 120)
   --set-occupied VALUES      Ocupações iniciais CNES:CATEGORIA:VALOR
-  --scenario NAME            Cenário: normal, duplicate ou delayed
+  --scenario NAME            Cenário: normal, duplicate, delayed ou national
+  --national-event-scenario  Comportamento dos eventos national: normal, duplicate ou delayed
   --delay-seconds NUMBER     Atraso dos timestamps no cenário delayed
   --source-ids IDS           Fontes sintéticas separadas por vírgula
   --duration-seconds NUMBER  Duração do cenário national (padrão: 300)

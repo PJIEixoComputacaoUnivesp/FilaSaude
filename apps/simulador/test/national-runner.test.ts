@@ -43,6 +43,7 @@ const config: SimulatorConfig = {
   intervalSeconds: 1,
   occupancyOverrides: [],
   scenario: 'national',
+  nationalEventScenario: 'normal',
   delaySeconds: 0,
   durationSeconds: 2,
   concurrency: 2,
@@ -83,4 +84,29 @@ test('envia unidades nacionais com fontes e métricas determinísticas', async (
   assert.ok(report.generated >= units.length);
   assert.ok(sources.size >= 1);
   assert.ok(reports.length >= 1);
+});
+
+test('reenvia o primeiro evento de cada unidade no comportamento duplicate', async () => {
+  const sent: string[] = [];
+  let elapsed = 0;
+  const runner = new NationalLoadRunner(
+    { ...config, durationSeconds: 1, nationalEventScenario: 'duplicate' },
+    [units[0]!],
+    new SimulationState(config.seed),
+    {
+      now: () => new Date(2026, 0, 1, 0, 0, 0, elapsed),
+      sleep: async (milliseconds) => {
+        elapsed += milliseconds;
+      },
+      send: async (snapshot) => {
+        sent.push(snapshot.eventId);
+        return { attempts: 1, status: 202 };
+      },
+    },
+  );
+
+  const report = await runner.run();
+
+  assert.equal(report.generated, 2);
+  assert.deepEqual(sent, [sent[0], sent[0]]);
 });

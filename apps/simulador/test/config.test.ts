@@ -16,6 +16,7 @@ test('lê configuração por argumentos e aplica valores padrão', () => {
   assert.equal(config.maxUnits, 10);
   assert.equal(config.intervalSeconds, 120);
   assert.deepEqual(config.sourceIds, ['occupancy-feed']);
+  assert.equal(config.nationalEventScenario, 'normal');
 });
 
 test('configura o cenário nacional com proteção e limites padrão', () => {
@@ -29,6 +30,24 @@ test('configura o cenário nacional com proteção e limites padrão', () => {
   assert.equal(config.durationSeconds, 300);
   assert.equal(config.concurrency, 10);
   assert.deepEqual(config.sourceIds, ['feed-a', 'feed-b']);
+});
+
+test('configura o comportamento dos eventos no cenário nacional', () => {
+  const config = loadConfig(
+    [
+      '--scenario',
+      'national',
+      '--national-event-scenario',
+      'delayed',
+      '--delay-seconds',
+      '600',
+      '--allow-load-test',
+    ],
+    {},
+  );
+
+  assert.equal(config.nationalEventScenario, 'delayed');
+  assert.equal(config.delaySeconds, 600);
 });
 
 test('exige autorização para o cenário nacional', () => {

@@ -98,9 +98,30 @@ export class NationalLoadRunner {
     metrics: LoadMetrics,
     signal?: AbortSignal,
   ): Promise<void> {
-    const snapshot = this.state.snapshotFor(item.unit, this.now());
+    const observedAt = this.now();
+    const snapshot = this.state.snapshotFor(
+      item.unit,
+      new Date(observedAt.getTime() - this.config.delaySeconds * 1000),
+    );
     this.state.advanceUnit(item.unit, item.occurrence + 1);
     const sourceId = this.sourceIdFor(item.unit.id);
+    await this.sendOne(snapshot, sourceId, metrics, signal);
+
+    if (
+      !signal?.aborted &&
+      this.config.nationalEventScenario === 'duplicate' &&
+      item.occurrence === 0
+    ) {
+      await this.sendOne(snapshot, sourceId, metrics, signal);
+    }
+  }
+
+  private async sendOne(
+    snapshot: OccupancySnapshot,
+    sourceId: string,
+    metrics: LoadMetrics,
+    signal?: AbortSignal,
+  ): Promise<void> {
     const sentAt = this.now().getTime();
     metrics.recordGenerated();
     try {
