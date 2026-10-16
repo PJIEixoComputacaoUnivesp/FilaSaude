@@ -77,6 +77,7 @@ function toEntity(unit: HealthUnit, ingestedAt: Date): HealthUnitEntity {
     number: fit(unit.address.number, 32),
     district: fit(unit.address.district, 128),
     postalCode: postalCode(unit.address.postalCode),
+    municipalityCode: unit.address.municipalityCode,
     city: unit.address.city.slice(0, 128),
     state: unit.address.state,
     latitude: unit.location.latitude,

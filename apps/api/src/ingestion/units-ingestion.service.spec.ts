@@ -94,6 +94,7 @@ describe('UnitsIngestionService', () => {
         state: 'SP',
         street: 'A'.repeat(255),
         postalCode: '01001000',
+        municipalityCode: '355030',
         sourceUpdatedAt: '2026-10-14',
         ingestedAt,
         isActive: true,

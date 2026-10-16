@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import snapshot from './units.snapshot.json' with { type: 'json' };
-import { CnesClient } from './cnes.client.js';
+import type { HealthUnitEntity } from '../database/entities/health-unit.entity.js';
+import { HealthUnitRepository } from '../database/repositories/health-unit.repository.js';
 import { GeoSampaClient } from './geosampa.client.js';
 import { UnitLocationsService } from './unit-locations.service.js';
 import {
@@ -29,6 +30,52 @@ function latestUpdate(units: readonly HealthUnit[]): string {
       unit.lastUpdatedAt > latest ? unit.lastUpdatedAt : latest,
     '',
   );
+}
+
+function storedUnit(entity: HealthUnitEntity): HealthUnit | null {
+  if (!entity.municipalityCode) return null;
+  return {
+    id: entity.cnesCode,
+    name: entity.name,
+    unitType: entity.unitType as HealthUnit['unitType'],
+    address: {
+      street: entity.street,
+      number: entity.number,
+      district: entity.district,
+      postalCode: entity.postalCode,
+      municipalityCode: entity.municipalityCode,
+      city: entity.city,
+      state: entity.state,
+    },
+    location: {
+      latitude: entity.latitude,
+      longitude: entity.longitude,
+      precision: 'source',
+      original: null,
+      referenceMonth: null,
+      correctedAt: null,
+    },
+    serviceHours: entity.serviceHours,
+    lastUpdatedAt: entity.sourceUpdatedAt,
+    sources: [
+      {
+        name: entity.sourceName,
+        url: entity.sourceUrl,
+        fields: ['identity', 'address', 'location', 'serviceHours'],
+        lastUpdatedAt: entity.sourceUpdatedAt,
+      },
+    ],
+  };
+}
+
+function latestIngestion(rows: readonly HealthUnitEntity[]): string {
+  return rows
+    .reduce(
+      (latest, row) =>
+        row.ingestedAt.getTime() > latest.getTime() ? row.ingestedAt : latest,
+      new Date(0),
+    )
+    .toISOString();
 }
 
 function cacheTtl(located: {
@@ -99,7 +146,7 @@ export class UnitsService {
   private readonly keyGeneration = new Map<string, number>();
 
   constructor(
-    private readonly cnesClient: CnesClient,
+    private readonly repository: HealthUnitRepository,
     private readonly locations: UnitLocationsService,
     private readonly geoSampaClient: GeoSampaClient,
   ) {}
@@ -143,11 +190,7 @@ export class UnitsService {
     // Concurrent requests for the same key share a single load.
     let request = this.pending.get(state.abbreviation);
     if (!request) {
-      request = (
-        state.abbreviation === NationalStateCode.Brazil
-          ? this.loadNational(state, generation)
-          : this.loadLive(state, generation, cached)
-      ).finally(() => {
+      request = this.loadStored(state, generation, cached).finally(() => {
         // An invalidation may already have replaced this entry.
         if (this.pending.get(state.abbreviation) === request) {
           this.pending.delete(state.abbreviation);
@@ -157,29 +200,6 @@ export class UnitsService {
     }
 
     return request;
-  }
-
-  /**
-   * The national view is served from the embedded snapshot, which keeps the
-   * CNES coordinates as they were collected. Their position is still checked
-   * against the municipality, like any other response, so that a misplaced
-   * unit does not appear outside it.
-   */
-  private async loadNational(
-    state: BrazilianState,
-    generation: string,
-  ): Promise<UnitsResponse> {
-    const located = await this.locations.apply(
-      fallbackUnits(NationalStateCode.Brazil),
-    );
-    const response = this.buildResponse(
-      located.units,
-      state,
-      'fallback',
-      FALLBACK_RETRIEVED_AT,
-    );
-    this.remember(state.abbreviation, generation, cacheTtl(located), response);
-    return response;
   }
 
   private remember(
@@ -192,15 +212,27 @@ export class UnitsService {
     this.cache.set(key, { expiresAt: Date.now() + ttlMs, response });
   }
 
-  private async loadLive(
+  private async loadStored(
     state: BrazilianState,
     generation: string,
     cached?: { expiresAt: number; response: UnitsResponse },
   ): Promise<UnitsResponse> {
     try {
-      const units = await this.cnesClient.fetchUnits(state);
+      const rows = await this.repository.findActive(
+        state.abbreviation === NationalStateCode.Brazil
+          ? undefined
+          : state.abbreviation,
+      );
+      const units = rows
+        .map(storedUnit)
+        .filter((unit): unit is HealthUnit => unit !== null);
+      if (units.length !== rows.length) {
+        this.logger.warn(
+          `Ignored ${rows.length - units.length} stored unit(s) without municipality code`,
+        );
+      }
       if (units.length === 0) {
-        throw new Error('CNES returned no public urgent care units');
+        throw new Error('database returned no public urgent care units');
       }
 
       const located = await this.locations.apply(units);
@@ -220,7 +252,7 @@ export class UnitsService {
         enriched,
         state,
         'live',
-        new Date().toISOString(),
+        latestIngestion(rows),
       );
       this.remember(
         state.abbreviation,
@@ -232,12 +264,12 @@ export class UnitsService {
     } catch (error: unknown) {
       const reason = error instanceof Error ? error.message : 'unknown error';
       this.logger.warn(
-        `CNES request failed for ${state.abbreviation}: ${reason}`,
+        `Stored unit catalog failed for ${state.abbreviation}: ${reason}`,
       );
 
-      if (cached) {
+      if (cached?.response.metadata.dataOrigin === 'live') {
         this.logger.warn(
-          `Using the last live CNES response for ${state.abbreviation}`,
+          `Using the last stored unit response for ${state.abbreviation}`,
         );
         return {
           ...cached.response,
@@ -250,16 +282,24 @@ export class UnitsService {
         this.logger.warn(
           `Using the CNES fallback snapshot for ${state.abbreviation}`,
         );
-        // CNES is already unreachable, so its history would be as well.
+        // The fallback must remain self-contained when the database is empty
+        // or unavailable during startup.
         const located = await this.locations.apply(fallback, {
           history: false,
         });
-        return this.buildResponse(
+        const response = this.buildResponse(
           located.units,
           state,
           'fallback',
           FALLBACK_RETRIEVED_AT,
         );
+        this.remember(
+          state.abbreviation,
+          generation,
+          cacheTtl(located),
+          response,
+        );
+        return response;
       }
 
       throw error;
