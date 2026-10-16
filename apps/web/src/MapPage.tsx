@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { BrazilianStateSelect } from "./BrazilianStateSelect";
 import { NationalStateCode, stateName } from "./brazilianStates";
 import { LiveStatus } from "./LiveStatus";
+import { OccupancyControls } from "./OccupancyControls";
 import { UnitsMap } from "./UnitsMap";
 import {
   dataOriginNotice,
@@ -12,6 +13,7 @@ import {
   LOADING_MESSAGE,
 } from "./units";
 import { usePageHeading } from "./usePageHeading";
+import { useOccupancyLayer } from "./useOccupancyLayer";
 import { useSearchFilters } from "./useSearchFilters";
 import { useUnits } from "./useUnits";
 import { SELECTED_UNIT_PARAM } from "./unitLinks";
@@ -32,6 +34,7 @@ export function MapPage() {
       : NationalStateCode.All;
   const { state, retry } = useUnits(requestState);
   const panelRef = useRef<HTMLElement>(null);
+  const { byUnit, simulatedFilter } = useOccupancyLayer();
 
   // The fields answer at once; filtering and redrawing the markers can lag
   // behind them, so typing stays responsive on a phone with the national list.
@@ -48,15 +51,20 @@ export function MapPage() {
             (unit) => unit.address.state === deferredState,
           );
 
-    return filterUnits(inState, deferredQuery);
-  }, [deferredQuery, deferredState, state]);
+    const matching = filterUnits(inState, deferredQuery);
+    return simulatedFilter
+      ? matching.filter((unit) => simulatedFilter.has(unit.id))
+      : matching;
+  }, [deferredQuery, deferredState, state, simulatedFilter]);
 
   const mappableCount = useMemo(
     () => filteredUnits.filter(hasLocation).length,
     [filteredUnits],
   );
   const isCountryWide =
-    deferredState === NationalStateCode.All && deferredQuery === "";
+    deferredState === NationalStateCode.All &&
+    deferredQuery === "" &&
+    simulatedFilter === null;
   const originNotice =
     state.status === "success"
       ? dataOriginNotice(state.response.metadata)
@@ -143,6 +151,7 @@ export function MapPage() {
             )}
           </div>
         )}
+        <OccupancyControls compact />
         {state.status === "error" && (
           <div className="mt-2 text-sm text-red-900 sm:mt-3" role="alert">
             <p>{state.message}</p>
@@ -161,6 +170,7 @@ export function MapPage() {
         units={filteredUnits}
         selectedUnitId={selectedUnitId}
         listSearch={search}
+        occupancy={byUnit}
         isCountryWide={isCountryWide}
         overlayRef={panelRef}
         className="absolute inset-0"

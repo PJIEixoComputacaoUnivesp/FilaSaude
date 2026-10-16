@@ -3,6 +3,9 @@ import { Link, useLocation } from "react-router-dom";
 import { BrazilianStateSelect } from "./BrazilianStateSelect";
 import { NationalStateCode, stateName } from "./brazilianStates";
 import { LiveStatus } from "./LiveStatus";
+import { OccupancyBadge } from "./OccupancyBadge";
+import { OccupancyControls } from "./OccupancyControls";
+import type { UnitOccupancy } from "./occupancy";
 import { UnitSources } from "./UnitSources";
 import {
   dataOriginNotice,
@@ -17,6 +20,7 @@ import {
   type UnitsResponse,
 } from "./units";
 import { usePageHeading } from "./usePageHeading";
+import { useOccupancyLayer } from "./useOccupancyLayer";
 import { useSearchFilters } from "./useSearchFilters";
 import { useUnits } from "./useUnits";
 import { unitDetailLink, unitMapLink } from "./unitLinks";
@@ -45,10 +49,12 @@ function DataNotice({ metadata }: { metadata: UnitsResponse["metadata"] }) {
 
 function UnitCard({
   unit,
+  occupancy,
   headingRef,
   search,
 }: {
   unit: HealthUnit;
+  occupancy?: UnitOccupancy;
   headingRef?: Ref<HTMLHeadingElement>;
   search: string;
 }) {
@@ -75,6 +81,8 @@ function UnitCard({
           CNES {unit.id}
         </span>
       </div>
+
+      {occupancy && <OccupancyBadge occupancy={occupancy} className="mb-3" />}
 
       <dl className="flex flex-1 flex-col gap-2 text-sm text-slate-700 sm:gap-3">
         <div>
@@ -120,10 +128,12 @@ function UnitCard({
 /** Cards with progressive loading ("Mostrar mais"). */
 function UnitResults({
   units,
+  occupancy,
   focusedUnitId,
   search,
 }: {
   units: HealthUnit[];
+  occupancy: ReadonlyMap<string, UnitOccupancy>;
   focusedUnitId?: string;
   search: string;
 }) {
@@ -182,6 +192,7 @@ function UnitResults({
           <UnitCard
             key={unit.id}
             unit={unit}
+            occupancy={occupancy.get(unit.id)}
             search={search}
             headingRef={
               unit.id === focusedUnitId
@@ -225,6 +236,7 @@ export function UnitsPage() {
   const focusedUnitId = /^#unit-(\d+)$/.exec(hash)?.[1];
   const searchRef = useRef<HTMLInputElement>(null);
   const { state, retry } = useUnits(stateCode);
+  const { byUnit, simulatedFilter } = useOccupancyLayer();
 
   // Sorted once per response; filtering keeps that order.
   const sortedUnits = useMemo(
@@ -232,10 +244,12 @@ export function UnitsPage() {
     [state],
   );
   const trimmedQuery = query.trim();
-  const filteredUnits = useMemo(
-    () => filterUnits(sortedUnits, trimmedQuery),
-    [sortedUnits, trimmedQuery],
-  );
+  const filteredUnits = useMemo(() => {
+    const matching = filterUnits(sortedUnits, trimmedQuery);
+    return simulatedFilter
+      ? matching.filter((unit) => simulatedFilter.has(unit.id))
+      : matching;
+  }, [sortedUnits, trimmedQuery, simulatedFilter]);
 
   const countText = formatCount(
     filteredUnits.length,
@@ -303,6 +317,10 @@ export function UnitsPage() {
         </label>
       </form>
 
+      <div className="mb-6 max-w-3xl empty:hidden md:mb-8">
+        <OccupancyControls />
+      </div>
+
       <LiveStatus message={liveMessage} />
 
       {/* Reserves the height of a results screen so the footer does not
@@ -359,6 +377,7 @@ export function UnitsPage() {
             ) : (
               <UnitResults
                 units={filteredUnits}
+                occupancy={byUnit}
                 focusedUnitId={focusedUnitId}
                 search={search}
               />

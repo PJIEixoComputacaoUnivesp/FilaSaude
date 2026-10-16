@@ -21,6 +21,12 @@ import {
 } from "react-leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
 import { MapFocusRing } from "./MapFocusRing";
+import { OccupancyBadge } from "./OccupancyBadge";
+import {
+  occupancyStatus,
+  STATUS_COLORS,
+  type UnitOccupancy,
+} from "./occupancy";
 import { UnitSources } from "./UnitSources";
 import { unitListLink } from "./unitLinks";
 import type { HealthUnit } from "./units";
@@ -54,6 +60,25 @@ const approximateMarker = {
   opacity: 1,
   weight: 2,
 };
+const noOccupancy: ReadonlyMap<string, UnitOccupancy> = new Map();
+
+/**
+ * With the layer on, a unit of the simulation takes the color of its status
+ * (see STATUS_COLORS); a stale one is a dashed gray ring. Its text is in the
+ * popup and in the list, so the color is never the only cue.
+ */
+function occupancyMarker(occupancy: UnitOccupancy): L.PathOptions {
+  const status = occupancyStatus(occupancy);
+  const { fill, stroke, hollow } = STATUS_COLORS[status];
+  return {
+    color: stroke,
+    fillColor: fill,
+    fillOpacity: hollow ? 0.85 : 0.95,
+    opacity: 1,
+    weight: hollow ? 3 : 2,
+    dashArray: status === "stale" ? "4 3" : undefined,
+  };
+}
 
 type BoundaryGeometry =
   | { type: "Polygon"; coordinates: number[][][] }
@@ -270,10 +295,13 @@ interface UnitsMapProps {
   isCountryWide?: boolean;
   /** Element drawn over the map; fitted units are kept out from under it. */
   overlayRef?: RefObject<HTMLElement | null>;
+  /** Simulated occupancy by CNES; empty while the layer is off. */
+  occupancy?: ReadonlyMap<string, UnitOccupancy>;
 }
 
 function UnitMarker({
   unit,
+  occupancy,
   radius,
   renderer,
   selected,
@@ -284,6 +312,7 @@ function UnitMarker({
   popupMaxHeight,
 }: {
   unit: HealthUnit;
+  occupancy?: UnitOccupancy;
   radius: number;
   renderer: L.Renderer;
   selected: boolean;
@@ -296,6 +325,13 @@ function UnitMarker({
   const map = useMap();
   const markerRef = useRef<L.CircleMarker>(null);
   const popupHeadingRef = useRef<HTMLElement>(null);
+  const isSimulated = occupancy !== undefined;
+
+  // Canvas paints in the order layers were added; a unit of the simulation is
+  // brought to the front, so a neutral marker never covers it.
+  useEffect(() => {
+    if (isSimulated) markerRef.current?.bringToFront();
+  }, [isSimulated]);
 
   useEffect(() => {
     if (!selected || !markerRef.current) return;
@@ -343,7 +379,8 @@ function UnitMarker({
     <CircleMarker
       ref={markerRef}
       center={[unit.location.latitude!, unit.location.longitude!]}
-      radius={radius}
+      // A little larger, so the few units of the simulation are easy to find.
+      radius={occupancy ? radius + 3 : radius}
       renderer={renderer}
       eventHandlers={{
         popupopen: () => {
@@ -358,9 +395,11 @@ function UnitMarker({
         },
       }}
       pathOptions={
-        unit.location.precision === "municipality"
-          ? approximateMarker
-          : preciseMarker
+        occupancy
+          ? occupancyMarker(occupancy)
+          : unit.location.precision === "municipality"
+            ? approximateMarker
+            : preciseMarker
       }
     >
       <Popup
@@ -385,6 +424,7 @@ function UnitMarker({
           {unit.serviceHours && (
             <p className="my-2 text-sm text-slate-600">{unit.serviceHours}</p>
           )}
+          {occupancy && <OccupancyBadge occupancy={occupancy} className="my-2" />}
           {unit.location.precision === "manual" &&
             unit.location.correctedAt && (
               <p className="my-2 text-xs font-medium text-amber-800">
@@ -427,6 +467,7 @@ function UnitMarker({
 
 function UnitMarkers({
   units,
+  occupancy,
   radius,
   renderer,
   selectedUnitId,
@@ -434,6 +475,7 @@ function UnitMarkers({
   listSearch,
 }: {
   units: HealthUnit[];
+  occupancy: ReadonlyMap<string, UnitOccupancy>;
   radius: number;
   renderer: L.Renderer;
   selectedUnitId?: string;
@@ -491,6 +533,7 @@ function UnitMarkers({
     <UnitMarker
       key={unit.id}
       unit={unit}
+      occupancy={occupancy.get(unit.id)}
       radius={radius}
       renderer={renderer}
       selected={unit.id === selectedUnitId}
@@ -726,6 +769,7 @@ export function UnitsMap({
   isCountryWide,
   selectedUnitId,
   listSearch = "",
+  occupancy = noOccupancy,
 }: UnitsMapProps) {
   // Stable between renders: FitUnits re-fits the map whenever this changes.
   const unitsWithLocation = useMemo(() => units.filter(hasLocation), [units]);
@@ -774,6 +818,7 @@ export function UnitsMap({
       <FitUnits units={unitsToFit} overlayRef={overlayRef} />
       <UnitMarkers
         units={unitsWithLocation}
+        occupancy={occupancy}
         radius={markerRadius}
         renderer={renderer}
         selectedUnitId={selectedUnitId}
