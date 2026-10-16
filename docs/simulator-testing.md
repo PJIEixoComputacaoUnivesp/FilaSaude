@@ -56,10 +56,15 @@ incorporado da API:
 ```powershell
 $secret = 'local-occupancy-feed-secret-32-chars'
 
+$snapshot = Get-Content apps/api/src/units/units.snapshot.json -Raw |
+  ConvertFrom-Json
 $cnes = @(
-  Get-Content apps/api/src/units/units.snapshot.json -Raw |
-  ConvertFrom-Json |
-  Select-Object -First 2 -ExpandProperty id
+  $index = 0
+  foreach ($unit in $snapshot) {
+    if ($index -ge 2) { break }
+    [string]$unit.id
+    $index++
+  }
 )
 
 $env:DB_HOST = 'localhost'
@@ -108,10 +113,15 @@ simulador:
 
 ```powershell
 $secret = 'local-occupancy-feed-secret-32-chars'
+$snapshot = Get-Content apps/api/src/units/units.snapshot.json -Raw |
+  ConvertFrom-Json
 $cnes = @(
-  Get-Content apps/api/src/units/units.snapshot.json -Raw |
-  ConvertFrom-Json |
-  Select-Object -First 2 -ExpandProperty id
+  $index = 0
+  foreach ($unit in $snapshot) {
+    if ($index -ge 2) { break }
+    [string]$unit.id
+    $index++
+  }
 )
 $unitList = $cnes -join ','
 $env:SIMULATOR_SOURCE_ID = 'occupancy-feed'
@@ -227,16 +237,19 @@ de iniciar a API. O segredo pode ser o mesmo porque se trata de uma carga local:
 
 ```powershell
 $secret = 'local-national-load-secret-32-chars'
+$snapshot = Get-Content apps/api/src/units/units.snapshot.json -Raw |
+  ConvertFrom-Json
 $allCnes = @(
-  Get-Content apps/api/src/units/units.snapshot.json -Raw |
-    ConvertFrom-Json |
-    ForEach-Object { $_.data } |
-    ForEach-Object { $_.id }
+  foreach ($unit in $snapshot) {
+    $id = [string]$unit.id
+    if ($id -match '^\d{7}$') { $id }
+  }
 )
-$config = @{
-  'occupancy-feed-001' = @{ secret = $secret; unitCnes = $allCnes }
-  'occupancy-feed-002' = @{ secret = $secret; unitCnes = $allCnes }
-} | ConvertTo-Json -Compress
+$testCnes = @($allCnes | Sort-Object | Select-Object -First 20)
+$config = [ordered]@{
+  'occupancy-feed-001' = @{ secret = $secret; unitCnes = $testCnes }
+  'occupancy-feed-002' = @{ secret = $secret; unitCnes = $testCnes }
+} | ConvertTo-Json -Depth 4 -Compress
 $env:WEBHOOK_SOURCE_CONFIG = $config
 $env:SIMULATOR_SOURCE_SECRET = $secret
 ```
@@ -287,6 +300,13 @@ node --experimental-strip-types apps/simulador/src/main.ts `
 Todas as unidades continuam sendo enviadas para a API, independentemente da
 posição do usuário. A posição deve influenciar somente as consultas e os dados
 exibidos no mapa.
+
+O bloco acima é o teste nacional limitado. Para uma execução com todas as
+unidades, não basta remover `--max-units`: a API aplica limite por fonte e a
+configuração via variável de ambiente do Windows pode ficar grande quando a
+mesma lista de CNES é repetida em várias fontes. Antes do teste completo, deve
+ser definido o particionamento das fontes ou uma forma de carregar a
+configuração fora de uma única variável de ambiente.
 
 ## 9. Teste automatizado contra a API
 
