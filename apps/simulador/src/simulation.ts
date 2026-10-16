@@ -104,6 +104,21 @@ export class SimulationState {
     category.occupied = occupied;
   }
 
+  /**
+   * Adds `step` of the capacity to every category of the unit, without going
+   * past `ceiling` of it (or lowering a category already above it).
+   */
+  raise(unitCnes: string, step: number, ceiling: number): void {
+    for (const category of this.ensureUnit(unitCnes).categories.values()) {
+      const limit = Math.round(category.capacity * ceiling);
+      if (category.occupied >= limit) continue;
+      category.occupied = Math.min(
+        limit,
+        category.occupied + Math.max(1, Math.round(category.capacity * step)),
+      );
+    }
+  }
+
   /** Sets every category of the unit to about this share of its capacity. */
   setRatio(unitCnes: string, ratio: number): void {
     if (!Number.isFinite(ratio) || ratio < 0 || ratio > 1) {

@@ -3,6 +3,7 @@
 import { helpText, loadConfig, parseArguments } from './config.ts';
 import { SimulationState } from './simulation.ts';
 import { SimulationRunner } from './runner.ts';
+import { fetchSiteScenario } from './control.ts';
 import { fetchUnits, selectUnits } from './units.ts';
 
 async function main(): Promise<void> {
@@ -41,6 +42,8 @@ async function main(): Promise<void> {
         sourceId: config.sourceId,
         seed: config.seed,
         intervalSeconds: config.intervalSeconds,
+        scenario: config.scenario,
+        followSite: config.followSite,
         units: selected.map(({ id, name, municipalityCode, city, state: unitState }) => ({
           id,
           name,
@@ -55,6 +58,12 @@ async function main(): Promise<void> {
   );
 
   const runner = new SimulationRunner(config, selected, state, {
+    readScenario: config.followSite
+      ? (signal) => fetchSiteScenario(config.apiUrl, signal)
+      : undefined,
+    onScenarioChanged: (scenario) => {
+      console.log(`Cenário escolhido no site: ${scenario}`);
+    },
     onSnapshotSent: (snapshot, result) => {
       console.log(
         `Snapshot simulado enviado: unidade=${snapshot.unitCnes} ` +

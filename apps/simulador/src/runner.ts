@@ -1,5 +1,5 @@
 import type { SimulatorUnit } from './units.ts';
-import type { SimulatorConfig } from './config.ts';
+import type { SimulationScenario, SimulatorConfig } from './config.ts';
 import { SimulationState, type OccupancySnapshot } from './simulation.ts';
 import { sendSnapshot, type SnapshotTransportResult } from './transport.ts';
 import {
@@ -20,7 +20,20 @@ export interface SimulationRunnerOptions {
     snapshot: OccupancySnapshot,
     result: SnapshotTransportResult,
   ) => void;
+  /**
+   * Reads the scenario chosen on the site (`null` when there is none). When
+   * given, the runner checks it every `controlPollMs` while it waits and
+   * starts a new cycle as soon as the choice changes.
+   */
+  readScenario?: (signal?: AbortSignal) => Promise<SimulationScenario | null>;
+  controlPollMs?: number;
+  onScenarioChanged?: (scenario: SimulationScenario) => void;
 }
+
+const DEFAULT_CONTROL_POLL_MS = 10_000;
+/** Share of the capacity a `surge` adds per cycle, up to its ceiling. */
+const SURGE_STEP = 0.1;
+const SURGE_CEILING = 0.95;
 
 export class SimulationRunner {
   private readonly config: SimulatorConfig;
@@ -33,7 +46,11 @@ export class SimulationRunner {
     signal?: AbortSignal,
   ) => Promise<SnapshotTransportResult>;
   private readonly onSnapshotSent?: SimulationRunnerOptions['onSnapshotSent'];
-  private readonly roles: ReadonlyMap<string, ShowcaseRole>;
+  private readonly readScenario?: SimulationRunnerOptions['readScenario'];
+  private readonly controlPollMs: number;
+  private readonly onScenarioChanged?: SimulationRunnerOptions['onScenarioChanged'];
+  private scenario: SimulationScenario;
+  private roles: ReadonlyMap<string, ShowcaseRole> = new Map();
 
   constructor(
     config: SimulatorConfig,
@@ -50,65 +67,121 @@ export class SimulationRunner {
       options.send ??
       ((snapshot, signal) => sendSnapshot(snapshot, { ...config, signal }));
     this.onSnapshotSent = options.onSnapshotSent;
-    this.roles = config.scenario === 'showcase' ? showcaseRoles(units) : new Map();
+    this.readScenario = options.readScenario;
+    this.controlPollMs = options.controlPollMs ?? DEFAULT_CONTROL_POLL_MS;
+    this.onScenarioChanged = options.onScenarioChanged;
+    this.scenario = config.scenario;
+    this.applyScenario(config.scenario);
+  }
+
+  get currentScenario(): SimulationScenario {
+    return this.scenario;
+  }
+
+  private applyScenario(scenario: SimulationScenario): void {
+    this.scenario = scenario;
+    this.roles = scenario === 'showcase' ? showcaseRoles(this.units) : new Map();
+  }
+
+  /** Follows the site's choice; a failed read keeps the current scenario. */
+  private async followSite(signal?: AbortSignal): Promise<boolean> {
+    if (!this.readScenario) return false;
+    let next: SimulationScenario | null;
+    try {
+      next = await this.readScenario(signal);
+    } catch {
+      return false;
+    }
+    if (next === null || next === this.scenario) return false;
+    this.applyScenario(next);
+    this.onScenarioChanged?.(next);
+    return true;
   }
 
   async run(signal?: AbortSignal): Promise<void> {
     let cycle = 0;
+    await this.followSite(signal);
 
     while (!signal?.aborted) {
-      const observedAt = this.now();
-      for (const unit of this.units) {
-        if (signal?.aborted) return;
-        const role = this.roles.get(unit.id);
-        if (role?.kind === 'intermittent' && isSilent(observedAt)) continue;
-        if (role?.kind === 'fixed') this.state.setRatio(unit.id, role.ratio);
-        const snapshot = this.state.snapshotFor(
-          unit,
-          new Date(observedAt.getTime() - this.config.delaySeconds * 1000),
-        );
-        let result: SnapshotTransportResult;
-        try {
-          result = await this.send(snapshot, signal);
-        } catch (error) {
-          if (signal?.aborted) return;
-          throw error;
-        }
-        if (signal?.aborted) return;
-        this.onSnapshotSent?.(snapshot, result);
-        const extra =
-          (cycle === 0 && this.config.scenario === 'duplicate') ||
-          role?.kind === 'duplicate'
-            ? snapshot
-            : role?.kind === 'late'
-              ? this.state.snapshotFor(
-                  unit,
-                  new Date(observedAt.getTime() - LATE_EVENT_DELAY_MS),
-                )
-              : null;
-        if (extra) {
-          let extraResult: SnapshotTransportResult;
-          try {
-            extraResult = await this.send(extra, signal);
-          } catch (error) {
-            if (signal?.aborted) return;
-            throw error;
-          }
-          if (signal?.aborted) return;
-          this.onSnapshotSent?.(extra, extraResult);
-        }
-      }
-
+      if (!(await this.sendCycle(cycle, signal))) return;
       cycle += 1;
-      this.state.advance(this.units, cycle);
+      // A surge only goes up; the random walk would undo part of each step.
+      if (this.scenario !== 'surge') this.state.advance(this.units, cycle);
       if (signal?.aborted) return;
       try {
-        await this.sleep(this.config.intervalSeconds * 1000, signal);
+        await this.wait(signal);
       } catch (error) {
         if (signal?.aborted) return;
         throw error;
       }
     }
+  }
+
+  /** Waits for the next cycle, or less if the site picks another scenario. */
+  private async wait(signal?: AbortSignal): Promise<void> {
+    const interval = this.config.intervalSeconds * 1000;
+    if (!this.readScenario) {
+      await this.sleep(interval, signal);
+      return;
+    }
+    let remaining = interval;
+    while (remaining > 0) {
+      const chunk = Math.min(this.controlPollMs, remaining);
+      await this.sleep(chunk, signal);
+      if (signal?.aborted) return;
+      remaining -= chunk;
+      if (await this.followSite(signal)) return;
+    }
+  }
+
+  /** Sends one cycle; `false` when it was cancelled. */
+  private async sendCycle(cycle: number, signal?: AbortSignal): Promise<boolean> {
+    // The source is down: nothing is sent, so the units stop confirming.
+    if (this.scenario === 'outage') return true;
+
+    const observedAt = this.now();
+    for (const unit of this.units) {
+      if (signal?.aborted) return false;
+      const role = this.roles.get(unit.id);
+      if (role?.kind === 'intermittent' && isSilent(observedAt)) continue;
+      if (role?.kind === 'fixed') this.state.setRatio(unit.id, role.ratio);
+      if (this.scenario === 'surge') {
+        this.state.raise(unit.id, SURGE_STEP, SURGE_CEILING);
+      }
+      const snapshot = this.state.snapshotFor(
+        unit,
+        new Date(observedAt.getTime() - this.config.delaySeconds * 1000),
+      );
+      const late = () =>
+        this.state.snapshotFor(
+          unit,
+          new Date(observedAt.getTime() - LATE_EVENT_DELAY_MS),
+        );
+      const extras: OccupancySnapshot[] = [];
+      if (
+        (cycle === 0 && this.scenario === 'duplicate') ||
+        role?.kind === 'duplicate' ||
+        this.scenario === 'replay'
+      ) {
+        extras.push(snapshot);
+      }
+      if (role?.kind === 'late' || this.scenario === 'replay') {
+        extras.push(late());
+      }
+
+      for (const item of [snapshot, ...extras]) {
+        let result: SnapshotTransportResult;
+        try {
+          result = await this.send(item, signal);
+        } catch (error) {
+          if (signal?.aborted) return false;
+          throw error;
+        }
+        if (signal?.aborted) return false;
+        this.onSnapshotSent?.(item, result);
+      }
+    }
+    return true;
   }
 }
 

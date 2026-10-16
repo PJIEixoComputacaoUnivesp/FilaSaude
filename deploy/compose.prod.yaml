@@ -84,6 +84,8 @@ services:
       SIMULATOR_API_URL: http://api:3000
       SIMULATOR_SOURCE_ID: occupancy-feed
       SIMULATOR_SCENARIO: showcase
+      # Plays the scenario chosen on the site (GET /occupancy/simulation).
+      SIMULATOR_FOLLOW_SITE: "true"
       SIMULATOR_INTERVAL_SECONDS: "120"
       WEBHOOK_SOURCE_CONFIG: ${WEBHOOK_SOURCE_CONFIG:?WEBHOOK_SOURCE_CONFIG is required}
     mem_limit: 96m

@@ -9,7 +9,15 @@ export interface OccupancyOverride {
   occupied: number;
 }
 
-export const SIMULATION_SCENARIOS = ['normal', 'duplicate', 'delayed', 'showcase'] as const;
+export const SIMULATION_SCENARIOS = [
+  'normal',
+  'duplicate',
+  'delayed',
+  'showcase',
+  'surge',
+  'outage',
+  'replay',
+] as const;
 export type SimulationScenario = (typeof SIMULATION_SCENARIOS)[number];
 
 export interface SimulatorConfig {
@@ -29,6 +37,8 @@ export interface SimulatorConfig {
   occupancyOverrides: OccupancyOverride[];
   scenario: SimulationScenario;
   delaySeconds: number;
+  /** Follows the scenario chosen on the site (GET /occupancy/simulation). */
+  followSite: boolean;
 }
 
 export interface ParsedArguments {
@@ -245,6 +255,7 @@ export function loadConfig(
     ),
     scenario,
     delaySeconds,
+    followSite: value('follow-site', 'SIMULATOR_FOLLOW_SITE') === 'true',
   };
 }
 
@@ -265,7 +276,9 @@ Opções:
   --seed VALUE               Seed do cenário (padrão: fila-saude-v1)
   --interval-seconds NUMBER  Intervalo entre ciclos (padrão: 120)
   --set-occupied VALUES      Ocupações iniciais CNES:CATEGORIA:VALOR
-  --scenario NAME            Cenário: normal, duplicate, delayed ou showcase
+  --scenario NAME            Cenário: normal, duplicate, delayed, showcase,
+                             surge, outage ou replay
+  --follow-site true         Segue o cenário escolhido no site
   --delay-seconds NUMBER     Atraso dos timestamps no cenário delayed
   --help                     Exibe esta ajuda
 

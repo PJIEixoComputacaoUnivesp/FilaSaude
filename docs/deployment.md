@@ -140,6 +140,13 @@ a responder `GET /api/occupancy` e o `deploy.sh` sobe o serviço `simulator`
   API volta a responder 404 nessas rotas, o site esconde a camada e o
   `deploy.sh` remove o contêiner do simulador.
 
+Os visitantes podem trocar o cenário da simulação no próprio site
+(`PUT /api/occupancy/simulation`). A troca vale para todos, fica espaçada em
+15 segundos e volta ao `showcase` depois de 15 minutos. O cenário "Interrupção
+da fonte" só mostra "sem confirmação recente" depois do prazo de
+`OCCUPANCY_STALE_AFTER_MINUTES` (20 minutos por padrão); para uma apresentação,
+reduza esse valor no `.env` do servidor.
+
 Os dados são sintéticos e o site sempre os identifica como simulação.
 
 ### Notificações no Discord (opcional)

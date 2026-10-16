@@ -67,3 +67,11 @@ test('rejeita WEBHOOK_SOURCE_CONFIG que não é JSON', () => {
     /WEBHOOK_SOURCE_CONFIG deve conter JSON válido/,
   );
 });
+
+test('segue o site só quando pedido explicitamente', () => {
+  assert.equal(loadConfig(['--city', 'Santos'], {}).followSite, false);
+  assert.equal(
+    loadConfig(['--city', 'Santos'], { SIMULATOR_FOLLOW_SITE: 'true' }).followSite,
+    true,
+  );
+});

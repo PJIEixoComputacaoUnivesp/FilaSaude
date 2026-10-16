@@ -77,8 +77,9 @@ parâmetros são:
 | `--seed` | `SIMULATOR_SEED` | `fila-saude-v1` | Reprodutibilidade do cenário |
 | `--interval-seconds` | `SIMULATOR_INTERVAL_SECONDS` | `120` | Intervalo entre ciclos |
 | `--set-occupied` | `SIMULATOR_SET_OCCUPIED` | — | Valores iniciais `CNES:CATEGORIA:VALOR`, separados por vírgula |
-| `--scenario` | `SIMULATOR_SCENARIO` | `normal` | Cenário `normal`, `duplicate`, `delayed` ou `showcase` |
+| `--scenario` | `SIMULATOR_SCENARIO` | `normal` | Cenário `normal`, `duplicate`, `delayed`, `showcase`, `surge`, `outage` ou `replay` |
 | `--delay-seconds` | `SIMULATOR_DELAY_SECONDS` | `0` | Atraso dos timestamps no cenário `delayed` |
+| `--follow-site` | `SIMULATOR_FOLLOW_SITE` | `false` | Segue o cenário escolhido no site |
 
 As unidades são selecionadas uma vez no início da execução e permanecem fixas.
 O estado é mantido somente em memória e é perdido ao encerrar o processo.
@@ -124,6 +125,23 @@ unidades seguem o comportamento normal:
 | 4ª | alterna 30 minutos enviando e 30 minutos em silêncio, alinhados ao relógio | "sem confirmação recente" e a retomada com snapshot completo |
 | 5ª | reenvia cada snapshot com o mesmo `eventId` | nada muda (idempotência) |
 | 6ª | envia também um snapshot 10 minutos no passado | o atraso fica no histórico sem substituir o estado atual |
+
+### Cenários escolhidos no site
+
+Com `--follow-site true` (ou `SIMULATOR_FOLLOW_SITE=true`), o simulador
+consulta `GET /occupancy/simulation` a cada 10 segundos e passa a executar o
+cenário escolhido por um visitante do site, começando um ciclo novo assim que
+a escolha muda. A API recusa trocas com menos de 15 segundos de intervalo e
+volta ao `showcase` depois de 15 minutos. Se a consulta falhar, o cenário
+atual continua.
+
+| Cenário | Comportamento |
+| --- | --- |
+| `showcase` | Papéis fixos descritos acima |
+| `normal` | Variação aleatória de cada unidade |
+| `surge` | A ocupação sobe 10% da capacidade a cada ciclo, até 95% |
+| `outage` | Nada é enviado; depois do prazo, "sem confirmação recente" |
+| `replay` | Cada snapshot é reenviado e acompanhado de um evento 10 minutos no passado |
 
 ## Configuração compartilhada com a API
 
