@@ -57,6 +57,19 @@ test('exige autorização para o cenário nacional', () => {
   );
 });
 
+test('aceita duração zero somente para execução nacional contínua', () => {
+  const config = loadConfig(
+    ['--scenario', 'national', '--allow-load-test', '--duration-seconds', '0'],
+    {},
+  );
+
+  assert.equal(config.durationSeconds, 0);
+  assert.throws(
+    () => loadConfig(['--duration-seconds', '0'], {}),
+    /scenario national/,
+  );
+});
+
 test('rejeita coordenadas incompletas', () => {
   assert.throws(
     () => loadConfig(['--latitude', '-23.5'], {}),

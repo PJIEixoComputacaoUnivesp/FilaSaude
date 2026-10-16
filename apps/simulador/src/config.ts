@@ -249,6 +249,17 @@ export function loadConfig(
   if ((latitude === null) !== (longitude === null)) {
     throw new Error('latitude e longitude devem ser informadas juntas.');
   }
+  const durationSeconds = readNonNegativeNumber(
+    value(
+      'duration-seconds',
+      'SIMULATOR_DURATION_SECONDS',
+      String(DEFAULT_NATIONAL_DURATION_SECONDS),
+    ),
+    'duration-seconds',
+  );
+  if (scenario !== 'national' && durationSeconds === 0) {
+    throw new Error('duration-seconds igual a zero exige o scenario national.');
+  }
   if ((scenario === 'delayed' || nationalEventScenario === 'delayed') && delaySeconds === 0) {
     throw new Error('scenario delayed exige --delay-seconds maior que zero.');
   }
@@ -274,16 +285,7 @@ export function loadConfig(
     scenario,
     nationalEventScenario,
     delaySeconds,
-    durationSeconds:
-      readPositiveNumber(
-        value(
-          'duration-seconds',
-          'SIMULATOR_DURATION_SECONDS',
-          String(DEFAULT_NATIONAL_DURATION_SECONDS),
-        ),
-        'duration-seconds',
-        true,
-      ) ?? DEFAULT_NATIONAL_DURATION_SECONDS,
+    durationSeconds,
     concurrency:
       readPositiveNumber(
         value('concurrency', 'SIMULATOR_CONCURRENCY', String(DEFAULT_NATIONAL_CONCURRENCY)),
@@ -326,7 +328,7 @@ Opções:
   --national-event-scenario  Comportamento dos eventos national: normal, duplicate ou delayed
   --delay-seconds NUMBER     Atraso dos timestamps no cenário delayed
   --source-ids IDS           Fontes sintéticas separadas por vírgula
-  --duration-seconds NUMBER  Duração do cenário national (padrão: 300)
+  --duration-seconds NUMBER  Duração do national; 0 executa até cancelamento (padrão: 300)
   --concurrency NUMBER       Envios simultâneos máximos (padrão: 10)
   --report-interval-seconds  Intervalo dos relatórios (padrão: 10)
   --allow-load-test          Autoriza o cenário national

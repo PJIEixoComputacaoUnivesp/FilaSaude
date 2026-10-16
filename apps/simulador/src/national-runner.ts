@@ -52,7 +52,10 @@ export class NationalLoadRunner {
   async run(signal?: AbortSignal): Promise<LoadReport> {
     const metrics = new LoadMetrics();
     const startedAt = this.now().getTime();
-    const deadline = startedAt + this.config.durationSeconds * 1000;
+    const deadline =
+      this.config.durationSeconds === 0
+        ? Number.POSITIVE_INFINITY
+        : startedAt + this.config.durationSeconds * 1000;
     let nextReportAt = startedAt + this.config.reportIntervalSeconds * 1000;
     const schedule = new NationalSchedule({
       seed: this.config.seed,
@@ -66,7 +69,12 @@ export class NationalLoadRunner {
       const item = schedule.next();
       if (!item) break;
 
-      await waitUntil(item.scheduledAt, this.now, this.sleep, signal);
+      try {
+        await waitUntil(item.scheduledAt, this.now, this.sleep, signal);
+      } catch (error) {
+        if (signal?.aborted) break;
+        throw error;
+      }
       if (signal?.aborted || this.now().getTime() >= deadline) break;
 
       const task = this.sendEvent(item, metrics, signal);

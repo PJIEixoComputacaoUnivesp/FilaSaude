@@ -110,3 +110,26 @@ test('reenvia o primeiro evento de cada unidade no comportamento duplicate', asy
   assert.equal(report.generated, 2);
   assert.deepEqual(sent, [sent[0], sent[0]]);
 });
+
+test('mantém execução contínua até receber cancelamento', async () => {
+  let elapsed = 0;
+  const controller = new AbortController();
+  const runner = new NationalLoadRunner(
+    { ...config, durationSeconds: 0 },
+    [units[0]!],
+    new SimulationState(config.seed),
+    {
+      now: () => new Date(2026, 0, 1, 0, 0, 0, elapsed),
+      sleep: async (milliseconds) => {
+        elapsed += milliseconds;
+        controller.abort();
+      },
+      send: async () => ({ attempts: 1, status: 202 }),
+    },
+  );
+
+  const report = await runner.run(controller.signal);
+
+  assert.equal(report.failed, 0);
+  assert.equal(report.units, 1);
+});
