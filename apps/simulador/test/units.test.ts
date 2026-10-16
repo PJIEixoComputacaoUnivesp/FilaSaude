@@ -23,6 +23,26 @@ test('seleciona por município e ordena por CNES de forma determinística', () =
   assert.deepEqual(selected.map((unit) => unit.id), ['1111111', '2222222', '3333333']);
 });
 
+test('seleciona todas as unidades no modo nacional', () => {
+  const selected = selectUnits(units, {
+    unitCnes: [],
+    municipalityCode: null,
+    city: null,
+    latitude: null,
+    longitude: null,
+    radiusKm: 25,
+    maxUnits: Number.MAX_SAFE_INTEGER,
+    national: true,
+  });
+
+  assert.deepEqual(selected.map((unit) => unit.id), [
+    '1111111',
+    '2222222',
+    '3333333',
+    '4444444',
+  ]);
+});
+
 test('seleciona por cidade sem diferenciar acentos ou maiúsculas', () => {
   const selected = selectUnits(units, {
     unitCnes: [],
