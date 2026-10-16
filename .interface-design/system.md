@@ -34,7 +34,10 @@
   with no menu button. "Sobre os dados" lives in the footer. Removed or unknown
   paths (`/map`, anything else) redirect to `/` and keep the query string.
 - The safety notice is in the footer of every screen. Source and update date
-  stay on each unit, in the card and in the map popup.
+  stay on each unit, in the card and in the map popup. Below `sm`, the footer
+  keeps one visible line ("Informativo: sem orientação médica") and "Saiba
+  mais" opens the full notice and "Sobre os dados" in a native popover. It is
+  never a hover tooltip: touch has no hover, and the notice must stay visible.
 - Search matches name and address, which is what its labels promise ("unidade,
   cidade ou bairro"). It does not match service hours: filtering by
   characteristic is a feature of its own (#29).

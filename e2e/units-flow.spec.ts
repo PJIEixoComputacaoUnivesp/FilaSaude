@@ -502,6 +502,41 @@ test("mantém a busca ao ler Sobre os dados e voltar ao mapa", async ({
   await expect(page.getByText("1 unidade no mapa.")).toBeVisible();
 });
 
+test("no celular, o aviso informativo abre por inteiro e leva a Sobre os dados", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.route("**/api/units?state=ALL", (route) =>
+    route.fulfill({ json: unitsResponse }),
+  );
+  await page.goto("/");
+
+  const footer = page.getByRole("contentinfo");
+  await expect(footer.getByText("sem orientação médica")).toBeVisible();
+  const notice = page.getByRole("note", { name: "Aviso informativo" });
+  await expect(notice).toBeHidden();
+
+  const open = footer.getByRole("button", { name: "Saiba mais" });
+  await open.click();
+  await expect(notice).toBeVisible();
+  await expect(
+    notice.getByText(/não faz diagnóstico, triagem nem recomendação médica/),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(notice).toBeHidden();
+
+  await open.click();
+  await notice.getByRole("button", { name: "Fechar" }).click();
+  await expect(notice).toBeHidden();
+
+  await open.click();
+  await notice.getByRole("link", { name: "Sobre os dados" }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Sobre os dados" }),
+  ).toBeVisible();
+  await expect(notice).toBeHidden();
+});
+
 test("trata /units/ com barra final como a lista e grava a busca na URL", async ({
   page,
 }) => {
