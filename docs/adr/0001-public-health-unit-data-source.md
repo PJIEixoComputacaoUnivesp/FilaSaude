@@ -85,8 +85,11 @@ por UF, com paginação limitada, tentativas com espera progressiva e atualizaç
 idempotente no PostgreSQL pelo código CNES. Uma falha em uma UF não apagará a
 última versão válida já armazenada.
 
-O job será executado diariamente, após a janela esperada de atualização da
-fonte. Reexecuções manuais e a ingestão de uma única UF também serão suportadas.
+O job será executado semanalmente, após a janela esperada de atualização da
+fonte. Embora a base nacional aceite atualizações diárias, os dados usados pelo
+produto são cadastrais e têm atualização obrigatória mínima mensal; a execução
+semanal limita a defasagem sem consultar diariamente todas as UFs. Reexecuções
+manuais e a ingestão de uma única UF também serão suportadas.
 
 ### Atualidade dos dados
 
@@ -220,7 +223,7 @@ sem novo deploy, pela página `/admin` do site (fora do menu) ou pelos endpoints
 `GET /admin/location-corrections/:cnesCode/events` e
 `PUT`/`DELETE /admin/location-corrections/:cnesCode`. As correções ficam na
 tabela `unit_location_corrections` (migração, entidade e repositório no padrão
-do #70), e não em `health_units`, porque a ingestão diária reescreve as
+do #70), e não em `health_units`, porque a ingestão periódica reescreve as
 coordenadas dessa tabela pelo código CNES.
 
 - **Quem é administrador:** quem tem um token em `ADMIN_API_TOKENS`, uma lista

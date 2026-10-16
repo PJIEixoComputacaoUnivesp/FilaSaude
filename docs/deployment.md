@@ -357,7 +357,7 @@ eventos de ocupação continuam dependendo do backup.
 
 O volume do Caddy guarda certificados e estado, e pode ser recriado.
 
-### Ingestão diária do CNES
+### Ingestão semanal do CNES
 
 Depois do primeiro deploy desta versão, faça uma carga inicial:
 
@@ -369,11 +369,11 @@ O script usa a imagem do último deploy confirmado, impede duas execuções
 simultâneas e encaminha argumentos para a CLI. Para repetir apenas uma UF, use
 `/opt/filasaude/ingest-units.sh --state SP`.
 
-Agende a coleta nacional diariamente, separada do deploy e depois da janela de
+Agende a coleta nacional semanalmente, separada do deploy e depois da janela de
 atualização da fonte:
 
 ```cron
-15 4 * * * /opt/filasaude/ingest-units.sh >> /opt/filasaude/ingestion.log 2>&1
+15 4 * * 0 /opt/filasaude/ingest-units.sh >> /opt/filasaude/ingestion.log 2>&1
 ```
 
 O comando retorna erro se qualquer UF falhar, mas mantém os resultados das UFs

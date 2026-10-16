@@ -38,7 +38,7 @@ limites orientam o produto e cada decisão de arquitetura abaixo.
 | Mapa, lista, busca e acessibilidade | Implementado | [`.interface-design/system.md`](.interface-design/system.md) |
 | Correção manual de posição por administradores | Implementado | [guia de deploy](docs/deployment.md#correções-manuais-de-posição) |
 | Recebimento de snapshots de ocupação (webhook assinado) | Implementado: recebe e guarda | [contrato v1](docs/contracts/occupancy-snapshot-v1.md) |
-| Ingestão diária do CNES no PostgreSQL | Implementado | [#23](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/23) |
+| Ingestão semanal do CNES no PostgreSQL | Implementado | [#23](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/23) |
 | Processamento, estado atual e histórico de ocupação | Planejado | [#78](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/78) |
 | Simulador municipal de ocupação | Em implementação: CLI funcional | [README do simulador](apps/simulador/README.md), [#57](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/57) |
 | Camada de ocupação simulada no mapa | Planejado | [#79](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/79) |
@@ -62,7 +62,7 @@ flowchart LR
   api -->|"posições em São Paulo"| geo["GeoSampa"]
 
   sim["Simulador municipal"] -.->|"webhook assinado"| api
-  job["Job de ingestão"] -->|"diário"| cnes["CNES"]
+  job["Job de ingestão"] -->|"semanal"| cnes["CNES"]
   job --> db
 ```
 
