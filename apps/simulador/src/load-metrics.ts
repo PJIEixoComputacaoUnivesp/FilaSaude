@@ -1,6 +1,10 @@
 import type { SnapshotTransportResult } from './transport.ts';
 
 export interface LoadReport {
+  durationSeconds: number;
+  seed: string;
+  units: number;
+  sourceIds: string[];
   generated: number;
   accepted: number;
   rejected: number;
@@ -14,6 +18,11 @@ export interface LoadReport {
     p99: number;
   };
 }
+
+export type LoadMetricsReport = Omit<
+  LoadReport,
+  'durationSeconds' | 'seed' | 'units' | 'sourceIds'
+>;
 
 export class LoadMetrics {
   private generated = 0;
@@ -43,7 +52,7 @@ export class LoadMetrics {
     this.recordResponse(key);
   }
 
-  snapshot(): LoadReport {
+  snapshot(): LoadMetricsReport {
     const latencies = [...this.latencies].sort((left, right) => left - right);
     return {
       generated: this.generated,

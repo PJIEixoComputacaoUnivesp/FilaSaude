@@ -299,7 +299,7 @@ Opções:
   --latitude NUMBER          Latitude do ponto de referência
   --longitude NUMBER         Longitude do ponto de referência
   --radius-km NUMBER         Raio de seleção em quilômetros (padrão: 25)
-  --max-units NUMBER         Limite de unidades (padrão: 10)
+  --max-units NUMBER         Limite de unidades (padrão: 10; national: todas)
   --unit-cnes CODES          CNES separados por vírgula
   --source-id ID             Identificador da fonte simuladora
   --seed VALUE               Seed do cenário (padrão: fila-saude-v1)

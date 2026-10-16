@@ -88,7 +88,7 @@ export class NationalLoadRunner {
       this.state.advance(this.units, cycle);
       const currentTime = this.now().getTime();
       if (currentTime >= nextReportAt) {
-        this.onReport?.(metrics.snapshot());
+        this.onReport?.(this.buildReport(metrics, startedAt));
         nextReportAt = currentTime + this.config.reportIntervalSeconds * 1000;
       }
       if (currentTime < deadline) {
@@ -96,9 +96,19 @@ export class NationalLoadRunner {
       }
     }
 
-    const report = metrics.snapshot();
+    const report = this.buildReport(metrics, startedAt);
     this.onReport?.(report);
     return report;
+  }
+
+  private buildReport(metrics: LoadMetrics, startedAt: number): LoadReport {
+    return {
+      ...metrics.snapshot(),
+      durationSeconds: (this.now().getTime() - startedAt) / 1000,
+      seed: this.config.seed,
+      units: this.units.length,
+      sourceIds: [...this.config.sourceIds],
+    };
   }
 
   private sourceIdFor(unitCnes: string): string {

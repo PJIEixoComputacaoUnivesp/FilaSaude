@@ -76,6 +76,10 @@ test('envia unidades nacionais com fontes e métricas determinísticas', async (
 
   assert.equal(report.accepted, report.generated);
   assert.equal(report.failed, 0);
+  assert.equal(report.seed, 'national-test');
+  assert.equal(report.units, units.length);
+  assert.deepEqual(report.sourceIds, config.sourceIds);
+  assert.ok(report.durationSeconds >= 0);
   assert.ok(report.generated >= units.length);
   assert.ok(sources.size >= 1);
   assert.ok(reports.length >= 1);

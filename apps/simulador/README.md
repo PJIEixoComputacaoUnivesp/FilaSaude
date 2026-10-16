@@ -86,6 +86,11 @@ O cenário imprime relatórios parciais por ciclo e um relatório JSON final com
 eventos gerados, respostas, retries e percentis de latência. Para permitir um
 ambiente controlado não local, use `--allow-nonlocal-target` explicitamente.
 
+O runner nacional está separado da CLI para permitir futura integração com a
+aplicação. Uma página web não deve receber `SIMULATOR_SOURCE_SECRET`; a
+integração deverá acionar um serviço backend controlado ou um job autorizado,
+reutilizando o runner e suas métricas no lado servidor.
+
 Opções também podem ser informadas pelas variáveis `SIMULATOR_*`. Os principais
 parâmetros são:
 
@@ -98,7 +103,7 @@ parâmetros são:
 | `--city` | `SIMULATOR_CITY` | — | Cidade alternativa |
 | `--unit-cnes` | `SIMULATOR_UNIT_CNES` | — | CNES separados por vírgula |
 | `--radius-km` | `SIMULATOR_RADIUS_KM` | `25` | Raio para seleção por coordenadas |
-| `--max-units` | `SIMULATOR_MAX_UNITS` | `10` | Limite de unidades |
+| `--max-units` | `SIMULATOR_MAX_UNITS` | `10` (`national`: todas) | Limite de unidades |
 | `--seed` | `SIMULATOR_SEED` | `fila-saude-v1` | Reprodutibilidade do cenário |
 | `--interval-seconds` | `SIMULATOR_INTERVAL_SECONDS` | `120` | Intervalo entre ciclos |
 | `--set-occupied` | `SIMULATOR_SET_OCCUPIED` | — | Valores iniciais `CNES:CATEGORIA:VALOR`, separados por vírgula |
