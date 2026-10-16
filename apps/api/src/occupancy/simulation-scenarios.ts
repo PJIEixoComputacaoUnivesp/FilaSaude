@@ -1,6 +1,6 @@
 /**
  * Scenarios the site can ask the simulator to play. The ids are the contract
- * with the simulator (apps/simulador/src/scenarios.ts); the texts are shown
+ * with the simulator (SIMULATION_SCENARIOS in apps/simulador/src/config.ts); the texts are shown
  * on the site as they are.
  */
 export const SIMULATION_SCENARIOS = [

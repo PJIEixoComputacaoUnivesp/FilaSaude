@@ -5,6 +5,7 @@ import {
   type OnApplicationBootstrap,
   type OnApplicationShutdown,
 } from '@nestjs/common';
+import { QueryFailedError } from 'typeorm';
 import { OccupancyRepository } from '../database/repositories/occupancy.repository.js';
 import {
   OCCUPANCY_SETTINGS,
@@ -92,6 +93,9 @@ export class OccupancyProcessorService
           processed += (await this.repository.processPending(1, eventId))
             .processed;
         } catch (error) {
+          // Only a problem with the event itself is final. A deadlock, a
+          // timeout or a lost connection leaves it pending for the next tick.
+          if (!isPermanentFailure(error)) throw error;
           await this.repository.markFailed(eventId, messageOf(error));
           processed += 1;
         }
@@ -107,6 +111,15 @@ export class OccupancyProcessorService
       new Date(now.getTime() - this.settings.retentionMs),
     );
   }
+}
+
+/** SQLSTATE classes 22 (data exception) and 23 (integrity constraint). */
+export function isPermanentFailure(error: unknown): boolean {
+  const code =
+    error instanceof QueryFailedError
+      ? (error.driverError as { code?: unknown } | undefined)?.code
+      : undefined;
+  return typeof code === 'string' && /^2[23]/.test(code);
 }
 
 function messageOf(error: unknown): string {

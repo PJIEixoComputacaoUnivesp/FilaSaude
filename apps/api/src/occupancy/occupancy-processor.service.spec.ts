@@ -1,5 +1,17 @@
+import { QueryFailedError } from 'typeorm';
 import { loadOccupancySettings } from './occupancy-settings.js';
-import { OccupancyProcessorService } from './occupancy-processor.service.js';
+import {
+  isPermanentFailure,
+  OccupancyProcessorService,
+} from './occupancy-processor.service.js';
+
+function sqlError(code: string): QueryFailedError {
+  return new QueryFailedError(
+    'SELECT 1',
+    [],
+    Object.assign(new Error('pg'), { code }),
+  );
+}
 
 function repositoryMock(overrides: Record<string, unknown> = {}) {
   return {
@@ -39,7 +51,7 @@ describe('OccupancyProcessorService', () => {
   it('isolates a failing event instead of blocking the inbox', async () => {
     let batches = 0;
     const processPending = vi.fn((_limit: number, eventId?: string) => {
-      if (eventId === 'BAD') return Promise.reject(new Error('bad payload'));
+      if (eventId === 'BAD') return Promise.reject(sqlError('22P02'));
       if (eventId === 'GOOD')
         return Promise.resolve({ processed: 1, applied: 1 });
       // The first batch fails as a whole; the next one finds nothing left.
@@ -61,8 +73,35 @@ describe('OccupancyProcessorService', () => {
 
     expect(processPending).toHaveBeenCalledWith(1, 'GOOD');
     expect(processPending).toHaveBeenCalledWith(1, 'BAD');
-    expect(repository.markFailed).toHaveBeenCalledWith('BAD', 'bad payload');
+    expect(repository.markFailed).toHaveBeenCalledWith('BAD', 'pg');
     expect(repository.markFailed).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves an event pending when its retry fails for a transient reason', async () => {
+    const processPending = vi.fn((_limit: number, eventId?: string) =>
+      Promise.reject(
+        eventId === undefined ? new Error('batch') : sqlError('40P01'),
+      ),
+    );
+    const repository = repositoryMock({
+      processPending,
+      findPendingEventIds: vi.fn().mockResolvedValue(['EVENT']),
+    });
+    const processor = new OccupancyProcessorService(
+      repository as never,
+      settings,
+    );
+
+    await expect(processor.drain()).rejects.toBeInstanceOf(QueryFailedError);
+    expect(repository.markFailed).not.toHaveBeenCalled();
+  });
+
+  it('treats only data and integrity errors as final', () => {
+    expect(isPermanentFailure(sqlError('22P02'))).toBe(true);
+    expect(isPermanentFailure(sqlError('23502'))).toBe(true);
+    expect(isPermanentFailure(sqlError('40P01'))).toBe(false);
+    expect(isPermanentFailure(sqlError('57014'))).toBe(false);
+    expect(isPermanentFailure(new Error('connection reset'))).toBe(false);
   });
 
   it('removes processed events past the retention at most once an hour', async () => {
