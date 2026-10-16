@@ -80,7 +80,9 @@ export function OccupancyLayerProvider({ children }: { children: ReactNode }) {
     const load = () => {
       if (isEnabled) {
         fetchSimulationControl(controller.signal)
-          .then(setControl)
+          .then((next) => {
+            if (!controller.signal.aborted) setControl(next);
+          })
           .catch(() => {
             // The scenario is secondary: the layer works without it.
           });
