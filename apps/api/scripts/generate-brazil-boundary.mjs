@@ -3,6 +3,8 @@ import { fileURLToPath } from "node:url";
 
 // Input: BR_Pais_2025.shp from the IBGE country boundary download.
 // Keep every polygon (including islands); simplify with at most ~11 m error.
+// Writes the `high` level of GET /boundaries/brazil; the API derives `low`.
+// Usage: node apps/api/scripts/generate-brazil-boundary.mjs BR_Pais_2025.shp
 const tolerance = 0.0001;
 const source = readFileSync(process.argv[2]);
 if (source.readInt32BE(0) !== 9994 || source.readInt32LE(32) !== 5) {
@@ -83,5 +85,5 @@ const feature = {
   },
   geometry: { type: "MultiPolygon", coordinates: polygons },
 };
-writeFileSync(fileURLToPath(new URL("../public/brazil.geojson", import.meta.url)), JSON.stringify(feature) + "\n");
+writeFileSync(fileURLToPath(new URL("../src/boundaries/brazil-boundary.json", import.meta.url)), JSON.stringify(feature) + "\n");
 console.log(`${polygons.length} polygons, ${polygons.flat(2).length} points`);

@@ -1,4 +1,32 @@
-import { expect, test, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { expect, test, type Page, type Route } from "@playwright/test";
+
+// The API is not running here, so the outline comes from its own file, in the
+// shape of GET /boundaries/brazil (both levels with the full geometry).
+const boundaryFile = JSON.parse(
+  readFileSync(
+    join(__dirname, "../apps/api/src/boundaries/brazil-boundary.json"),
+    "utf8",
+  ),
+) as { geometry: unknown };
+const boundaryUrl = "**/api/boundaries/brazil?**";
+
+function fulfillBoundary(route: Route) {
+  const detail = new URL(route.request().url()).searchParams.get("detail");
+  return route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      data: { type: "Feature", properties: {}, geometry: boundaryFile.geometry },
+      metadata: {
+        detail,
+        boundaryYear: 2025,
+        source: { name: "IBGE", url: "https://www.ibge.gov.br/" },
+      },
+    }),
+  });
+}
 
 // Same box as TILE_BOUNDS in apps/web/src/UnitsMap.tsx: south, west, north, east.
 const tileBounds = { south: -33.8, west: -74, north: 5.3, east: -28.8 };
@@ -36,6 +64,7 @@ function overlapsBrazil({ z, x, y }: Tile) {
 
 async function recordTiles(page: Page) {
   const tiles: Tile[] = [];
+  await page.route(boundaryUrl, fulfillBoundary);
   await page.route("https://*.tile.openstreetmap.org/**", (route) => {
     const match = /\/(\d+)\/(\d+)\/(\d+)\.png$/.exec(route.request().url());
     if (match) {
@@ -70,6 +99,22 @@ async function recordTiles(page: Page) {
 
 const key = ({ z, x, y }: Tile) => `${z}/${x}/${y}`;
 
+/**
+ * Zooms in with the map's own button, one level per click, from zoom 5 (the
+ * minimum in the 1920×1080 window used here) to the given level.
+ */
+async function zoomTo(page: Page, zoom: number) {
+  const zoomIn = page.getByRole("button", { name: "Aproximar o mapa" });
+  for (let level = 5; level < zoom; level++) {
+    await zoomIn.click();
+    // Leaflet ignores a zoom asked during the animation of the previous one.
+    await expect(
+      page.locator(`img.leaflet-tile[src*="/${level + 1}/"]`).first(),
+    ).toBeAttached();
+    await expect(page.locator(".leaflet-zoom-anim")).toHaveCount(0);
+  }
+}
+
 test.use({ viewport: { width: 1920, height: 1080 } });
 
 test("pede só os tiles do Brasil, no zoom final", async ({ page }) => {
@@ -92,12 +137,11 @@ test("só pede tiles depois que a máscara do Brasil chega", async ({ page }) =>
   let isBoundaryServed = false;
   let tilesBeforeBoundary = 0;
   const tiles = await recordTiles(page);
-  await page.route("**/brazil.geojson", async (route) => {
-    const response = await route.fetch();
+  await page.route(boundaryUrl, async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 500));
     isBoundaryServed = true;
     // StrictMode aborts the first request; it can no longer be fulfilled.
-    await route.fulfill({ response }).catch(() => {});
+    await fulfillBoundary(route).catch(() => {});
   });
   page.on("request", (request) => {
     if (request.url().includes("tile.openstreetmap.org") && !isBoundaryServed) {
@@ -113,7 +157,7 @@ test("só pede tiles depois que a máscara do Brasil chega", async ({ page }) =>
 
 test("mostra a base mesmo sem o contorno do Brasil", async ({ page }) => {
   const tiles = await recordTiles(page);
-  await page.route("**/brazil.geojson", (route) => route.abort());
+  await page.route(boundaryUrl, (route) => route.abort());
 
   await page.goto("/");
 
@@ -124,7 +168,7 @@ test("mostra a base mesmo sem o contorno do Brasil", async ({ page }) => {
 test("mostra a base se o contorno do Brasil travar", async ({ page }) => {
   const tiles = await recordTiles(page);
   // Never answered, like a request stuck behind a proxy.
-  await page.route("**/brazil.geojson", () => {});
+  await page.route(boundaryUrl, () => {});
   await page.clock.install();
 
   await page.goto("/");
@@ -134,6 +178,44 @@ test("mostra a base se o contorno do Brasil travar", async ({ page }) => {
 
   await expect.poll(() => tiles.length).toBeGreaterThan(0);
   expect(tiles.every(overlapsBrazil)).toBe(true);
+});
+
+test("baixa o contorno completo só com o mapa aproximado", async ({ page }) => {
+  const details: (string | null)[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/api/boundaries/brazil")) {
+      details.push(new URL(request.url()).searchParams.get("detail"));
+    }
+  });
+  const tiles = await recordTiles(page);
+  await page.goto("/");
+  await expect.poll(() => tiles.length).toBeGreaterThan(0);
+
+  expect(details).not.toContain("high");
+  expect(details).toContain("low");
+
+  // Zoom 5 to 8 and beyond: the full outline is fetched once.
+  await zoomTo(page, 8);
+  await expect.poll(() => details.filter((d) => d === "high")).toHaveLength(1);
+});
+
+test("mantém o contorno leve se o completo falhar", async ({ page }) => {
+  let isHighRequested = false;
+  const tiles = await recordTiles(page);
+  await page.route("**/api/boundaries/brazil?detail=high", (route) => {
+    isHighRequested = true;
+    return route.abort();
+  });
+  await page.goto("/");
+  await expect.poll(() => tiles.length).toBeGreaterThan(0);
+
+  await zoomTo(page, 8);
+
+  await expect.poll(() => isHighRequested).toBe(true);
+  // The attribution comes from the outline layer: still the light one.
+  await expect(page.locator(".leaflet-control-attribution")).toContainText(
+    "Contorno: IBGE",
+  );
 });
 
 test("não pede tiles fora do Brasil ao arrastar o mapa", async ({ page }) => {

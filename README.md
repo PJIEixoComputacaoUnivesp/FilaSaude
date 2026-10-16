@@ -164,6 +164,7 @@ ela, a interface consulta por polling.
 | --- | --- | --- |
 | `GET /health` | Estado da API | Implementado |
 | `GET /units?state=UF` | Unidades de uma UF; sem `state` ou com `ALL`/`BR`, todo o Brasil | Implementado |
+| `GET /boundaries/brazil?detail=low\|high` | Contorno do Brasil (IBGE) para a máscara do mapa; `low` por padrão | Implementado |
 | `POST /webhooks/v1/occupancy` | Recebe um snapshot de ocupação assinado | Implementado |
 | `GET /admin/me` e `/admin/location-corrections` | Administração de posições, com `Authorization: Bearer` | Implementado |
 | `GET /units` com ocupação | Estado de ocupação, em campos opcionais que não quebram o contrato atual | Planejado (#78) |
