@@ -173,6 +173,95 @@ test("sem a demonstração na API, a camada não aparece", async ({ page }) => {
   ).toHaveCount(0);
 });
 
+for (const viewport of [
+  { width: 320, height: 640 },
+  { width: 390, height: 844 },
+]) {
+  test(`mantém o mapa livre ao ligar leitos em ${viewport.width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await mockApi(page);
+    await page.route("**/api/units?state=ALL", (route) =>
+      route.fulfill({ json: unitsResponse }),
+    );
+    await page.goto("/?uf=SP");
+    await expect(page.getByText("3 unidades no mapa.").first()).toBeAttached();
+
+    const panel = page.getByRole("region", { name: "Controles do mapa" });
+    const toggle = panel.getByRole("switch", {
+      name: "Ocupação simulada de leitos",
+    });
+    const before = await panel.boundingBox();
+    await toggle.focus();
+    await page.keyboard.press("Space");
+    await expect(toggle).toBeChecked();
+    await expect(
+      panel.getByText("Leitos fictícios. Não representam filas."),
+    ).toBeVisible();
+
+    const after = await panel.boundingBox();
+    const map = await page.locator(".leaflet-container").boundingBox();
+    expect(before).not.toBeNull();
+    expect(after).not.toBeNull();
+    expect(map).not.toBeNull();
+    expect(after!.height - before!.height).toBeLessThanOrEqual(40);
+    expect(after!.height).toBeLessThan(map!.height * 0.35);
+    expect(
+      await panel.evaluate(
+        (element) => element.scrollHeight <= element.clientHeight + 1,
+      ),
+    ).toBe(true);
+
+    const open = page.getByRole("button", { name: "Abrir filtros e legenda" });
+    await open.click();
+    const dialog = page.getByRole("dialog", { name: "Filtros e legenda" });
+    await expect(dialog).toBeVisible();
+    await expect(
+      dialog.getByRole("combobox", { name: "Estado", exact: true }),
+    ).toHaveValue("SP");
+    await dialog
+      .getByText("Legenda da ocupação de leitos", { exact: true })
+      .click();
+    await expect(
+      dialog.getByText(/A cor e o percentual representam/),
+    ).toBeVisible();
+    await dialog
+      .getByRole("checkbox", {
+        name: "Mostrar só unidades com ocupação simulada de leitos",
+      })
+      .check();
+    await dialog.getByRole("button", { name: "Voltar ao mapa" }).click();
+    await expect(dialog).not.toBeVisible();
+    await expect(open).toBeFocused();
+    await expect(toggle).toBeChecked();
+    await expect(page.getByText("2 unidades no mapa.").first()).toBeAttached();
+    await open.click();
+    await page.keyboard.press("Escape");
+    await expect(dialog).not.toBeVisible();
+    await expect(open).toBeFocused();
+    await panel.getByRole("button", { name: "Legenda", exact: true }).click();
+    await expect(
+      dialog.getByText(/A cor e o percentual representam/),
+    ).toBeVisible();
+    await expect(
+      dialog.getByRole("button", { name: "Voltar ao mapa" }),
+    ).toBeInViewport();
+    await page.keyboard.press("Escape");
+    await expect(
+      panel.getByRole("button", { name: "Legenda", exact: true }),
+    ).toBeFocused();
+    await panel.getByRole("button", { name: "Legenda", exact: true }).click();
+    await expect(dialog.getByText(/A cor e o percentual representam/)).toBeVisible();
+    await page.keyboard.press("Escape");
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  });
+}
+
 test("a camada começa desligada e mostra só dados cadastrais", async ({
   page,
 }) => {
