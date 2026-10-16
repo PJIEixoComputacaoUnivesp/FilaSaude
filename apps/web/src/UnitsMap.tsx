@@ -387,6 +387,7 @@ function UnitMarker({
       radius={occupancy ? radius + 3 : radius}
       renderer={renderer}
       eventHandlers={{
+        popupclose: (event) => resetPopupPlacement(event.popup),
         popupopen: () => {
           // React renders the content after this event, so measure next frame.
           window.requestAnimationFrame(() => {
@@ -600,14 +601,19 @@ function popupAutoPanPadding(
     : [box.right - mapBox.left + fitPadding, fitPadding];
 }
 
-// Leaflet's default popup offset; the tip below the content takes 20px.
-const popupAboveOffset = L.point(0, 7);
-const popupTipHeight = 20;
+// With Leaflet's default offset and tip, a popup ends 13px above its marker.
+// Below it, index.css starts the content the same 13px under the marker.
+const popupOffset = L.point(0, 7);
+const popupGap = 13;
+// Leaflet's tip is 40px wide and centred with a -20px margin.
+const popupTipMargin = -20;
 
 /**
- * Opens the popup below its marker when it does not fit above. Near the north
- * of Brazil the map cannot pan down far enough, and the popup was cut off
- * above the map while the map kept trying to bring it into view.
+ * Places the popup where it fits without moving the map. Near the edges of
+ * Brazil the map cannot pan far enough, and the popup was cut off while the
+ * map kept trying to bring it into view. It opens below its marker when there
+ * is more room there (anchored by its top, so content added later grows
+ * downward) and slides sideways near the coast, its tip still on the marker.
  */
 function placePopupWhereItFits(
   map: L.Map,
@@ -616,24 +622,52 @@ function placePopupWhereItFits(
 ): void {
   const element = popup?.getElement();
   if (!popup?.isOpen() || !element) return;
+  resetPopupPlacement(popup);
 
-  popup.options.offset = popupAboveOffset;
-  element.classList.remove("leaflet-popup-below");
-  popup.update();
-
+  const [leftPadding, topPadding] = popupAutoPanPadding(map, overlay);
   const anchorY = map.latLngToContainerPoint(popup.getLatLng()!).y;
-  const height = element.offsetHeight;
-  const gap = popupTipHeight - popupAboveOffset.y;
-  const [, topPadding] = popupAutoPanPadding(map, overlay);
-  const fitsAbove = anchorY - gap - height >= topPadding;
-  const fitsBelow = anchorY + gap + height <= map.getSize().y - fitPadding;
-  if (fitsAbove || !fitsBelow) return;
+  const roomAbove = anchorY - popupGap - topPadding;
+  const roomBelow = map.getSize().y - fitPadding - anchorY - popupGap;
+  element.classList.toggle(
+    "leaflet-popup-below",
+    element.offsetHeight > roomAbove && roomBelow > roomAbove,
+  );
 
-  // Mirrors the default placement: the content starts as far below the
-  // marker as it ends above it by default.
-  popup.options.offset = L.point(0, height + gap + popupTipHeight);
-  element.classList.add("leaflet-popup-below");
+  const mapBox = map.getContainer().getBoundingClientRect();
+  const box = element.getBoundingClientRect();
+  const overflowRight = box.right - (mapBox.right - fitPadding);
+  const overflowLeft = mapBox.left + leftPadding - box.left;
+  // The tip must stay over the card, clear of its rounded corners.
+  const limit = box.width / 2 + popupTipMargin - 12;
+  const shift = Math.round(
+    Math.max(
+      -limit,
+      Math.min(
+        limit,
+        overflowRight > 0 ? -overflowRight : Math.max(overflowLeft, 0),
+      ),
+    ),
+  );
+  if (shift === 0) return;
+
+  popup.options.offset = popupOffset.add([shift, 0]);
   popup.update();
+  const tip = element.querySelector<HTMLElement>(
+    ".leaflet-popup-tip-container",
+  );
+  if (tip) tip.style.marginLeft = `${popupTipMargin - shift}px`;
+}
+
+function resetPopupPlacement(popup: L.Popup): void {
+  const element = popup.getElement();
+  element?.classList.remove("leaflet-popup-below");
+  element
+    ?.querySelector<HTMLElement>(".leaflet-popup-tip-container")
+    ?.style.removeProperty("margin-left");
+  if (!popup.options.offset || !L.point(popup.options.offset).equals(popupOffset)) {
+    popup.options.offset = popupOffset;
+    if (popup.isOpen()) popup.update();
+  }
 }
 
 /** Leaflet's automatic pan does not account reliably for an HTML overlay. */

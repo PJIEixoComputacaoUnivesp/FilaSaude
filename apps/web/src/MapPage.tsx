@@ -97,8 +97,11 @@ export function MapPage() {
         ? `${formatCount(mappableCount, "resultado", "resultados")} no mapa em ${stateName(deferredState)}`
         : "";
 
+  // The map's floor follows the height, not the width: a short screen (a phone
+  // held sideways, a browser bar) fills the space left, and only a very short
+  // one (zoomed in) scrolls instead of crushing the map.
   return (
-    <div className="relative min-h-0 w-full flex-1 sm:min-h-[28rem]">
+    <div className="relative min-h-56 w-full flex-1 [@media(min-height:40rem)]:min-h-[28rem]">
       <h1
         ref={selectedUnitId ? undefined : headingRef}
         tabIndex={-1}

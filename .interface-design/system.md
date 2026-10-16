@@ -137,9 +137,11 @@
 - Text is cut before controls on narrow screens. In the map panel the field
   labels are screen-reader-only below `sm` (the select shows its value and the
   field has a placeholder), and the origin line is the one-line `shortText`
-  ("Cópia do CNES de 22/09/2026"); an outage keeps its full amber notice. The
-  footer is one short paragraph with the link inline, so the map keeps its
-  height.
+  ("Cópia do CNES de 22/09/2026"); an outage keeps its full amber notice. From
+  `sm` the footer is one short paragraph with the link inline; below it, the
+  short line and popover described in Journey. The map's minimum height
+  depends on the screen height, not its width, so a phone held sideways does
+  not scroll.
 - Reserve the height of a results screen (`min-h-[60dvh]`) so the footer does
   not jump when cards replace a short loading state.
 - Long result lists load progressively (24 at a time, "Mostrar mais") with a

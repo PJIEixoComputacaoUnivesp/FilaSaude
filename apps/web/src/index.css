@@ -96,7 +96,13 @@
 }
 
 /* A popup without room above its marker opens below it (UnitsMap), with the
-   tip moved above the content and pointing up. */
+   tip moved above the content and pointing up. It is anchored by its top
+   (Leaflet sets `bottom` inline), so content added later grows downward. */
+.leaflet-container .leaflet-popup-below {
+  top: 13px;
+  bottom: auto !important;
+}
+
 .leaflet-container .leaflet-popup-below .leaflet-popup-tip-container {
   top: -20px;
   margin-top: 1px;

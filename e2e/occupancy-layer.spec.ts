@@ -252,14 +252,67 @@ test("no computador, o popup de uma unidade perto do norte abre para baixo", asy
   expect(await panePosition()).toBe(before);
 });
 
-test("a página do mapa não rola em celular com a barra do navegador visível", async ({
+test("no computador, o popup de uma unidade no litoral leste cabe no mapa", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 375, height: 548 });
+  const natal = unit("2409332", "UPA NATAL", "Natal", "RN");
+  natal.location.latitude = -5.79;
+  natal.location.longitude = -34.87;
+  await page.setViewportSize({ width: 1024, height: 640 });
+  await mockApi(page);
+  await page.route("**/api/units?state=ALL", (route) =>
+    route.fulfill({
+      json: {
+        data: [natal],
+        metadata: { ...unitsResponse.metadata, count: 1, state: "BR" },
+      },
+    }),
+  );
+  await page.goto("/");
+  await expect(page.getByText("1 unidade no mapa.")).toBeVisible();
+
+  let marker: { x: number; y: number } | null = null;
+  await expect
+    .poll(async () => {
+      const previous = marker;
+      marker = await findOnlyMarker(page);
+      return marker !== null && JSON.stringify(marker) === JSON.stringify(previous);
+    })
+    .toBe(true);
+  marker = marker!;
+  const pane = page.locator(".leaflet-map-pane");
+  const panePosition = () =>
+    pane.evaluate((element) => getComputedStyle(element).transform);
+  const before = await panePosition();
+  await page.mouse.click(marker.x, marker.y);
+
+  const popup = page.locator(".leaflet-popup");
+  await expect(popup.getByText("UPA NATAL", { exact: true })).toBeVisible();
+  // Let any pan (and the pan limit pulling it back) finish.
+  await page.waitForTimeout(600);
+  const map = (await page.locator(".leaflet-container").boundingBox())!;
+  const box = (await popup.boundingBox())!;
+  expect(box.x + box.width).toBeLessThanOrEqual(map.x + map.width);
+  // The card slides sideways; its tip stays on the marker and the map stays.
+  const tip = (await popup.locator(".leaflet-popup-tip").boundingBox())!;
+  expect(Math.abs(tip.x + tip.width / 2 - marker.x)).toBeLessThan(4);
+  expect(await panePosition()).toBe(before);
+});
+
+test("a página do mapa não rola em celular com a barra do navegador ou deitado", async ({
+  page,
+}) => {
   await mockApi(page);
   await page.route("**/api/units?state=ALL", (route) =>
     route.fulfill({ json: unitsResponse }),
   );
+  // Portrait with the browser bar, and phones held sideways (640px or wider).
+  for (const viewport of [
+    { width: 375, height: 548 },
+    { width: 640, height: 360 },
+    { width: 667, height: 375 },
+  ]) {
+  await page.setViewportSize(viewport);
   await page.goto("/?uf=SP");
   await expect(page.getByText("3 unidades no mapa.").first()).toBeAttached();
 
@@ -267,10 +320,11 @@ test("a página do mapa não rola em celular com a barra do navegador visível",
     .getByRole("region", { name: "Controles do mapa" })
     .getByRole("switch", { name: "Ocupação simulada de leitos" });
   for (const checked of [false, true]) {
-    if (checked) {
+    // The layer choice lasts for the session, across the viewports.
+    if (checked !== (await toggle.isChecked())) {
       await toggle.focus();
       await page.keyboard.press("Space");
-      await expect(toggle).toBeChecked();
+      await expect(toggle).toBeChecked({ checked });
     }
     expect(
       await page.evaluate(
@@ -280,6 +334,7 @@ test("a página do mapa não rola em celular com a barra do navegador visível",
       ),
     ).toBe(true);
     await expect(page.getByRole("contentinfo")).toBeInViewport();
+  }
   }
 });
 
