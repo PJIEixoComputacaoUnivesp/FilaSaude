@@ -71,20 +71,26 @@ export class SimulationState {
       throw new Error('cycle deve ser um inteiro não negativo.');
     }
 
-    for (const unit of units) {
-      const state = this.ensureUnit(unit.id);
-      for (const code of SIMULATION_CATEGORY_CODES) {
-        const category = state.categories.get(code)!;
-        const change = deterministicInteger(
-          `${this.seed}:${unit.id}:${code}:${cycle}`,
-          -2,
-          2,
-        );
-        category.occupied = Math.max(
-          0,
-          Math.min(category.capacity, category.occupied + change),
-        );
-      }
+    for (const unit of units) this.advanceUnit(unit, cycle);
+  }
+
+  advanceUnit(unit: SimulatorUnit, occurrence: number): void {
+    if (!Number.isInteger(occurrence) || occurrence < 0) {
+      throw new Error('occurrence deve ser um inteiro nÃ£o negativo.');
+    }
+
+    const state = this.ensureUnit(unit.id);
+    for (const code of SIMULATION_CATEGORY_CODES) {
+      const category = state.categories.get(code)!;
+      const change = deterministicInteger(
+        `${this.seed}:${unit.id}:${code}:${occurrence}`,
+        -2,
+        2,
+      );
+      category.occupied = Math.max(
+        0,
+        Math.min(category.capacity, category.occupied + change),
+      );
     }
   }
 
