@@ -19,6 +19,8 @@ export interface SimulatorConfig {
   sourceId: string;
   sourceIds: string[];
   sourceSecret: string | null;
+  /** Per-source signing secrets from the API configuration, never logged. */
+  sourceSecrets?: Readonly<Record<string, string>>;
   state: string | null;
   municipalityCode: string | null;
   city: string | null;
@@ -200,6 +202,41 @@ export function parseArguments(argv: readonly string[]): ParsedArguments {
   return { values, help };
 }
 
+function readSharedSecrets(
+  raw: string | undefined,
+  sourceIds: readonly string[],
+): Record<string, string> {
+  if (!raw) return {};
+  let config: unknown;
+  try {
+    config = JSON.parse(raw);
+  } catch {
+    throw new Error('WEBHOOK_SOURCE_CONFIG deve conter JSON válido.');
+  }
+  if (typeof config !== 'object' || config === null || Array.isArray(config)) {
+    throw new Error('WEBHOOK_SOURCE_CONFIG deve conter um objeto de fontes.');
+  }
+  const secrets: [string, string][] = [];
+  for (const id of sourceIds) {
+    const source: unknown = Object.hasOwn(config, id)
+      ? (config as Record<string, unknown>)[id]
+      : undefined;
+    if (
+      typeof source !== 'object' ||
+      source === null ||
+      !('secret' in source) ||
+      typeof source.secret !== 'string' ||
+      source.secret.length < 32
+    ) {
+      throw new Error(
+        `Fonte ${id} ausente ou sem segredo válido em WEBHOOK_SOURCE_CONFIG.`,
+      );
+    }
+    secrets.push([id, source.secret]);
+  }
+  return Object.fromEntries(secrets);
+}
+
 export function loadConfig(
   argv: readonly string[],
   environment: NodeJS.ProcessEnv = process.env,
@@ -214,6 +251,9 @@ export function loadConfig(
   );
   const apiUrl = value('api-url', 'SIMULATOR_API_URL', DEFAULT_API_URL)!;
   const sourceId = value('source-id', 'SIMULATOR_SOURCE_ID', 'occupancy-feed')!;
+  const sourceIds = readSourceIds(value('source-ids', 'SIMULATOR_SOURCE_IDS'), sourceId);
+  const sourceSecrets = readSharedSecrets(environment.WEBHOOK_SOURCE_CONFIG, sourceIds);
+  const explicitSecret = environment.SIMULATOR_SOURCE_SECRET || null;
   const allowLoadTest = readBoolean(value('allow-load-test', 'SIMULATOR_ALLOW_LOAD_TEST'));
   const allowNonlocalTarget = readBoolean(
     value('allow-nonlocal-target', 'SIMULATOR_ALLOW_NONLOCAL_TARGET'),
@@ -267,8 +307,11 @@ export function loadConfig(
   return {
     apiUrl,
     sourceId,
-    sourceIds: readSourceIds(value('source-ids', 'SIMULATOR_SOURCE_IDS'), sourceId),
-    sourceSecret: environment.SIMULATOR_SOURCE_SECRET ?? null,
+    sourceIds,
+    sourceSecret: explicitSecret ?? sourceSecrets[sourceId] ?? null,
+    sourceSecrets: explicitSecret
+      ? Object.fromEntries(sourceIds.map((id) => [id, explicitSecret]))
+      : sourceSecrets,
     state: value('state', 'SIMULATOR_STATE')?.toUpperCase() ?? null,
     municipalityCode: value('municipality-code', 'SIMULATOR_MUNICIPALITY_CODE') ?? null,
     city: value('city', 'SIMULATOR_CITY') ?? null,

@@ -60,7 +60,7 @@ services:
 
   # Synthetic occupancy source, off unless the "simulation" profile is on:
   # docker compose --profile simulation up --build
-  # It reads the secret and the CNES sample from WEBHOOK_SOURCE_CONFIG.
+  # Independent national sources; visitors only control their local view.
   simulator:
     profiles: ["simulation"]
     build:
@@ -68,10 +68,11 @@ services:
       dockerfile: apps/simulador/Dockerfile
     environment:
       SIMULATOR_API_URL: http://api:3000
-      SIMULATOR_SOURCE_ID: ${SIMULATOR_SOURCE_ID:-occupancy-feed}
-      SIMULATOR_SCENARIO: ${SIMULATOR_SCENARIO:-showcase}
-      # Plays the scenario chosen on the site (GET /occupancy/simulation).
-      SIMULATOR_FOLLOW_SITE: "true"
+      SIMULATOR_SOURCE_IDS: ${SIMULATOR_SOURCE_IDS:-occupancy-feed}
+      SIMULATOR_SCENARIO: national
+      SIMULATOR_DURATION_SECONDS: "0"
+      SIMULATOR_ALLOW_LOAD_TEST: "true"
+      SIMULATOR_ALLOW_NONLOCAL_TARGET: "true"
       SIMULATOR_INTERVAL_SECONDS: ${SIMULATOR_INTERVAL_SECONDS:-120}
       WEBHOOK_SOURCE_CONFIG: ${WEBHOOK_SOURCE_CONFIG:-}
     depends_on:

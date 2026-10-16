@@ -76,16 +76,17 @@ services:
   # Synthetic occupancy source for the academic demonstration. It only runs
   # with the "simulation" profile, which deploy.sh turns on together with
   # OCCUPANCY_SIMULATION_ENABLED. It talks to the API inside the network and
-  # reads the secret and the CNES sample from WEBHOOK_SOURCE_CONFIG.
+  # reads each signing secret from WEBHOOK_SOURCE_CONFIG.
   simulator:
     profiles: ["simulation"]
     image: ${SIMULATOR_IMAGE:-ghcr.io/pjieixocomputacaounivesp/filasaude-simulador}:${IMAGE_TAG:?IMAGE_TAG is required}
     environment:
       SIMULATOR_API_URL: http://api:3000
-      SIMULATOR_SOURCE_ID: occupancy-feed
-      SIMULATOR_SCENARIO: showcase
-      # Plays the scenario chosen on the site (GET /occupancy/simulation).
-      SIMULATOR_FOLLOW_SITE: "true"
+      SIMULATOR_SOURCE_IDS: ${SIMULATOR_SOURCE_IDS:-occupancy-feed}
+      SIMULATOR_SCENARIO: national
+      SIMULATOR_DURATION_SECONDS: "0"
+      SIMULATOR_ALLOW_LOAD_TEST: "true"
+      SIMULATOR_ALLOW_NONLOCAL_TARGET: "true"
       SIMULATOR_INTERVAL_SECONDS: "120"
       WEBHOOK_SOURCE_CONFIG: ${WEBHOOK_SOURCE_CONFIG:?WEBHOOK_SOURCE_CONFIG is required}
     mem_limit: 96m

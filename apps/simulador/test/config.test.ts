@@ -87,3 +87,48 @@ test('rejeita CNES com formato inválido', () => {
 test('reconhece a opção de ajuda sem exigir valores', () => {
   assert.deepEqual(parseArguments(['--help']), { values: {}, help: true });
 });
+
+test('compartilha os segredos de cada fonte com a API sem limitar o catálogo nacional', () => {
+  const config = loadConfig(['--scenario', 'national', '--allow-load-test'], {
+    SIMULATOR_SOURCE_IDS: 'feed-a,feed-b',
+    WEBHOOK_SOURCE_CONFIG: JSON.stringify({
+      'feed-a': { secret: 'a'.repeat(32), unitCnes: ['1111111'] },
+      'feed-b': { secret: 'b'.repeat(32), unitCnes: ['2222222'] },
+    }),
+  });
+  assert.deepEqual(config.sourceSecrets, {
+    'feed-a': 'a'.repeat(32),
+    'feed-b': 'b'.repeat(32),
+  });
+  assert.deepEqual(config.unitCnes, []);
+  assert.equal(config.maxUnits, Number.MAX_SAFE_INTEGER);
+});
+
+test('rejeita configuração compartilhada inválida ou fonte sem segredo', () => {
+  for (const raw of [
+    '{',
+    'null',
+    '[]',
+    '{}',
+    JSON.stringify({ 'occupancy-feed': { secret: 'short' } }),
+  ]) {
+    assert.throws(
+      () => loadConfig([], { WEBHOOK_SOURCE_CONFIG: raw }),
+      /WEBHOOK_SOURCE_CONFIG/,
+    );
+  }
+});
+
+test('preserva o segredo explícito como substituição para testes locais', () => {
+  const config = loadConfig([], {
+    SIMULATOR_SOURCE_SECRET: 'explicit-local-secret',
+    WEBHOOK_SOURCE_CONFIG: JSON.stringify({
+      'occupancy-feed': { secret: 'a'.repeat(32) },
+    }),
+  });
+  assert.equal(config.sourceSecret, 'explicit-local-secret');
+  assert.equal(
+    config.sourceSecrets?.['occupancy-feed'],
+    'explicit-local-secret',
+  );
+});

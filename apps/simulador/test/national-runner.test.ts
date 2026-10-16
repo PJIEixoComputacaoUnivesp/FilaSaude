@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { mock } from 'node:test';
+import { signSnapshot } from '../src/signing.ts';
 import { NationalLoadRunner } from '../src/national-runner.ts';
 import { SimulationState } from '../src/simulation.ts';
 import type { SimulatorConfig } from '../src/config.ts';
@@ -132,4 +133,51 @@ test('mantém execução contínua até receber cancelamento', async () => {
 
   assert.equal(report.failed, 0);
   assert.equal(report.units, 1);
+});
+
+test('assina os eventos nacionais com o segredo da respectiva fonte', async () => {
+  let elapsed = 0;
+  const secrets = {
+    'occupancy-feed-001': 'a'.repeat(32),
+    'occupancy-feed-002': 'b'.repeat(32),
+  };
+  const sources = new Set<string>();
+  const fetchMock = mock.method(
+    globalThis,
+    'fetch',
+    async (_url: URL, options: RequestInit) => {
+      const headers = new Headers(options.headers);
+      const sourceId = headers.get('X-Webhook-Source') as keyof typeof secrets;
+      const timestamp = headers.get('X-Webhook-Timestamp')!;
+      sources.add(sourceId);
+      assert.equal(
+        headers.get('X-Webhook-Signature'),
+        `sha256=${signSnapshot(secrets[sourceId], timestamp, String(options.body))}`,
+      );
+      return new Response('', { status: 202 });
+    },
+  );
+  try {
+    const manyUnits = Array.from({ length: 20 }, (_, index) => ({
+      ...units[0]!,
+      id: String(1000000 + index),
+    }));
+    const runner = new NationalLoadRunner(
+      { ...config, sourceSecret: null, sourceSecrets: secrets },
+      manyUnits,
+      new SimulationState(config.seed),
+      {
+        now: () => new Date(2026, 0, 1, 0, 0, 0, elapsed),
+        sleep: async (ms) => {
+          elapsed += ms;
+        },
+      },
+    );
+    const report = await runner.run();
+    assert.equal(report.failed, 0);
+    assert.equal(report.accepted, report.generated);
+    assert.deepEqual([...sources].sort(), Object.keys(secrets));
+  } finally {
+    fetchMock.mock.restore();
+  }
 });
