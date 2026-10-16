@@ -102,12 +102,17 @@ export interface UnitSelectionOptions {
   longitude: number | null;
   radiusKm: number;
   maxUnits: number;
+  national?: boolean;
 }
 
 export function selectUnits(
   units: readonly SimulatorUnit[],
   options: UnitSelectionOptions,
 ): SimulatorUnit[] {
+  if (options.national) {
+    return [...units].sort(byId).slice(0, options.maxUnits);
+  }
+
   if (
     options.unitCnes.length === 0 &&
     !options.municipalityCode &&

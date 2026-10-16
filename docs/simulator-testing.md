@@ -56,10 +56,15 @@ incorporado da API:
 ```powershell
 $secret = 'local-occupancy-feed-secret-32-chars'
 
+$snapshot = Get-Content apps/api/src/units/units.snapshot.json -Raw |
+  ConvertFrom-Json
 $cnes = @(
-  Get-Content apps/api/src/units/units.snapshot.json -Raw |
-  ConvertFrom-Json |
-  Select-Object -First 2 -ExpandProperty id
+  $index = 0
+  foreach ($unit in $snapshot) {
+    if ($index -ge 2) { break }
+    [string]$unit.id
+    $index++
+  }
 )
 
 $env:DB_HOST = 'localhost'
@@ -108,10 +113,15 @@ simulador:
 
 ```powershell
 $secret = 'local-occupancy-feed-secret-32-chars'
+$snapshot = Get-Content apps/api/src/units/units.snapshot.json -Raw |
+  ConvertFrom-Json
 $cnes = @(
-  Get-Content apps/api/src/units/units.snapshot.json -Raw |
-  ConvertFrom-Json |
-  Select-Object -First 2 -ExpandProperty id
+  $index = 0
+  foreach ($unit in $snapshot) {
+    if ($index -ge 2) { break }
+    [string]$unit.id
+    $index++
+  }
 )
 $unitList = $cnes -join ','
 $env:SIMULATOR_SOURCE_ID = 'occupancy-feed'
@@ -216,7 +226,215 @@ node --experimental-strip-types apps/simulador/src/main.ts `
 No cenário `delayed`, a API ainda pode aceitar o evento na inbox, mas o
 processamento posterior deverá decidir como tratar sua precedência temporal.
 
-## 8. Teste automatizado contra a API
+## 8. Carga nacional controlada
+
+O cenário `national` usa todas as unidades retornadas por `state=ALL`, distribui
+os envios com jitter determinístico e produz métricas de respostas, retries e
+latência. Ele exige `--allow-load-test` e aceita somente `localhost` por padrão.
+
+Para autorizar duas fontes sintéticas no ambiente local, configure ambas antes
+de iniciar a API. O segredo pode ser o mesmo porque se trata de uma carga local:
+
+```powershell
+$secret = 'local-national-load-secret-32-chars'
+$snapshot = Get-Content apps/api/src/units/units.snapshot.json -Raw |
+  ConvertFrom-Json
+$allCnes = @(
+  foreach ($unit in $snapshot) {
+    $id = [string]$unit.id
+    if ($id -match '^\d{7}$') { $id }
+  }
+)
+$testCnes = @($allCnes | Sort-Object | Select-Object -First 20)
+$config = [ordered]@{
+  'occupancy-feed-001' = @{ secret = $secret; unitCnes = $testCnes }
+  'occupancy-feed-002' = @{ secret = $secret; unitCnes = $testCnes }
+} | ConvertTo-Json -Depth 4 -Compress
+$env:WEBHOOK_SOURCE_CONFIG = $config
+$env:SIMULATOR_SOURCE_SECRET = $secret
+```
+
+Em outro terminal, com a API e o PostgreSQL em execução:
+
+```powershell
+$env:SIMULATOR_SOURCE_IDS = 'occupancy-feed-001,occupancy-feed-002'
+node --experimental-strip-types apps/simulador/src/main.ts `
+  --api-url http://localhost:3000 `
+  --scenario national `
+  --allow-load-test `
+  --duration-seconds 300 `
+  --interval-seconds 120 `
+  --concurrency 10
+```
+
+O terminal exibe relatórios parciais e um relatório final. O teste mede a
+ingestão do simulador até a inbox. Processamento, estado atual e backlog
+dependem da issue #78. Não execute este cenário contra produção.
+
+O `--interval-seconds` é uma referência para a cadência de cada unidade, e não
+um ciclo em que todas enviam juntas. O simulador cria uma agenda determinística
+independente por CNES. A mesma seed reproduz a mesma agenda, enquanto unidades
+diferentes chegam em momentos diferentes.
+
+Para combinar a carga nacional com os cenários de comportamento existentes:
+
+```powershell
+# Reenvia o primeiro evento de cada unidade com o mesmo eventId
+node --experimental-strip-types apps/simulador/src/main.ts `
+  --api-url http://localhost:3000 `
+  --scenario national `
+  --national-event-scenario duplicate `
+  --allow-load-test `
+  --duration-seconds 60
+
+# Gera eventos nacionais com timestamps 10 minutos atrasados
+node --experimental-strip-types apps/simulador/src/main.ts `
+  --api-url http://localhost:3000 `
+  --scenario national `
+  --national-event-scenario delayed `
+  --delay-seconds 600 `
+  --allow-load-test `
+  --duration-seconds 60
+```
+
+Todas as unidades continuam sendo enviadas para a API, independentemente da
+posição do usuário. A posição deve influenciar somente as consultas e os dados
+exibidos no mapa.
+
+O bloco acima é o teste nacional limitado. Para uma execução com todas as
+unidades, não basta remover `--max-units`: a API aplica limite de requisições por
+fonte. O procedimento validado usa 24 fontes sintéticas e distribui os CNES de
+forma determinística, usando a mesma regra do simulador.
+
+No terminal da API, com o PostgreSQL em execução:
+
+```powershell
+$secret = 'local-national-load-secret-32-chars'
+$seed = 'fila-saude-v1'
+$sourceCount = 24
+$sourceIds = @(
+  1..$sourceCount | ForEach-Object {
+    'occupancy-feed-{0:D3}' -f $_
+  }
+)
+
+$snapshot = Get-Content apps/api/src/units/units.snapshot.json -Raw |
+  ConvertFrom-Json
+$allCnes = @(
+  foreach ($unit in $snapshot) {
+    $id = [string]$unit.id
+    if ($id -match '^\d{7}$') { $id }
+  }
+) | Sort-Object -Unique
+
+$partitions = @{}
+foreach ($sourceId in $sourceIds) {
+  $partitions[$sourceId] = [System.Collections.Generic.List[string]]::new()
+}
+
+$sha256 = [System.Security.Cryptography.SHA256]::Create()
+foreach ($cnes in $allCnes) {
+  $bytes = [System.Text.Encoding]::UTF8.GetBytes("${seed}:$cnes")
+  $digest = $sha256.ComputeHash($bytes)
+  $hashValue = [uint32](
+    ([uint32]$digest[0] * 16777216) +
+    ([uint32]$digest[1] * 65536) +
+    ([uint32]$digest[2] * 256) +
+    [uint32]$digest[3]
+  )
+  $index = [int]($hashValue % [uint32]$sourceCount)
+  $partitions[$sourceIds[$index]].Add($cnes)
+}
+
+$sourceConfig = [ordered]@{}
+foreach ($sourceId in $sourceIds) {
+  $sourceConfig[$sourceId] = @{
+    secret = $secret
+    unitCnes = @($partitions[$sourceId])
+  }
+}
+
+$env:WEBHOOK_SOURCE_CONFIG = (
+  $sourceConfig | ConvertTo-Json -Depth 4 -Compress
+)
+
+Write-Output "CNES totais: $($allCnes.Count)"
+$partitions.GetEnumerator() |
+  Sort-Object Name |
+  ForEach-Object { Write-Output "$($_.Key): $($_.Value.Count) CNES" }
+```
+
+O total esperado é `1793`. Depois, reinicie a API para carregar a nova
+configuração:
+
+```powershell
+Ctrl+C
+pnpm --filter @filasaude/api dev
+```
+
+No terminal do simulador:
+
+```powershell
+$env:SIMULATOR_SOURCE_SECRET = 'local-national-load-secret-32-chars'
+$env:SIMULATOR_SOURCE_IDS = (
+  1..24 | ForEach-Object { 'occupancy-feed-{0:D3}' -f $_ }
+) -join ','
+
+node --experimental-strip-types apps/simulador/src/main.ts `
+  --api-url http://localhost:3000 `
+  --source-ids $env:SIMULATOR_SOURCE_IDS `
+  --scenario national `
+  --allow-load-test `
+  --duration-seconds 180 `
+  --interval-seconds 120 `
+  --concurrency 32
+```
+
+Durante a execução, acompanhe a distribuição por fonte:
+
+```powershell
+docker compose exec -T postgres psql `
+  -U filasaude `
+  -d filasaude `
+  -c "SELECT source_id, COUNT(*) AS total, MIN(received_at) AS primeiro, MAX(received_at) AS ultimo FROM occupancy_webhook_inbox WHERE source_id LIKE 'occupancy-feed-%' GROUP BY source_id ORDER BY source_id;"
+```
+
+Para comparar somente uma execução, filtre `received_at` a partir do horário de
+início do teste. Os registros das fontes `001` e `002` podem incluir dados de
+testes limitados anteriores.
+
+O teste validado produziu 2.724 eventos aceitos para 1.793 unidades, sem erros,
+sem `429` e sem retries. Os valores de latência observados foram p50 de
+13–15 ms, p95 de 22–26 ms e p99 de 28–33 ms. Esses números caracterizam apenas
+o ambiente local utilizado e não substituem uma medição de produção.
+
+### Execução nacional contínua
+
+Para um teste sem horário final, use a mesma configuração de fontes do teste
+nacional completo e altere somente a duração:
+
+```powershell
+node --experimental-strip-types apps/simulador/src/main.ts `
+  --api-url http://localhost:3000 `
+  --source-ids $env:SIMULATOR_SOURCE_IDS `
+  --scenario national `
+  --allow-load-test `
+  --duration-seconds 0 `
+  --interval-seconds 120 `
+  --concurrency 32
+```
+
+O valor zero significa execução contínua somente para `national`. Para encerrar,
+pressione `CTRL+C` uma vez e aguarde o relatório final. O simulador interrompe
+novos agendamentos, aguarda requisições já iniciadas e encerra de forma
+graciosa.
+
+Esse modo deve ser tratado como um teste de permanência (soak test). Como o
+processamento posterior ainda depende da issue #78, os registros permanecerão
+na inbox e o banco continuará crescendo. Durante a execução, acompanhe volume,
+idade dos registros mais antigos, espaço disponível e recursos do PostgreSQL.
+
+## 9. Teste automatizado contra a API
 
 Com a API em execução e o segredo já definido no terminal do simulador:
 
@@ -231,7 +449,7 @@ e espera `202`. A persistência pode ser confirmada na inbox com a consulta da
 seção anterior. Sem essas variáveis, o teste é ignorado para permitir a execução
 da suíte padrão sem uma API externa.
 
-## 9. Interpretação dos resultados
+## 10. Interpretação dos resultados
 
 Este roteiro confirma:
 
@@ -256,7 +474,7 @@ Este roteiro ainda não confirma:
 Esses comportamentos dependem do processamento de ocupação da API e das
 respectivas entregas do frontend.
 
-## 10. Encerramento do ambiente
+## 11. Encerramento do ambiente
 
 Para parar os contêineres sem remover os dados locais:
 
