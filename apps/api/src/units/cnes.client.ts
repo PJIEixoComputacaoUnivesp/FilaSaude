@@ -71,6 +71,27 @@ function numericId(record: JsonRecord, key: string): string {
   return String(value);
 }
 
+function cnesCode(record: JsonRecord): string {
+  const value = numericId(record, 'codigo_cnes');
+  if (!/^\d{1,7}$/.test(value)) {
+    throw new Error('CNES returned an invalid codigo_cnes');
+  }
+  return value.padStart(7, '0');
+}
+
+function sourceDate(record: JsonRecord): string {
+  const value = requiredString(record, 'data_atualizacao');
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+    Number.isNaN(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== value
+  ) {
+    throw new Error('CNES returned an invalid data_atualizacao');
+  }
+  return value;
+}
+
 function parsePage(payload: unknown): JsonRecord[] {
   if (!isRecord(payload) || !Array.isArray(payload.estabelecimentos)) {
     throw new Error('CNES returned an unexpected response');
@@ -103,10 +124,10 @@ function normalizeUnit(
   const state = stateAbbreviation(numericId(record, 'codigo_uf'));
   if (!state) throw new OutOfScopeError('CNES returned an unknown state');
 
-  const lastUpdatedAt = requiredString(record, 'data_atualizacao');
+  const lastUpdatedAt = sourceDate(record);
 
   return {
-    id: numericId(record, 'codigo_cnes').padStart(7, '0'),
+    id: cnesCode(record),
     name: requiredString(record, 'nome_fantasia'),
     unitType,
     address: {

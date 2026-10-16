@@ -131,6 +131,21 @@ describe('CnesClient', () => {
     );
   });
 
+  it('skips records with invalid identifiers or source dates', async () => {
+    mockCnes([
+      establishment(-23.55, -46.63),
+      establishment(-23.55, -46.63, { codigo_cnes: 12_345_678 }),
+      establishment(-23.55, -46.63, {
+        codigo_cnes: 7_654_321,
+        data_atualizacao: 'ontem',
+      }),
+    ]);
+
+    const units = await client.fetchUnits(parseState('SP'));
+
+    expect(units.map(({ id }) => id)).toEqual(['1234567']);
+  });
+
   it('fails when every record is invalid', async () => {
     mockCnes([establishment(-23.55, -46.63, { codigo_uf: 99 })]);
 
