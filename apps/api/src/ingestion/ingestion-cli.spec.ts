@@ -19,6 +19,9 @@ describe('parseIngestionArguments', () => {
     expect(parseIngestionArguments(['--state=RJ']).states).toEqual([
       { abbreviation: 'RJ', ibgeCode: '33' },
     ]);
+    expect(parseIngestionArguments(['--', '--state', 'SP']).states).toEqual([
+      { abbreviation: 'SP', ibgeCode: '35' },
+    ]);
   });
 
   it('treats BR as an explicit national run', () => {

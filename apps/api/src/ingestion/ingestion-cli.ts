@@ -24,6 +24,7 @@ export function parseIngestionArguments(
 
   for (let index = 0; index < argv.length; index++) {
     const argument = argv[index]!;
+    if (argument === '--') continue;
     if (argument === '--help' || argument === '-h') {
       return { help: true, states: [] };
     }
