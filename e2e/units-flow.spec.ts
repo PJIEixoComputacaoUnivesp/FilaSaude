@@ -524,9 +524,19 @@ test("no celular, o aviso informativo abre por inteiro e leva a Sobre os dados",
   ).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(notice).toBeHidden();
+  await expect(open).toBeFocused();
 
   await open.click();
   await notice.getByRole("button", { name: "Fechar" }).click();
+  await expect(notice).toBeHidden();
+  await expect(open).toBeFocused();
+
+  // Leaving it with the keyboard closes it, so it never covers the map
+  // controls that receive focus next.
+  await open.focus();
+  await page.keyboard.press("Enter");
+  await expect(notice).toBeVisible();
+  await page.keyboard.press("Shift+Tab");
   await expect(notice).toBeHidden();
 
   await open.click();

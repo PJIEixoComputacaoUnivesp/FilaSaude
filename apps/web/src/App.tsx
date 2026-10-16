@@ -67,26 +67,49 @@ function RedirectToMap() {
 const linkClass =
   "whitespace-nowrap font-semibold text-fila-blue underline underline-offset-2";
 
+const safetyNotice = (
+  <>
+    <strong className="font-semibold text-slate-900">Informativo:</strong> não
+    faz diagnóstico, triagem nem recomendação médica. Em emergência, procure os
+    canais oficiais de atendimento.
+  </>
+);
+
 // On phones the full notice took two lines below the map. A short line stays
-// visible and the full text opens in a native popover (Escape and tapping
-// outside close it), so the notice is never hidden behind hover.
+// visible and the full text opens in a native popover (Escape, tapping
+// outside and moving focus away close it), so it never depends on hover.
 function Footer() {
   const noticeId = useId();
   const noticeRef = useRef<HTMLDivElement>(null);
+  const footerNoticeRef = useRef<HTMLDivElement>(null);
 
   return (
     <footer className="border-t border-slate-200 bg-white">
-      <div className="flex items-center justify-between gap-1 px-3 sm:hidden">
+      <div
+        ref={footerNoticeRef}
+        onBlur={(event) => {
+          // A tap on the card's text moves focus nowhere (no relatedTarget);
+          // the popover closes itself on taps outside.
+          const next = event.relatedTarget;
+          if (next && !footerNoticeRef.current?.contains(next)) {
+            noticeRef.current?.hidePopover();
+          }
+        }}
+        className="flex items-center justify-between gap-1 px-4 sm:hidden"
+      >
         <p className="min-w-0 text-xs text-slate-700">
           <strong className="font-semibold text-slate-900">Informativo:</strong>{" "}
           sem orientação médica
         </p>
+        {/* The ring is drawn inside: the button touches the bottom of the
+            viewport and the map above it. */}
         <button
           type="button"
           popoverTarget={noticeId}
-          className="min-h-11 shrink-0 px-1 text-xs font-semibold text-fila-blue underline underline-offset-2"
+          className="-mr-2 min-h-11 shrink-0 px-2 text-xs font-semibold text-fila-blue underline underline-offset-2 focus-visible:-outline-offset-3"
         >
           Saiba mais
+          <span className="sr-only"> sobre o aviso informativo</span>
         </button>
         <div
           ref={noticeRef}
@@ -94,13 +117,9 @@ function Footer() {
           popover="auto"
           role="note"
           aria-label="Aviso informativo"
-          className="fixed inset-x-3 bottom-14 top-auto m-0 w-auto rounded-xl border border-slate-200 bg-white p-4 text-sm leading-relaxed text-slate-700 backdrop:bg-transparent"
+          className="fixed inset-x-4 bottom-14 top-auto mx-auto my-0 max-h-[calc(100dvh-5rem)] w-auto max-w-md overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 text-sm leading-relaxed text-slate-700 backdrop:bg-transparent"
         >
-          <p>
-            <strong className="font-semibold text-slate-900">Informativo:</strong>{" "}
-            não faz diagnóstico, triagem nem recomendação médica. Em emergência,
-            procure os canais oficiais de atendimento.
-          </p>
+          <p>{safetyNotice}</p>
           <div className="mt-2 flex items-center justify-between gap-4">
             <Link
               to="/about"
@@ -121,9 +140,7 @@ function Footer() {
         </div>
       </div>
       <p className="mx-auto hidden max-w-7xl px-6 py-2 text-xs leading-relaxed text-slate-700 sm:block md:py-3 md:text-sm">
-        <strong className="font-semibold text-slate-900">Informativo:</strong>{" "}
-        não faz diagnóstico, triagem nem recomendação médica. Em emergência,
-        procure os canais oficiais de atendimento.{" "}
+        {safetyNotice}{" "}
         <Link to="/about" className={linkClass}>
           Sobre os dados
         </Link>
