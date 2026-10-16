@@ -6,7 +6,11 @@ import {
   Inject,
   NotFoundException,
   Param,
+  Sse,
+  type MessageEvent,
 } from '@nestjs/common';
+import type { Observable } from 'rxjs';
+import { OccupancyStreamService } from './occupancy-stream.service.js';
 import {
   OCCUPANCY_SETTINGS,
   type OccupancySettings,
@@ -26,6 +30,7 @@ import {
 export class OccupancyController {
   constructor(
     private readonly occupancy: OccupancyService,
+    private readonly updates: OccupancyStreamService,
     @Inject(OCCUPANCY_SETTINGS) private readonly settings: OccupancySettings,
   ) {}
 
@@ -34,6 +39,13 @@ export class OccupancyController {
   findCurrent(): Promise<OccupancyResponse> {
     this.assertEnabled();
     return this.occupancy.findCurrent();
+  }
+
+  @Sse('occupancy/stream')
+  @Header('X-Accel-Buffering', 'no')
+  stream(): Observable<MessageEvent> {
+    this.assertEnabled();
+    return this.updates.stream();
   }
 
   @Get('units/:cnes/occupancy-history')

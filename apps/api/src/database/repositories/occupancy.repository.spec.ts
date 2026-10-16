@@ -12,6 +12,7 @@ describe('OccupancyRepository', () => {
     const [sql, parameters] = query.mock.calls[0];
     expect(parameters).toEqual([500, null]);
     expect(sql).toContain('FOR UPDATE SKIP LOCKED');
+    expect(sql).toContain("pg_notify('filasaude_occupancy', unit_cnes)");
     expect(sql).toContain('ON CONFLICT (unit_cnes) DO UPDATE');
     // A late event never replaces a newer state.
     expect(sql).toMatch(

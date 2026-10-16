@@ -9,6 +9,7 @@ import {
 } from './occupancy-settings.js';
 import { OccupancyController } from './occupancy.controller.js';
 import { OccupancyService } from './occupancy.service.js';
+import { OccupancyStreamService } from './occupancy-stream.service.js';
 
 @Module({
   imports: [TypeOrmModule.forFeature([OccupancyCurrentEntity])],
@@ -18,6 +19,7 @@ import { OccupancyService } from './occupancy.service.js';
     OccupancyRepository,
     OccupancyProcessorService,
     OccupancyService,
+    OccupancyStreamService,
   ],
 })
 export class OccupancyModule {}

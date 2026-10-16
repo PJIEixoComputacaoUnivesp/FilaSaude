@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import {
   OccupancyCurrentEntity,
   type OccupancyCategoryValue,
@@ -77,11 +77,16 @@ marked AS (
   SET status = 'processed', processed_at = now(), processing_error = NULL
   FROM batch
   WHERE inbox.event_id = batch.event_id
-  RETURNING inbox.event_id
+  RETURNING inbox.event_id, inbox.unit_cnes
+),
+notified AS MATERIALIZED (
+  SELECT pg_notify('filasaude_occupancy', unit_cnes)
+  FROM (SELECT DISTINCT unit_cnes FROM marked) AS changed
 )
 SELECT
   (SELECT count(*) FROM marked)::int AS processed,
-  (SELECT count(*) FROM applied)::int AS applied
+  (SELECT count(*) FROM applied)::int AS applied,
+  (SELECT count(*) FROM notified)::int AS notifications
 `;
 
 @Injectable()
@@ -99,7 +104,10 @@ export class OccupancyRepository {
       limit,
       eventId,
     ])) as ProcessedBatch[];
-    return rows[0] ?? { processed: 0, applied: 0 };
+    return {
+      processed: rows[0]?.processed ?? 0,
+      applied: rows[0]?.applied ?? 0,
+    };
   }
 
   async findPendingEventIds(limit: number): Promise<string[]> {
@@ -132,6 +140,15 @@ export class OccupancyRepository {
 
   findCurrent(): Promise<OccupancyCurrentEntity[]> {
     return this.repository.find({ order: { unitCnes: 'ASC' } });
+  }
+
+  findCurrentForUnits(
+    unitCnes: readonly string[],
+  ): Promise<OccupancyCurrentEntity[]> {
+    return this.repository.find({
+      where: { unitCnes: In([...unitCnes]) },
+      order: { unitCnes: 'ASC' },
+    });
   }
 
   findCurrentByUnit(unitCnes: string): Promise<OccupancyCurrentEntity | null> {

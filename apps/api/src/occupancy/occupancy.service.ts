@@ -14,6 +14,7 @@ import {
 
 export interface UnitOccupancy {
   unitCnes: string;
+  eventId: string;
   percentage: number | null;
   level: OccupancyLevel | null;
   confirmation: OccupancyConfirmation;
@@ -59,9 +60,9 @@ export interface OccupancyHistoryResponse {
 }
 
 const SOURCE = {
-  name: 'Simulador de ocupação do FilaSaúde',
+  name: 'Simulador de ocupação de leitos do FilaSaúde',
   description:
-    'Dados sintéticos gerados para demonstração acadêmica. Não representam a ocupação real das unidades.',
+    'Dados sintéticos de ocupação de leitos para demonstração acadêmica. Não representam fila, tempo de espera, capacidade de atendimento nem o inventário real de leitos das unidades.',
 };
 
 @Injectable()
@@ -73,6 +74,17 @@ export class OccupancyService {
 
   async findCurrent(now = new Date()): Promise<OccupancyResponse> {
     const rows = await this.repository.findCurrent();
+    return {
+      data: rows.map((row) => this.toUnitOccupancy(row, now)),
+      metadata: this.metadata(now),
+    };
+  }
+
+  async findCurrentForUnits(
+    unitCnes: readonly string[],
+    now = new Date(),
+  ): Promise<OccupancyResponse> {
+    const rows = await this.repository.findCurrentForUnits(unitCnes);
     return {
       data: rows.map((row) => this.toUnitOccupancy(row, now)),
       metadata: this.metadata(now),
@@ -121,6 +133,7 @@ export class OccupancyService {
   private toUnitOccupancy(
     row: {
       unitCnes: string;
+      eventId: string;
       categories: OccupancyCategoryValue[];
       occurredAt: Date;
       observedAt: Date;
@@ -130,6 +143,7 @@ export class OccupancyService {
   ): UnitOccupancy {
     return {
       unitCnes: row.unitCnes,
+      eventId: row.eventId,
       ...summarizeOccupancy(
         row.categories,
         row.observedAt,

@@ -2,6 +2,8 @@ import { Test } from '@nestjs/testing';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
+import { of } from 'rxjs';
+import { OccupancyStreamService } from '../src/occupancy/occupancy-stream.service.js';
 import { configureApp } from '../src/app-configuration.js';
 import { AppModule } from '../src/app.module.js';
 import { OccupancyRepository } from '../src/database/repositories/occupancy.repository.js';
@@ -37,6 +39,10 @@ describe('Occupancy (e2e)', () => {
         getRepository: vi.fn().mockReturnValue({}),
         options: { type: 'postgres' },
       })
+      .overrideProvider(OccupancyStreamService)
+      .useValue({
+        stream: () => of({ id: '1', type: 'ready', data: { simulated: true } }),
+      })
       .overrideProvider(OccupancyRepository)
       .useValue(repository)
       .compile();
@@ -59,6 +65,7 @@ describe('Occupancy (e2e)', () => {
     const server = (await start(false)).getHttpServer();
 
     await request(server).get('/occupancy').expect(404);
+    await request(server).get('/occupancy/stream').expect(404);
     await request(server).get('/units/1234567/occupancy-history').expect(404);
   });
 
@@ -77,6 +84,17 @@ describe('Occupancy (e2e)', () => {
         confirmation: 'recent',
       }),
     ]);
+  });
+
+  it('exposes SSE with buffering disabled and simulation metadata', async () => {
+    const response = await request((await start(true)).getHttpServer())
+      .get('/occupancy/stream')
+      .expect(200)
+      .expect('Content-Type', /text\/event-stream/)
+      .expect('X-Accel-Buffering', 'no');
+    expect(response.text).toContain('event: ready');
+    expect(response.text).toContain('id: 1');
+    expect(response.text).toContain('"simulated":true');
   });
 
   it('returns the history of a unit and validates the CNES code', async () => {
