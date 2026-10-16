@@ -90,21 +90,31 @@ export const CATEGORY_LABELS: Record<OccupancyCategoryCode, string> = {
 };
 
 /**
- * One violet scale, light to dark, plus neutral gray. It never reuses the
- * colors of clinical risk classification (red, orange, yellow, green and
- * blue), so a level cannot read as a triage priority. Canvas markers do not
- * resolve CSS variables, so the values live here and in index.css.
+ * One violet scale, light to dark, with the same dark ring (9:1 or more on
+ * any map tile), plus gray. It never reuses the colors of clinical risk
+ * classification (red, orange, yellow, green and blue), so a level cannot
+ * read as a triage priority. "Not informed" is a solid gray disc, so it does
+ * not look like the hollow ring of an approximate position; "stale" is a
+ * dashed hollow ring. Canvas markers do not resolve CSS variables, so the
+ * values live here and in index.css.
  */
 export const STATUS_COLORS: Record<
   OccupancyStatus,
   { fill: string; stroke: string; hollow: boolean }
 > = {
-  low: { fill: "#c4b5fd", stroke: "#4c1d95", hollow: false },
-  moderate: { fill: "#8b5cf6", stroke: "#ffffff", hollow: false },
-  high: { fill: "#4c1d95", stroke: "#ffffff", hollow: false },
-  unknown: { fill: "#ffffff", stroke: "#475569", hollow: true },
+  low: { fill: "#ddd6fe", stroke: "#2e1065", hollow: false },
+  moderate: { fill: "#8b5cf6", stroke: "#2e1065", hollow: false },
+  high: { fill: "#4c1d95", stroke: "#2e1065", hollow: false },
+  unknown: { fill: "#94a3b8", stroke: "#334155", hollow: false },
   stale: { fill: "#ffffff", stroke: "#475569", hollow: true },
 };
+
+/** Units outside the simulation keep the neutral brand marker. */
+export const NEUTRAL_MARKER = { fill: "#1266cc", stroke: "#ffffff" };
+
+/** One name for the synthetic data in every screen. */
+export const SIMULATION_NOTICE =
+  "Dados fictícios, gerados por um simulador para demonstração acadêmica. Não são a ocupação real das unidades.";
 
 export function occupancyStatus(occupancy: UnitOccupancy): OccupancyStatus {
   if (occupancy.confirmation === "stale") return "stale";

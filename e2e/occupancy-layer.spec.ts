@@ -175,7 +175,9 @@ test("ligada, mostra a faixa em texto, a marca de simulação e filtra a amostra
   await expect(osasco.getByText("Dado simulado")).toHaveCount(0);
 
   await page
-    .getByRole("checkbox", { name: "Mostrar só as unidades da simulação" })
+    .getByRole("checkbox", {
+      name: "Mostrar só unidades com ocupação simulada",
+    })
     .check();
   await expect(page.getByText("2 unidades encontradas")).toBeVisible();
 });
@@ -193,15 +195,26 @@ test("o detalhe traz as categorias e o histórico em tabela", async ({
     .click();
 
   const section = page.getByRole("region", { name: "Ocupação simulada" });
-  await expect(section.getByText("Simulação acadêmica")).toBeVisible();
+  await expect(section.getByText("Dados simulados")).toBeVisible();
+  await expect(
+    section.getByText(/Não mede fila nem tempo de espera/),
+  ).toBeVisible();
   await expect(
     section.getByRole("row", { name: /Observação 18 20 90%/ }),
   ).toBeVisible();
+  // The level is computed on the total of the categories.
   await expect(
-    section.getByRole("img", { name: /Ocupação simulada nas últimas 24 horas/ }),
+    section.getByRole("row", { name: /Total 27 30 90%/ }),
+  ).toBeVisible();
+  await expect(
+    section.getByRole("img", {
+      name: /Ocupação simulada nas últimas 24 horas/,
+    }),
   ).toBeVisible();
 
-  await section.getByText("Ver histórico em tabela").click();
+  await section
+    .locator("summary", { hasText: "Ver histórico em tabela" })
+    .click();
   await expect(
     section.getByRole("cell", { name: "Ocupação baixa" }),
   ).toBeVisible();

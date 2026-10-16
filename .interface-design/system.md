@@ -46,6 +46,28 @@
   shown as plain text ("Cópia nacional do CNES, atualizada até…"). Only a real
   outage of the official source gets the amber `role="status"` notice.
 
+## Simulated occupancy
+
+- The "Ocupação simulada" layer (proposal 0001) exists only when the API
+  answers `GET /occupancy`; it starts off and the choice lasts for the session.
+  The map, the list and the unit detail share it (`OccupancyLayerProvider`).
+- Palette: one violet scale with the same dark ring (`occupancy-ring`
+  #2E1065) for low, moderate and high, a solid gray disc for "não informada"
+  and a dashed hollow gray ring for "sem confirmação recente". Never the
+  colors of clinical risk classification. Controls of the layer use
+  `occupancy-control` (#5B21B6), not the color of a level. Values live in
+  `occupancy.ts` (canvas) and `index.css` (tokens); keep them in step.
+- Every simulated value carries the "Dados simulados" pill or the "Dado
+  simulado · Simulador do FilaSaúde" line, the time it was sent and the level
+  in words. The notice "Dados fictícios… não são a ocupação real" stays
+  visible while the layer is on.
+- In the list the occupancy is one more field of the card, after the registry
+  data, not a highlight. The map panel is capped in height and scrolls, so it
+  never covers the zoom buttons.
+- Refreshes replace data in place: no focus change and no announcement. Only
+  turning the layer on announces the count; a failed refresh with data still
+  shown is a `status`, not an `alert`.
+
 ## Foundations
 
 - Spacing base: 4px, using the Tailwind spacing scale.

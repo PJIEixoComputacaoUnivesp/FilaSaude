@@ -97,7 +97,9 @@ export function MapPage() {
           list link before the map controls. */}
       <section
         ref={panelRef}
-        className="absolute left-3 right-3 top-3 z-[900] rounded-2xl border border-slate-200 bg-white p-3 sm:left-6 sm:right-auto sm:top-4 sm:w-96 sm:p-4"
+        // Capped so it never covers the zoom buttons (bottom left); a long
+        // legend scrolls inside it.
+        className="absolute left-3 right-3 top-3 z-[900] max-h-[min(22rem,calc(100%-7.5rem))] overflow-y-auto sm:max-h-[calc(100%-7.5rem)] overscroll-contain rounded-2xl border border-slate-200 bg-white p-3 sm:left-6 sm:right-auto sm:top-4 sm:w-96 sm:p-4"
       >
         <form
           role="search"

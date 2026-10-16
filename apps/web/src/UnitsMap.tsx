@@ -75,7 +75,7 @@ function occupancyMarker(occupancy: UnitOccupancy): L.PathOptions {
     fillColor: fill,
     fillOpacity: hollow ? 0.85 : 0.95,
     opacity: 1,
-    weight: hollow ? 3 : 2,
+    weight: hollow ? 3 : 2.5,
     dashArray: status === "stale" ? "4 3" : undefined,
   };
 }
@@ -644,20 +644,52 @@ function FitUnits({
           ],
       );
 
-    map.invalidateSize();
     // Only turn animation off (reduced motion, chosen when the map was
     // created). Leaflet decides otherwise; passing `true` would force an
     // animated zoom even from a far-away view, which it skips by default.
     const noMotion: L.ZoomPanOptions =
       map.options.zoomAnimation === false ? { animate: false } : {};
-    if (coordinates.length > 0) {
-      map.fitBounds(coordinates, {
-        ...overlayPadding(map, overlayRef?.current),
-        ...noMotion,
-      });
-    } else {
-      map.setView(brazilCenter, 4, noMotion);
+    let fitted: { center: L.LatLng; zoom: number } | null = null;
+    const remember = () => {
+      fitted = { center: map.getCenter(), zoom: map.getZoom() };
+    };
+    const fit = () => {
+      map.invalidateSize();
+      map.once("moveend", remember);
+      if (coordinates.length > 0) {
+        map.fitBounds(coordinates, {
+          ...overlayPadding(map, overlayRef?.current),
+          ...noMotion,
+        });
+      } else {
+        map.setView(brazilCenter, 4, noMotion);
+      }
+    };
+    fit();
+
+    // The panel grows when the occupancy layer or its legend opens. While the
+    // view is still the one fitted here, fit again, so the points stay out
+    // from under the panel; once the person moves the map, leave it.
+    const overlay = overlayRef?.current;
+    if (!overlay || coordinates.length === 0) {
+      return () => map.off("moveend", remember);
     }
+    let height = overlay.getBoundingClientRect().height;
+    const observer = new ResizeObserver(() => {
+      const next = overlay.getBoundingClientRect().height;
+      if (next === height) return;
+      height = next;
+      const untouched =
+        fitted !== null &&
+        fitted.zoom === map.getZoom() &&
+        fitted.center.equals(map.getCenter(), 1e-6);
+      if (untouched) fit();
+    });
+    observer.observe(overlay);
+    return () => {
+      observer.disconnect();
+      map.off("moveend", remember);
+    };
   }, [map, overlayRef, units]);
 
   return null;

@@ -1,8 +1,22 @@
-import { STATUS_COLORS, type OccupancyStatus } from "./occupancy";
+import {
+  NEUTRAL_MARKER,
+  STATUS_COLORS,
+  type OccupancyStatus,
+} from "./occupancy";
 
-/** The marker of a status, drawn as on the map. Decorative: text says it. */
-export function OccupancySwatch({ status }: { status: OccupancyStatus }) {
-  const { fill, stroke, hollow } = STATUS_COLORS[status];
+/**
+ * The marker of a status, drawn as on the map; `neutral` is a unit outside
+ * the simulation. Decorative: the text next to it says the same.
+ */
+export function OccupancySwatch({
+  status,
+}: {
+  status: OccupancyStatus | "neutral";
+}) {
+  const { fill, stroke, hollow } =
+    status === "neutral"
+      ? { ...NEUTRAL_MARKER, hollow: false }
+      : STATUS_COLORS[status];
   return (
     <svg
       aria-hidden="true"
@@ -15,9 +29,9 @@ export function OccupancySwatch({ status }: { status: OccupancyStatus }) {
         cy="8"
         r="6"
         fill={fill}
-        // A white ring disappears on white; the legend outlines it in gray.
-        stroke={stroke === "#ffffff" ? "#64748b" : stroke}
-        strokeWidth={hollow ? 2.5 : 1.5}
+        // The neutral marker's white ring would vanish on white.
+        stroke={status === "neutral" ? "#0b3f80" : stroke}
+        strokeWidth={hollow ? 2.5 : 2}
         strokeDasharray={status === "stale" ? "3 2" : undefined}
       />
     </svg>

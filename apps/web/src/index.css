@@ -22,11 +22,17 @@
   /* Simulated occupancy: one violet scale plus gray, never the colors of
      clinical risk classification. Keep in step with STATUS_COLORS in
      occupancy.ts (canvas markers do not read CSS variables). */
-  --color-occupancy-low: #c4b5fd;
+  --color-occupancy-low: #ddd6fe;
   --color-occupancy-moderate: #8b5cf6;
   --color-occupancy-high: #4c1d95;
+  --color-occupancy-ring: #2e1065;
+  /* Text and lines about the simulation (8:1 or more on white). */
   --color-occupancy-ink: #4c1d95;
+  /* Controls of the layer: violet, but not the color of the "high" level, so
+     a switch that is on does not read as data. */
+  --color-occupancy-control: #5b21b6;
   --color-occupancy-surface: #f5f3ff;
+  --color-occupancy-border: #ddd6fe;
 }
 
 @layer base {
@@ -125,4 +131,11 @@
     line-height: 44px;
     font-size: 22px;
   }
+}
+
+/* Leaflet sets Arial for the map and a 1.3em margin on popup paragraphs,
+   outside any layer, so they beat the utilities. The popup uses the same type
+   as the rest of the interface. */
+.leaflet-container {
+  font-family: var(--font-sans);
 }

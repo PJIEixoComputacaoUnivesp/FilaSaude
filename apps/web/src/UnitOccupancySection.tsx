@@ -1,13 +1,16 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { OccupancyBadge } from "./OccupancyBadge";
+import { SimulationPill } from "./SimulationPill";
 import {
   CATEGORY_LABELS,
   fetchOccupancyHistory,
   formatDateTime,
   formatTime,
-  STATUS_COLORS,
+  occupancyStatus,
   STATUS_LABELS,
+  type OccupancyHistoryPoint,
   type OccupancyHistoryResponse,
+  type UnitOccupancy,
 } from "./occupancy";
 import { chartSegments, hourlyHistory } from "./occupancyHistory";
 import { useOccupancyLayer } from "./useOccupancyLayer";
@@ -17,21 +20,16 @@ type HistoryState =
   | { status: "success"; response: OccupancyHistoryResponse | null }
   | { status: "error"; message: string };
 
-const CHART_WIDTH = 600;
-const CHART_HEIGHT = 160;
-
 /**
  * Current simulated occupancy of a unit, by category, and its history over
  * the public period. Only shown while the layer is on, and only for units of
- * the simulation; every value carries the simulation mark.
+ * the simulation; every value carries the simulation mark and its source.
  */
 export function UnitOccupancySection({ unitCnes }: { unitCnes: string }) {
   const layer = useOccupancyLayer();
   const current = layer.byUnit.get(unitCnes);
   const [state, setState] = useState<HistoryState>({ status: "loading" });
   const titleId = useId();
-  const chartTitleId = useId();
-  const chartDescriptionId = useId();
   // Refetch when the current snapshot changes (the layer refreshes it).
   const observedAt = current?.observedAt;
 
@@ -55,20 +53,15 @@ export function UnitOccupancySection({ unitCnes }: { unitCnes: string }) {
 
   if (!layer.isEnabled || !current) return null;
 
+  const layerResponse =
+    layer.state.status === "success" || layer.state.status === "error"
+      ? layer.state.response
+      : null;
+  const source = layerResponse?.metadata.source;
+  const isStale = occupancyStatus(current) === "stale";
   const history = state.status === "success" ? state.response : null;
   const points = history?.data.history ?? [];
   const periodHours = history?.metadata.periodHours ?? 24;
-  const generatedAt = history
-    ? new Date(history.metadata.generatedAt)
-    : new Date();
-  const segments = chartSegments(
-    points,
-    generatedAt,
-    periodHours,
-    CHART_WIDTH,
-    CHART_HEIGHT,
-  );
-  const rows = hourlyHistory(points);
 
   return (
     <section
@@ -79,68 +72,23 @@ export function UnitOccupancySection({ unitCnes }: { unitCnes: string }) {
         <h2 id={titleId} className="text-lg font-bold text-slate-900">
           Ocupação simulada
         </h2>
-        <span className="rounded-full bg-occupancy-surface px-2.5 py-1 text-xs font-semibold text-occupancy-ink">
-          Simulação acadêmica
-        </span>
+        <SimulationPill />
       </div>
       <p className="mt-2 text-sm leading-relaxed text-slate-700">
-        Dados sintéticos, gerados pelo simulador do projeto para demonstração.
-        Não representam a ocupação real desta unidade nem indicam qual unidade
-        procurar.
+        {source ? `${source.name}. ${source.description}` : null} Não mede fila
+        nem tempo de espera e não indica qual unidade procurar.
       </p>
 
-      <OccupancyBadge occupancy={current} className="mt-4" />
-
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[18rem] text-left text-sm text-slate-700">
-          <caption className="mb-2 text-left text-sm font-semibold text-slate-900">
-            Último envio por categoria, às {formatTime(current.observedAt)}
-          </caption>
-          <thead>
-            <tr className="border-b border-slate-200 text-slate-900">
-              <th scope="col" className="py-2 pr-4 font-semibold">
-                Categoria
-              </th>
-              <th scope="col" className="py-2 pr-4 text-right font-semibold">
-                Ocupados
-              </th>
-              <th scope="col" className="py-2 pr-4 text-right font-semibold">
-                Capacidade
-              </th>
-              <th scope="col" className="py-2 text-right font-semibold">
-                Percentual
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {current.categories.map((category) => (
-              <tr key={category.code} className="border-b border-slate-100">
-                <th scope="row" className="py-2 pr-4 font-medium">
-                  {CATEGORY_LABELS[category.code]}
-                </th>
-                <td className="py-2 pr-4 text-right tabular-nums">
-                  {category.occupied}
-                </td>
-                <td className="py-2 pr-4 text-right tabular-nums">
-                  {category.capacity}
-                </td>
-                <td className="py-2 text-right tabular-nums">
-                  {category.capacity > 0
-                    ? `${Math.round((category.occupied / category.capacity) * 100)}%`
-                    : "Não informado"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {current.confirmation === "stale" && (
-        <p className="mt-3 rounded-lg border border-slate-300 bg-fila-bg px-3 py-2 text-sm text-slate-800">
+      <OccupancyBadge occupancy={current} className="mt-4 sm:max-w-lg" />
+      {isStale && (
+        <p className="mt-3 rounded-lg border-2 border-dashed border-slate-400 bg-white px-3 py-2 text-sm text-slate-900 sm:max-w-lg">
           A fonte simulada não envia dados desde{" "}
-          {formatDateTime(current.observedAt)}. Os valores acima são do último
-          envio, e a faixa de ocupação deixa de ser mostrada.
+          {formatDateTime(current.observedAt)}. A faixa de ocupação deixa de ser
+          mostrada; os valores abaixo são do último envio.
         </p>
       )}
+
+      <CategoryTable occupancy={current} isStale={isStale} />
 
       <h3 className="mt-6 text-base font-bold text-slate-900">
         Últimas {periodHours} horas
@@ -149,136 +97,308 @@ export function UnitOccupancySection({ unitCnes }: { unitCnes: string }) {
         <p className="mt-2 text-sm text-slate-700">Carregando o histórico…</p>
       )}
       {state.status === "error" && (
-        <p className="mt-2 text-sm text-red-900" role="alert">
+        <p className="mt-2 text-sm text-red-900" role="status">
           {state.message}
         </p>
       )}
       {state.status === "success" && points.length === 0 && (
+        // The current state may come from before the period, or the history
+        // may be unavailable: never claim there was no snapshot at all.
         <p className="mt-2 text-sm text-slate-700">
-          Ainda não há envios no período.
+          O histórico das últimas {periodHours} horas não tem envios para
+          mostrar. O último envio recebido foi em{" "}
+          {formatDateTime(current.observedAt)}.
         </p>
       )}
-      {points.length > 0 && (
-        <>
-          <figure className="mt-2">
-            <svg
-              role="img"
-              aria-labelledby={`${chartTitleId} ${chartDescriptionId}`}
-              viewBox={`-36 -8 ${CHART_WIDTH + 44} ${CHART_HEIGHT + 32}`}
-              className="h-auto w-full"
-            >
-              <title id={chartTitleId}>
-                Ocupação simulada nas últimas {periodHours} horas
-              </title>
-              <desc id={chartDescriptionId}>
-                Percentual de ocupação de cada envio, de{" "}
-                {formatDateTime(points[0].occurredAt)} a{" "}
-                {formatDateTime(points[points.length - 1].occurredAt)}. A tabela
-                a seguir traz um valor por hora.
-              </desc>
-              {[0, 60, 85, 100].map((value) => {
-                const y = CHART_HEIGHT - (value / 100) * CHART_HEIGHT;
-                return (
-                  <g key={value}>
-                    <line
-                      x1={0}
-                      x2={CHART_WIDTH}
-                      y1={y}
-                      y2={y}
-                      stroke={value === 0 ? "#94a3b8" : "#e2e8f0"}
-                      strokeDasharray={
-                        value === 60 || value === 85 ? "4 4" : undefined
-                      }
-                    />
-                    <text
-                      x={-6}
-                      y={y + 4}
-                      textAnchor="end"
-                      fontSize="11"
-                      fill="#475569"
-                    >
-                      {value}%
-                    </text>
-                  </g>
-                );
-              })}
-              {segments.map((segment, index) => (
-                <polyline
-                  key={index}
-                  points={segment.map(({ x, y }) => `${x},${y}`).join(" ")}
-                  fill="none"
-                  stroke={STATUS_COLORS.high.fill}
-                  strokeWidth={2}
-                  strokeLinejoin="round"
-                />
-              ))}
-              <text x={0} y={CHART_HEIGHT + 20} fontSize="11" fill="#475569">
-                há {periodHours} h
-              </text>
-              <text
-                x={CHART_WIDTH}
-                y={CHART_HEIGHT + 20}
-                fontSize="11"
-                fill="#475569"
-                textAnchor="end"
-              >
-                agora
-              </text>
-            </svg>
-            <figcaption className="mt-1 text-xs text-slate-600">
-              Linhas tracejadas: limites das faixas moderada (60%) e alta (85%).
-            </figcaption>
-          </figure>
-          <details className="mt-3 text-sm text-slate-700">
-            <summary className="inline-flex min-h-11 cursor-pointer items-center font-semibold text-fila-blue underline underline-offset-2">
-              Ver histórico em tabela
-            </summary>
-            <div className="mt-2 max-h-80 overflow-auto">
-              <table className="w-full text-left">
-                <caption className="sr-only">
-                  Último envio de cada hora, do mais recente ao mais antigo
-                </caption>
-                <thead>
-                  <tr className="border-b border-slate-200 text-slate-900">
-                    <th scope="col" className="py-2 pr-4 font-semibold">
-                      Horário
-                    </th>
-                    <th
-                      scope="col"
-                      className="py-2 pr-4 text-right font-semibold"
-                    >
-                      Ocupação
-                    </th>
-                    <th scope="col" className="py-2 font-semibold">
-                      Faixa
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <tr
-                      key={row.occurredAt}
-                      className="border-b border-slate-100"
-                    >
-                      <td className="py-2 pr-4">
-                        <time dateTime={row.occurredAt}>
-                          {formatDateTime(row.occurredAt)}
-                        </time>
-                      </td>
-                      <td className="py-2 pr-4 text-right tabular-nums">
-                        {row.percentage === null ? "—" : `${row.percentage}%`}
-                      </td>
-                      <td className="py-2">
-                        {STATUS_LABELS[row.level ?? "unknown"]}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </details>
-        </>
+      {history && points.length > 0 && (
+        <HistoryChart
+          points={points}
+          periodHours={periodHours}
+          generatedAt={new Date(history.metadata.generatedAt)}
+        />
       )}
     </section>
+  );
+}
+
+function CategoryTable({
+  occupancy,
+  isStale,
+}: {
+  occupancy: UnitOccupancy;
+  isStale: boolean;
+}) {
+  const totalOccupied = occupancy.categories.reduce(
+    (sum, category) => sum + category.occupied,
+    0,
+  );
+  const totalCapacity = occupancy.categories.reduce(
+    (sum, category) => sum + category.capacity,
+    0,
+  );
+  const percent = (occupied: number, capacity: number) =>
+    capacity > 0
+      ? `${Math.round((occupied / capacity) * 100)}%`
+      : "Não informado";
+
+  return (
+    <div className="mt-4 overflow-x-auto sm:max-w-lg">
+      <table className="w-full min-w-[18rem] text-left text-sm text-slate-700">
+        <caption className="mb-2 text-left text-sm font-semibold text-slate-900">
+          Último envio por categoria, às {formatTime(occupancy.observedAt)}
+          {isStale && " (sem confirmação recente)"}
+        </caption>
+        <thead>
+          <tr className="border-b border-slate-200 text-slate-900">
+            <th scope="col" className="py-2 pr-4 font-semibold">
+              Categoria
+            </th>
+            <th scope="col" className="py-2 pr-4 text-right font-semibold">
+              Ocupados
+            </th>
+            <th scope="col" className="py-2 pr-4 text-right font-semibold">
+              Capacidade
+            </th>
+            <th scope="col" className="py-2 text-right font-semibold">
+              Percentual
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {occupancy.categories.map((category) => (
+            <tr key={category.code} className="border-b border-slate-100">
+              <th scope="row" className="py-2 pr-4 font-medium">
+                {CATEGORY_LABELS[category.code]}
+              </th>
+              <td className="py-2 pr-4 text-right tabular-nums">
+                {category.occupied}
+              </td>
+              <td className="py-2 pr-4 text-right tabular-nums">
+                {category.capacity}
+              </td>
+              <td className="py-2 text-right tabular-nums">
+                {percent(category.occupied, category.capacity)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        {/* The level is computed on this total, not on each category. */}
+        <tfoot>
+          <tr className="border-t-2 border-slate-300 font-semibold text-slate-900">
+            <th scope="row" className="py-2 pr-4">
+              Total
+            </th>
+            <td className="py-2 pr-4 text-right tabular-nums">
+              {totalOccupied}
+            </td>
+            <td className="py-2 pr-4 text-right tabular-nums">
+              {totalCapacity}
+            </td>
+            <td className="py-2 text-right tabular-nums">
+              {percent(totalOccupied, totalCapacity)}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
+
+const CHART_HEIGHT = 160;
+const AXIS_WIDTH = 40;
+const LINE_COLOR = "#4c1d95";
+const GUIDE_COLOR = "#64748b";
+
+/**
+ * The chart is drawn at the width it gets (one SVG unit per pixel), so text
+ * and lines keep their size on a phone. A table with one value per hour is
+ * its text alternative.
+ */
+function HistoryChart({
+  points,
+  periodHours,
+  generatedAt,
+}: {
+  points: OccupancyHistoryPoint[];
+  periodHours: number;
+  generatedAt: Date;
+}) {
+  const containerRef = useRef<HTMLElement>(null);
+  const [width, setWidth] = useState(600);
+  const titleId = useId();
+  const descriptionId = useId();
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const update = () =>
+      setWidth(Math.max(240, Math.round(container.clientWidth)));
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
+  const plotWidth = width - AXIS_WIDTH - 8;
+  const segments = chartSegments(
+    points,
+    generatedAt,
+    periodHours,
+    plotWidth,
+    CHART_HEIGHT,
+  );
+  const rows = hourlyHistory(points);
+  const first = points[0];
+  const last = points[points.length - 1];
+  const guides = [
+    { value: 0, label: "0%" },
+    { value: 60, label: "moderada ≥ 60%" },
+    { value: 85, label: "alta ≥ 85%" },
+    { value: 100, label: "100%" },
+  ];
+
+  return (
+    <>
+      <figure className="mt-2" ref={containerRef}>
+        <svg
+          role="img"
+          aria-labelledby={`${titleId} ${descriptionId}`}
+          viewBox={`${-AXIS_WIDTH} -10 ${width} ${CHART_HEIGHT + 36}`}
+          width={width}
+          height={CHART_HEIGHT + 36}
+          className="block max-w-full"
+        >
+          <title id={titleId}>
+            Ocupação simulada nas últimas {periodHours} horas
+          </title>
+          <desc id={descriptionId}>
+            Percentual de ocupação de cada envio, de{" "}
+            {formatDateTime(first.occurredAt)} a{" "}
+            {formatDateTime(last.occurredAt)}. Os valores por hora estão em "Ver
+            histórico em tabela".
+          </desc>
+          {guides.map(({ value, label }) => {
+            const y = CHART_HEIGHT - (value / 100) * CHART_HEIGHT;
+            const isThreshold = value === 60 || value === 85;
+            return (
+              <g key={value}>
+                <line
+                  x1={0}
+                  x2={plotWidth}
+                  y1={y}
+                  y2={y}
+                  stroke={value === 100 ? "#cbd5e1" : GUIDE_COLOR}
+                  strokeDasharray={isThreshold ? "4 4" : undefined}
+                />
+                <text
+                  x={isThreshold ? plotWidth : -6}
+                  y={isThreshold ? y - 4 : y + 4}
+                  textAnchor="end"
+                  fontSize="12"
+                  fill="#475569"
+                >
+                  {label}
+                </text>
+              </g>
+            );
+          })}
+          {segments.map((segment, index) => (
+            <g key={index}>
+              {segment.length > 1 && (
+                <polyline
+                  points={segment.map(({ x, y }) => `${x},${y}`).join(" ")}
+                  fill="none"
+                  stroke={LINE_COLOR}
+                  strokeWidth={2.5}
+                  strokeLinejoin="round"
+                />
+              )}
+              {/* A lone point, or the end of a run, is still visible. */}
+              <circle
+                cx={segment[segment.length - 1].x}
+                cy={segment[segment.length - 1].y}
+                r={3.5}
+                fill={LINE_COLOR}
+                stroke="#ffffff"
+                strokeWidth={1.5}
+              />
+            </g>
+          ))}
+          <text x={0} y={CHART_HEIGHT + 22} fontSize="12" fill="#475569">
+            há {periodHours} h
+          </text>
+          <text
+            x={plotWidth}
+            y={CHART_HEIGHT + 22}
+            fontSize="12"
+            fill="#475569"
+            textAnchor="end"
+          >
+            agora
+          </text>
+        </svg>
+        {points.length < 3 && (
+          <figcaption className="mt-1 text-xs text-slate-600">
+            Poucos envios até agora; o histórico começa às{" "}
+            {formatTime(first.occurredAt)}.
+          </figcaption>
+        )}
+      </figure>
+      <details className="group mt-3 text-sm text-slate-700">
+        <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 font-semibold text-fila-blue underline underline-offset-2 [&::-webkit-details-marker]:hidden">
+          Ver histórico em tabela
+          <svg
+            aria-hidden="true"
+            focusable="false"
+            viewBox="0 0 16 16"
+            className="h-4 w-4 transition group-open:rotate-180 motion-reduce:transition-none"
+          >
+            <path
+              d="M4 6l4 4 4-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            />
+          </svg>
+        </summary>
+        <div className="mt-2 max-h-80 overflow-auto sm:max-w-lg">
+          <table className="w-full text-left">
+            <caption className="sr-only">
+              Último envio de cada hora, do mais recente ao mais antigo
+            </caption>
+            <thead>
+              <tr className="border-b border-slate-200 text-slate-900">
+                <th scope="col" className="py-2 pr-4 font-semibold">
+                  Horário
+                </th>
+                <th scope="col" className="py-2 pr-4 text-right font-semibold">
+                  Ocupação
+                </th>
+                <th scope="col" className="py-2 font-semibold">
+                  Faixa
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.occurredAt} className="border-b border-slate-100">
+                  <td className="py-2 pr-4">
+                    <time dateTime={row.occurredAt}>
+                      {formatDateTime(row.occurredAt)}
+                    </time>
+                  </td>
+                  <td className="py-2 pr-4 text-right tabular-nums">
+                    {row.percentage === null ? "—" : `${row.percentage}%`}
+                  </td>
+                  <td className="py-2">
+                    {STATUS_LABELS[row.level ?? "unknown"]}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </>
   );
 }

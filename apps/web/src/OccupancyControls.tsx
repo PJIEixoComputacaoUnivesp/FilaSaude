@@ -1,9 +1,11 @@
-import { useId } from "react";
+import { useId, useState } from "react";
 import { LiveStatus } from "./LiveStatus";
 import { OccupancySwatch } from "./OccupancySwatch";
+import { SimulationPill } from "./SimulationPill";
 import {
   formatTime,
   OCCUPANCY_STATUSES,
+  SIMULATION_NOTICE,
   STATUS_LABELS,
   STATUS_RANGES,
 } from "./occupancy";
@@ -11,13 +13,16 @@ import { formatCount } from "./units";
 import { useOccupancyLayer } from "./useOccupancyLayer";
 
 /**
- * Switch, legend and simulation notice of the "Ocupação simulada" layer.
- * Renders nothing when the server has the demonstration turned off. The
- * compact variant fits the map panel; the list uses the full one.
+ * Switch, filter, legend and simulation notice of the "Ocupação simulada"
+ * layer. Renders nothing when the server has the demonstration turned off.
+ * The compact variant sits inside the map panel; the list uses a card.
  */
 export function OccupancyControls({ compact = false }: { compact?: boolean }) {
   const layer = useOccupancyLayer();
   const hintId = useId();
+  // Announced only after the person turns the layer on, once the data is in:
+  // not when the page loads with the layer already on, and not on refreshes.
+  const [announceCount, setAnnounceCount] = useState(false);
   if (!layer.isAvailable) return null;
 
   const { state } = layer;
@@ -26,11 +31,13 @@ export function OccupancyControls({ compact = false }: { compact?: boolean }) {
       ? state.response
       : null;
   const unitCount = response?.data.length ?? 0;
-  const announcement = !layer.isEnabled
-    ? ""
-    : response
-      ? `Ocupação simulada ativada: ${formatCount(unitCount, "unidade com dados simulados", "unidades com dados simulados")}.`
-      : "Carregando a ocupação simulada…";
+  const simulatedText = formatCount(
+    unitCount,
+    "unidade com ocupação simulada",
+    "unidades com ocupação simulada",
+  );
+  const announcement =
+    announceCount && layer.isEnabled && response ? `${simulatedText}.` : "";
 
   return (
     <div
@@ -45,41 +52,43 @@ export function OccupancyControls({ compact = false }: { compact?: boolean }) {
           type="checkbox"
           role="switch"
           checked={layer.isEnabled}
-          onChange={(event) => layer.setEnabled(event.target.checked)}
+          onChange={(event) => {
+            layer.setEnabled(event.target.checked);
+            setAnnounceCount(event.target.checked);
+          }}
           aria-describedby={hintId}
           className="peer sr-only"
         />
+        {/* The thumb has a border, so its position still shows the state in
+            forced colors, where backgrounds are replaced. */}
         <span
           aria-hidden="true"
-          className="relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-slate-500 bg-white transition peer-checked:border-occupancy-high peer-checked:bg-occupancy-high peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-fila-blue motion-reduce:transition-none peer-checked:[&>span]:translate-x-5 peer-checked:[&>span]:bg-white"
+          className="relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-slate-500 bg-white transition peer-checked:border-occupancy-control peer-checked:bg-occupancy-control peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-fila-blue motion-reduce:transition-none peer-checked:[&>span]:translate-x-5 peer-checked:[&>span]:border-white peer-checked:[&>span]:bg-white"
         >
-          <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-slate-500 transition motion-reduce:transition-none" />
+          <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full border-2 border-slate-500 bg-slate-500 transition motion-reduce:transition-none" />
         </span>
         <span className="text-sm font-semibold text-slate-900">
           Ocupação simulada
         </span>
       </label>
-      <p
-        id={hintId}
-        className={`text-xs leading-relaxed text-slate-700 ${compact && layer.isEnabled ? "sr-only" : ""}`}
-      >
-        Demonstração acadêmica com dados sintéticos, gerados por um simulador.
-        Não é a ocupação real das unidades.
+      <p id={hintId} className="text-xs leading-relaxed text-slate-700">
+        {SIMULATION_NOTICE}
       </p>
-      <LiveStatus message={announcement} />
+      <LiveStatus message={announcement} delay={0} />
 
       {layer.isEnabled && (
-        <div className="mt-2 space-y-2">
-          <p className="text-xs leading-relaxed text-slate-700">
-            <span className="inline-flex rounded-full bg-occupancy-surface px-2 py-0.5 font-semibold text-occupancy-ink">
-              Simulação acadêmica
-            </span>{" "}
-            {response
-              ? `${formatCount(unitCount, "unidade", "unidades")} · consultado às ${formatTime(response.metadata.generatedAt)}`
-              : "Carregando…"}
+        <div className="mt-2 space-y-1">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-700">
+            <SimulationPill />
+            {response ? simulatedText : "Carregando…"}
           </p>
           {state.status === "error" && (
-            <p className="text-xs text-red-900" role="alert">
+            // With data still on screen a failed refresh is only a status; an
+            // alert would interrupt the reader on every failed attempt.
+            <p
+              className="text-xs text-red-900"
+              role={response ? "status" : "alert"}
+            >
               {state.message}{" "}
               <button
                 type="button"
@@ -95,13 +104,26 @@ export function OccupancyControls({ compact = false }: { compact?: boolean }) {
               type="checkbox"
               checked={layer.onlySimulated}
               onChange={(event) => layer.setOnlySimulated(event.target.checked)}
-              className="h-5 w-5 shrink-0 accent-occupancy-high"
+              className="h-5 w-5 shrink-0 accent-occupancy-control"
             />
-            Mostrar só as unidades da simulação
+            Mostrar só unidades com ocupação simulada
           </label>
-          <details className="group text-xs text-slate-700" open={!compact}>
-            <summary className="-my-2 inline-flex min-h-11 cursor-pointer items-center font-semibold text-slate-900">
+          <details className="group text-xs text-slate-700">
+            <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 text-sm font-semibold text-fila-blue underline underline-offset-2 [&::-webkit-details-marker]:hidden">
               Legenda da ocupação
+              <svg
+                aria-hidden="true"
+                focusable="false"
+                viewBox="0 0 16 16"
+                className="h-4 w-4 transition group-open:rotate-180 motion-reduce:transition-none"
+              >
+                <path
+                  d="M4 6l4 4 4-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                />
+              </svg>
             </summary>
             <ul className="mt-1 space-y-1.5">
               {OCCUPANCY_STATUSES.map((status) => (
@@ -118,13 +140,19 @@ export function OccupancyControls({ compact = false }: { compact?: boolean }) {
                   </span>
                 </li>
               ))}
+              {!layer.onlySimulated && (
+                <li className="flex items-center gap-2">
+                  <OccupancySwatch status="neutral" />
+                  <span>Unidade fora da simulação</span>
+                </li>
+              )}
             </ul>
             <p className="mt-2 leading-relaxed">
-              Percentual ocupado da capacidade informada em observação,
-              estabilização e internação.
+              Ocupação da capacidade informada em observação, estabilização e
+              internação. Não mede fila nem tempo de espera e não indica qual
+              unidade procurar.
               {response &&
-                ` Sem envio por mais de ${response.metadata.staleAfterMinutes} minutos, a faixa deixa de ser mostrada.`}{" "}
-              A ocupação não indica qual unidade procurar.
+                ` Sem envio por mais de ${response.metadata.staleAfterMinutes} minutos, a faixa deixa de ser mostrada. Dados atualizados às ${formatTime(response.metadata.generatedAt)}.`}
             </p>
           </details>
         </div>
