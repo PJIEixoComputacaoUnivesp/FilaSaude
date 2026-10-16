@@ -122,32 +122,40 @@ GitHub não têm IP de saída fixo. O servidor aceita somente autenticação por
 chave e não permite login de root. Para restringir também a origem da conexão,
 use um runner com IP fixo e atualize `ssh_allowed_cidrs`.
 
-### Ocupação simulada (opcional)
+### Ocupação simulada nacional (opcional)
 
-A demonstração acadêmica de ocupação fica desligada por padrão. Para ligá-la,
-crie a variável de Actions `OCCUPANCY_SIMULATION_ENABLED` com o valor `true` e
-faça um novo deploy. O workflow grava a flag no `.env` do servidor, a API passa
-a responder `GET /api/occupancy` e o `deploy.sh` sobe o serviço `simulator`
-(perfil `simulation` do `compose.prod.yaml`), com o cenário `showcase`.
+A demonstração fica desligada por padrão. Para ligá-la, configure a variável de
+Actions `OCCUPANCY_SIMULATION_ENABLED=true` e faça um novo deploy. A API publica
+`GET /api/occupancy` e o histórico; `deploy.sh` inicia o serviço `simulator` no
+perfil `simulation`, com `national` e duração `0` (execução contínua).
 
-- O simulador fala com a API pela rede interna do Compose e lê o segredo e a
-  amostra de `WEBHOOK_SOURCE_CONFIG`. Use nesse secret a lista de CNES da
-  amostra de demonstração (`docs/simulator-testing.md`).
-- Ele sobe depois que o restante da versão está saudável e fora do `--wait`:
-  se falhar, o site continua no ar sem a camada atualizada, e o deploy não é
-  revertido.
-- Para desligar, remova a variável (ou use outro valor) e faça novo deploy: a
-  API volta a responder 404 nessas rotas, o site esconde a camada e o
-  `deploy.sh` remove o contêiner do simulador.
+Antes do deploy, prepare `WEBHOOK_SOURCE_CONFIG` com as fontes sintéticas e os
+CNES atribuídos a cada uma pelo hash da seed, conforme o
+[roteiro nacional](simulator-testing.md#8-carga-nacional-controlada). Configure
+`SIMULATOR_SOURCE_IDS` nas variáveis de Actions com os mesmos IDs e na mesma
+ordem. O workflow copia essa lista ao ambiente do servidor; o simulador lê o
+segredo de cada fonte do mesmo `WEBHOOK_SOURCE_CONFIG` da API. Não é necessário
+um segundo secret para o simulador. O fallback de ID único `occupancy-feed`
+serve apenas a catálogos pequenos: as 1.793 unidades do teste nacional usam 24
+fontes e cadência média de 120 segundos por unidade para respeitar o limite por
+fonte. Revise as partições e a quantidade de fontes quando o catálogo mudar.
 
-Os visitantes podem trocar o cenário da simulação no próprio site
-(`PUT /api/occupancy/simulation`). A troca vale para todos, fica espaçada em
-15 segundos e volta ao `showcase` depois de 15 minutos. O cenário "Interrupção
-da fonte" só mostra "sem confirmação recente" depois do prazo de
-`OCCUPANCY_STALE_AFTER_MINUTES` (20 minutos por padrão); para uma apresentação,
-reduza esse valor no `.env` do servidor.
+- O simulador usa a rede interna do Compose. A autorização de execução nacional
+  e de destino interno é explícita no serviço.
+- O serviço inicia após a versão estar saudável e fora do `--wait`: se falhar,
+  o site continua no ar e o deploy não é revertido. Verifique também os logs do
+  simulador, o avanço da projeção e os eventos aceitos; saúde da API não comprova
+  a atualização da ocupação.
+- Para desligar a demonstração, remova a flag (ou use outro valor) e faça novo
+  deploy. A API oculta as consultas públicas e o deploy remove o simulador.
+  O processador da inbox permanece independente da visualização pública.
+- Não há seletor público nem endpoint de alteração de cenários. A posição,
+  busca, UF e camada de cada visitante não alteram a produção nacional de eventos.
+  Cenários de duplicidade e atraso são ferramentas de teste operadas pela CLI.
 
-Os dados são sintéticos e o site sempre os identifica como simulação.
+Os dados são sintéticos e identificados como simulação. O histórico de 24 horas,
+a retenção de 168 horas e a marca de atualização vencida após 20 minutos continuam
+configuráveis pelas variáveis `OCCUPANCY_*` de `.env.example`.
 
 ### Notificações no Discord (opcional)
 

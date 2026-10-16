@@ -37,7 +37,7 @@ explicitamente identificados como simulação acadêmica**.
 
 Permitir que uma pessoa consulte unidades públicas de urgência em um mapa e,
 quando a camada de demonstração estiver habilitada, visualize a ocupação
-operacional simulada de uma amostra de unidades.
+operacional simulada das unidades do catálogo nacional.
 
 O nome FilaSaúde pode ser mantido, mas a descrição do produto deve deixar claro
 o recorte adotado, por exemplo: “informações sobre unidades de urgência e
@@ -149,6 +149,13 @@ O simulador representa a ponta que, em um cenário real, pertenceria ao sistema
 municipal ou à unidade de saúde. Ele permite alterar ocupações manualmente,
 executar cenários determinísticos e demonstrar falhas como duplicidade, atraso
 e interrupção temporária das confirmações.
+
+Na integração das PRs #105 e #104, a geração nacional é contínua e independente
+de visitas. A #105 fornece a agenda por unidade e múltiplas fontes sintéticas;
+a #104 depende dela para processar e apresentar a ocupação. Localização, UF,
+busca e interruptor da camada afetam apenas a consulta e a visualização de cada
+pessoa. Não há controle público de cenários que altere ou interrompa o fluxo
+nacional. Os cenários de teste são operados pela CLI em ambiente controlado.
 
 A API do FilaSaúde representa a plataforma central. Ela autentica a origem,
 persiste o evento antes de responder, processa as atualizações de forma
@@ -392,7 +399,7 @@ O trabalho pode ser distribuído sem definir responsáveis neste documento:
 - cadastro e ingestão CNES/IBGE;
 - infraestrutura e persistência PostgreSQL;
 - contrato, autenticação e recebimento de webhooks;
-- simulador municipal e cenários de demonstração;
+- simulador nacional contínuo e cenários controlados de teste;
 - projeção de ocupação, histórico e SSE;
 - mapa, detalhes, histórico e acessibilidade;
 - testes, documentação e roteiro acadêmico.
@@ -404,9 +411,9 @@ Nem todas as frentes precisam ser assumidas pelas mesmas pessoas.
 
 | Questão | Ponto de partida desta proposta | Decisão do grupo | Responsável/data |
 | --- | --- | --- | --- |
-| Qual município será demonstrado? | Amostra configurável; São Paulo como fallback | Em aberto | — |
+| Qual a abrangência da demonstração? | Catálogo nacional; municípios são filtros de visualização | Integração #105 → #104 | 16/10/2026 |
 | Haverá tentativa de parceria institucional? | Desejável, mas não obrigatória para o simulador | Em aberto | — |
-| Quais unidades entram na amostra? | 10 a 20 unidades com CNES e coordenadas válidas | Em aberto | — |
+| Quais unidades recebem eventos sintéticos? | Todo o catálogo nacional, com fontes autorizadas por CNES | Integração #105 → #104 | 16/10/2026 |
 | Quais categorias serão exibidas? | `observation` (observação), `stabilization` (estabilização) e `inpatient` (internação) | Confirmadas para o contrato v1 | — |
 | Quais faixas representam ocupação? | `<60%`, `>=60% e <85%` e `>=85%` | Em aberto | — |
 | A camada começa desligada? | Sim | Em aberto | — |

@@ -1,150 +1,137 @@
 ---
 name: run-local-stack
-description: Start, check and stop the FilaSaúde apps locally (PostgreSQL, API, web and the occupancy simulator) in the right order, with the environment each one needs. Use when asked to run, start, "rodar", "subir" or demo the apps, to see the simulated occupancy working, or before checking a change in the real app.
+description: Iniciar, verificar e encerrar PostgreSQL, API, web e fontes nacionais sintéticas do FilaSaúde na ordem correta. Use para subir a stack local ou validar a integração da ocupação nacional com o site.
 ---
 
-# Run the local stack
+# Stack local com ocupação nacional
 
-The apps depend on each other and none of them reads `.env` on its own, so
-the order and the environment matter. The user's instructions take
-precedence over this procedure.
+A geração nacional da PR #105 alimenta o processamento e a interface da PR #104.
+Os eventos continuam chegando de todo o catálogo, independentemente de visitas,
+localização, UF, busca ou interruptor da camada. O site oferece consultas; não
+há seletor público de cenários nem `/occupancy/simulation`.
 
-## What runs where
+As instruções do usuário prevalecem sobre este procedimento. Não leia nem copie
+`deploy/.env`. Não use `pnpm dev` da raiz: ele inicia o simulador antes da API e
+sem a configuração necessária. Nenhum processo lê o `.env` automaticamente.
 
-| Piece | Command | Port | Depends on |
-| --- | --- | --- | --- |
-| PostgreSQL | `docker compose up -d postgres` | 5432 (localhost) | — |
-| API | `pnpm --filter @filasaude/api dev` | 3000 | PostgreSQL with migrations |
-| Web | `pnpm --filter @filasaude/web dev --host 127.0.0.1 --port 5173 --strictPort` | 5173 | API (Vite proxies `/api` to `:3000`) |
-| Simulator | `pnpm --filter @filasaude/simulador dev` | — | API healthy and the occupancy routes on |
-
-Do not use the root `pnpm dev`: it starts every app at once, the simulator
-asks the API for the unit catalog before the API is up and exits, and none
-of the apps gets the variables below.
-
-## 1. Check what is already running
+## 1. Verificar os serviços
 
 ```bash
 ss -ltn | grep -E ':(3000|4173|5173|5432) '
-docker compose ps   # podman: the CLI is emulated, the output is the same
+docker compose ps
 ```
 
-- Port 4173 belongs to Playwright, which reuses a server already there. Never
-  start the dev web on 4173.
-- The Compose project is named `filasaude` in every checkout and worktree, so
-  the PostgreSQL container is shared with the main checkout and other
-  sessions. It may have been stopped by someone else: start it again rather
-  than creating another one, and never run `docker compose down -v`.
+A porta 4173 é do Playwright. Use 5173 para a interface de desenvolvimento.
+O projeto Compose `filasaude` e seu PostgreSQL podem estar sendo usados por
+outras sessões. Não execute `docker compose down -v` nem apague tabelas inteiras.
 
-## 2. PostgreSQL and migrations
+## 2. PostgreSQL e migrations
 
 ```bash
 docker compose up -d postgres
-until docker compose exec -T postgres pg_isready -U filasaude; do sleep 1; done
-pnpm --filter @filasaude/api migration:run   # builds the API first
+pnpm --filter @filasaude/api migration:run
 ```
 
-## 3. Environment (export it in the same shell that starts each app)
+A API fora do Docker usa `DB_HOST=localhost`, `DB_PORT=5432`, `DB_NAME=filasaude`,
+`DB_USER=filasaude` e `DB_PASSWORD=filasaude` no ambiente padrão de desenvolvimento.
+Exporte os valores se o banco local for diferente.
 
-Generate a source secret once and keep the JSON outside the repository (for
-an agent, in its scratchpad). The secret must have 32 characters or more.
+## 3. Configurar as fontes nacionais
+
+Use 24 fontes para o catálogo de 1.793 unidades e cadência média de 120 segundos.
+Mantenha a mesma seed e a mesma ordem de IDs ao gerar a autorização e executar o
+simulador. A quantidade de fontes precisa ser reavaliada se a cadência ou o
+catálogo mudar: a API limita requisições por fonte.
+
+O exemplo abaixo usa o snapshot embarcado. Se o banco tiver um catálogo mais
+recente, salve primeiro a resposta pública de `GET /units?state=ALL` em um arquivo
+temporário e exporte `SIMULATOR_CATALOG_FILE` com esse caminho. Não use uma lista
+recortada pela UF do visitante. Reinicie a API depois de atualizar a configuração.
 
 ```bash
-SECRET="$(openssl rand -hex 32)"
-export WEBHOOK_SOURCE_CONFIG="{\"occupancy-feed\":{\"secret\":\"$SECRET\",\"unitCnes\":[\"0004340\",\"0017396\",\"0050571\",\"0466611\",\"0924857\",\"0932280\",\"2339315\",\"6481876\",\"7429398\",\"7458606\"]}}"
+export SIMULATOR_SOURCE_SECRET="$(openssl rand -hex 32)"
+export SIMULATOR_SEED=fila-saude-v1
+export SIMULATOR_SOURCE_IDS="$(node -p 'Array.from({length:24},(_,i)=>`occupancy-feed-${String(i+1).padStart(3,"0")}`).join(",")')"
+export WEBHOOK_SOURCE_CONFIG="$(node --input-type=module <<'JS'
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+const catalog = JSON.parse(readFileSync(
+  process.env.SIMULATOR_CATALOG_FILE || 'apps/api/src/units/units.snapshot.json', 'utf8'));
+const units = Array.isArray(catalog) ? catalog : catalog.data;
+const ids = process.env.SIMULATOR_SOURCE_IDS.split(',');
+const config = Object.fromEntries(ids.map(id => [id, {
+  secret: process.env.SIMULATOR_SOURCE_SECRET, unitCnes: [],
+}]));
+for (const unit of units) {
+  const index = createHash('sha256').update(`${process.env.SIMULATOR_SEED}:${unit.id}`)
+    .digest().readUInt32BE(0) % ids.length;
+  config[ids[index]].unitCnes.push(unit.id);
+}
+process.stdout.write(JSON.stringify(config));
+JS
+)"
+# O simulador pode ler todos os segredos do mesmo JSON da API.
+unset SIMULATOR_SOURCE_SECRET
+export OCCUPANCY_SIMULATION_ENABLED=true
 ```
 
-The CNES list is the demonstration sample (one UPA in each of ten UFs, see
-`docs/simulator-testing.md`). Every code must exist in the API catalog, or
-the simulator stops with "CNES não encontrado no catálogo".
+Não imprima nem versione `WEBHOOK_SOURCE_CONFIG`: ele contém os segredos. Cada
+processo precisa receber esse JSON e a lista `SIMULATOR_SOURCE_IDS`. Segredos por
+fonte também são aceitos. A lista de CNES autoriza os envios; não substitui a
+consulta nacional feita pelo gerador.
 
-| Variable | App | Use |
-| --- | --- | --- |
-| `WEBHOOK_SOURCE_CONFIG` | API and simulator | Source secret and the CNES it may update. The simulator reads its secret and sample from it. |
-| `OCCUPANCY_SIMULATION_ENABLED=true` | API | Turns on `GET /occupancy` and `/occupancy/simulation`. Without it they answer 404 and the site hides the layer. |
-| `OCCUPANCY_STALE_AFTER_MINUTES` | API | 20 by default. Use 2 or 3 for a demo, so "sem confirmação recente" shows up in minutes. |
-| `OCCUPANCY_PROCESSOR_ENABLED=false` | API | Only to run the inbox processor elsewhere. |
-| `SIMULATOR_SCENARIO=showcase` | Simulator | Starting scenario. |
-| `SIMULATOR_FOLLOW_SITE=true` | Simulator | Plays the scenario chosen on the site. |
-| `SIMULATOR_INTERVAL_SECONDS=30` | Simulator | 120 by default; shorter for a demo. |
-| `ADMIN_API_TOKENS` | API | Only for `/admin`. |
+## 4. Iniciar em ordem
 
-## 4. Start the apps, in order
-
-Run each one as a background task of the agent harness (not with `setsid` or
-`nohup`, which the harness cannot stop or report):
+Execute cada processo em uma tarefa de background controlada pelo harness e
+aguarde a saúde da API antes do simulador. Evite `nohup` e `setsid`.
 
 ```bash
-# API: wait for health before going on
-OCCUPANCY_SIMULATION_ENABLED=true OCCUPANCY_STALE_AFTER_MINUTES=3 \
-  pnpm --filter @filasaude/api dev
-until curl -sf localhost:3000/health >/dev/null; do sleep 1; done
-
-# Web
+pnpm --filter @filasaude/api dev
+# Em outra tarefa, com o mesmo ambiente:
+curl --fail http://127.0.0.1:3000/health
 pnpm --filter @filasaude/web dev --host 127.0.0.1 --port 5173 --strictPort
-
-# Simulator: last, once the API answers
-SIMULATOR_SCENARIO=showcase SIMULATOR_FOLLOW_SITE=true SIMULATOR_INTERVAL_SECONDS=30 \
-  pnpm --filter @filasaude/simulador dev
+# Em outra tarefa, com o mesmo ambiente:
+pnpm --filter @filasaude/simulador dev --scenario national --duration-seconds 0 --allow-load-test
 ```
 
-The simulator exits when the API stays down after its retries (outside
-Compose nothing restarts it). If the API restarts, start the simulator again.
-
-## 5. Check that it works
+Com as mesmas variáveis, a alternativa em contêineres é:
 
 ```bash
-curl -s localhost:3000/occupancy | grep -o '"unitCnes"' | wc -l   # units with data
-curl -s localhost:3000/occupancy/simulation                        # scenario in play
-curl -s -X PUT -H 'Content-Type: application/json' \
-  -d '{"scenario":"surge"}' localhost:3000/occupancy/simulation     # 429 within 15 s of another change
+docker compose --profile simulation up --build
 ```
 
-Then open http://127.0.0.1:5173 and turn on "Ocupação simulada". A unit with
-the `intermittent` role of the showcase is silent half of every hour, so one
-fewer unit than the sample is normal.
+No Compose, a interface fica em 8080 e a API em 3000. O simulador aguarda a saúde
+da API e roda continuamente. O destino interno e a carga nacional são autorizados
+explicitamente no serviço. Fora do Compose, acompanhe os relatórios de falhas e
+encerre a tarefa quando terminar a validação.
 
-To show "sem confirmação recente", choose "Interrupção da fonte" on the site
-and wait for the stale limit. Do not insert rows in `occupancy_current` by
-hand: they have no history and confuse anyone who reads that database later.
+## 5. Validar a independência da visualização
 
-## Alternative: everything in containers
+- Aguarde os primeiros eventos; o primeiro envio de cada unidade é distribuído
+  no tempo. Confira `GET /occupancy` e o histórico por CNES.
+- Ligue a camada no site e alterne entre UFs, mapa, lista e detalhe. Dados,
+  fonte, atualização e marca de simulação devem permanecer coerentes.
+- Desligue a camada ou feche o navegador e confira que os eventos continuam
+  chegando e sendo processados. O processador é independente da flag pública;
+  `OCCUPANCY_PROCESSOR_ENABLED=false` só serve para execução por outro worker.
+- Para testar ausência de confirmação, pare uma fonte em ambiente isolado e
+  aguarde `OCCUPANCY_STALE_AFTER_MINUTES` (20 por padrão). Não escreva projeções
+  artificiais em `occupancy_current`.
+- As métricas do gerador confirmam o aceite na inbox. Verifique também a projeção
+  e a interface; saúde da API ou HTTP 202 não comprovam essa segunda etapa.
 
-```bash
-OCCUPANCY_SIMULATION_ENABLED=true docker compose --profile simulation up --build
-```
+## 6. Encerrar e limpar
 
-The web is then on 8080 and the API on 3000. The simulator service waits for
-the API health check and restarts on failure.
+Encerre apenas as tarefas iniciadas pela sessão pelo identificador do harness.
+Se precisar limpar, remova somente as linhas dos IDs de fonte criados por esta
+sessão em `occupancy_current` e `occupancy_webhook_inbox`, com lista explícita e
+confirmada. Não use prefixos amplos que possam incluir fontes de outras sessões.
+Não pare nem limpe o PostgreSQL compartilhado.
 
-## 6. Stop and clean up
+## Playwright
 
-Stop by port or by the exact process, never with a pattern that also matches
-the shell running the command (`pkill -f "node dist/main.js"` inside a
-command that contains that text kills the shell itself):
-
-```bash
-kill "$(ss -ltnp | grep ':3000 ' | grep -o 'pid=[0-9]*' | head -1 | cut -d= -f2)"
-kill "$(ss -ltnp | grep ':5173 ' | grep -o 'pid=[0-9]*' | head -1 | cut -d= -f2)"
-pgrep -f 'experimental-strip-types src/main.ts' | xargs -r kill
-```
-
-The demo leaves data in the shared database. Clear only the rows of the demo
-source, never whole tables: another session may be using the same database.
-
-```bash
-docker compose exec -T postgres psql -U filasaude -c \
-  "DELETE FROM occupancy_current WHERE source_id = 'occupancy-feed'; DELETE FROM occupancy_webhook_inbox WHERE source_id = 'occupancy-feed';"
-```
-
-`simulation_control` has no source column, so it is left alone: a scenario
-chosen on the site expires by itself after 15 minutes and the API then answers
-with the default. If the database is yours alone (an isolated Compose project),
-you can also `DELETE FROM simulation_control;`.
-
-## Before Playwright
-
-`pnpm playwright test` starts its own Vite on 4173, but that Vite proxies
-`/api` to whatever runs on 3000. With the API up and the simulation on, the
-layer becomes available inside the tests and the mobile popup test can fail.
-Stop the API, or run with the layer available on purpose to check that case.
+`pnpm playwright test` inicia seu Vite em 4173 e pode reaproveitar um servidor
+existente fora da CI. Verifique a porta para evitar validar outra worktree.
+Os testes da camada simulam a API. Para inspeção visual de mudanças, confira
+larguras de celular e desktop; não é necessário iniciar carga nacional para
+validar alterações puramente visuais.

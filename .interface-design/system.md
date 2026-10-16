@@ -51,6 +51,11 @@
 - The "Ocupação simulada" layer (proposal 0001) exists only when the API
   answers `GET /occupancy`; it starts off and the choice lasts for the session.
   The map, the list and the unit detail share it (`OccupancyLayerProvider`).
+- Fontes nacionais alimentam a ocupação continuamente, independentemente de
+  visitas, localização, busca, UF ou interruptor da camada. Esses controles
+  afetam apenas a visualização de cada visitante. Não há seletor público nem
+  endpoint de escrita para controlar as fontes; cenários de teste ficam na CLI
+  do operador.
 - Palette: one violet scale with the same dark ring (`occupancy-ring`
   #2E1065) for low, moderate and high, a solid gray disc for "não informada"
   and a dashed hollow gray ring for "sem confirmação recente". Never the
