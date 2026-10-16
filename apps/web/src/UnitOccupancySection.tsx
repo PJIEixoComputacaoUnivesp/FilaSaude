@@ -15,6 +15,8 @@ import {
 import { chartSegments, hourlyHistory } from "./occupancyHistory";
 import { useOccupancyLayer } from "./useOccupancyLayer";
 
+const HISTORY_REFRESH_MS = 60_000;
+
 type HistoryState =
   | { status: "loading" }
   | { status: "success"; response: OccupancyHistoryResponse | null }
@@ -30,34 +32,39 @@ export function UnitOccupancySection({ unitCnes }: { unitCnes: string }) {
   const current = layer.byUnit.get(unitCnes);
   const [state, setState] = useState<HistoryState>({ status: "loading" });
   const titleId = useId();
-  // Refetch when the current snapshot changes (the layer refreshes it).
-  const observedAt = current?.observedAt;
+  const hasCurrent = current !== undefined;
 
+  // The history covers hours, so it is read once and then every minute, not
+  // on each refresh of the current state (every 10 s after a scenario change).
   useEffect(() => {
-    if (!layer.isEnabled || observedAt === undefined) return;
+    if (!layer.isEnabled || !hasCurrent) return;
     const controller = new AbortController();
-    fetchOccupancyHistory(unitCnes, controller.signal)
-      .then((response) => setState({ status: "success", response }))
-      .catch((error: unknown) => {
-        if (controller.signal.aborted) return;
-        setState({
-          status: "error",
-          message:
-            error instanceof Error
-              ? error.message
-              : "Não foi possível consultar o histórico.",
+    const load = () =>
+      fetchOccupancyHistory(unitCnes, controller.signal)
+        .then((response) => setState({ status: "success", response }))
+        .catch((error: unknown) => {
+          if (controller.signal.aborted) return;
+          setState({
+            status: "error",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Não foi possível consultar o histórico.",
+          });
         });
-      });
-    return () => controller.abort();
-  }, [layer.isEnabled, unitCnes, observedAt]);
+    load();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load();
+    }, HISTORY_REFRESH_MS);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+    };
+  }, [layer.isEnabled, unitCnes, hasCurrent]);
 
   if (!layer.isEnabled || !current) return null;
 
-  const layerResponse =
-    layer.state.status === "success" || layer.state.status === "error"
-      ? layer.state.response
-      : null;
-  const source = layerResponse?.metadata.source;
+  const source = layer.response?.metadata.source;
   const isStale = occupancyStatus(current) === "stale";
   const history = state.status === "success" ? state.response : null;
   const points = history?.data.history ?? [];

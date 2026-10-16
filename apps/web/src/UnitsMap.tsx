@@ -43,12 +43,16 @@ const noUnits: HealthUnit[] = [];
 // Canvas does not resolve CSS variables, so the brand blue is repeated here.
 const markerColor = "#1266cc";
 const fitPadding = 24;
+// `dashArray` is set explicitly: setStyle only overwrites the keys it gets,
+// so a marker that was "stale" (dashed) would stay dashed after the layer
+// is turned off.
 const preciseMarker = {
   color: "white",
   fillColor: markerColor,
   fillOpacity: 0.8,
   opacity: 1,
   weight: 2,
+  dashArray: undefined,
 };
 // A hollow ring tells the position is only the municipality center. A
 // `history` point keeps the solid marker: it is still a CNES coordinate
@@ -59,6 +63,7 @@ const approximateMarker = {
   fillOpacity: 0.6,
   opacity: 1,
   weight: 2,
+  dashArray: undefined,
 };
 const noOccupancy: ReadonlyMap<string, UnitOccupancy> = new Map();
 

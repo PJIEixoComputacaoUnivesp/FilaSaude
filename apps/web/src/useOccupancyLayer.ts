@@ -25,6 +25,8 @@ export interface OccupancyLayerValue {
   onlySimulated: boolean;
   setOnlySimulated: (only: boolean) => void;
   state: OccupancyLayerState;
+  /** Last data received, kept while a refresh fails; `null` before any. */
+  response: OccupancyResponse | null;
   /** Current occupancy by CNES, empty while the layer is off. */
   byUnit: ReadonlyMap<string, UnitOccupancy>;
   /**

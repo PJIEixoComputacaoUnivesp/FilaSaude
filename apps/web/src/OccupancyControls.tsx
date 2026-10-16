@@ -27,10 +27,7 @@ export function OccupancyControls({ compact = false }: { compact?: boolean }) {
   if (!layer.isAvailable) return null;
 
   const { state } = layer;
-  const response =
-    state.status === "success" || state.status === "error"
-      ? state.response
-      : null;
+  const { response } = layer;
   const unitCount = response?.data.length ?? 0;
   const simulatedText = formatCount(
     unitCount,

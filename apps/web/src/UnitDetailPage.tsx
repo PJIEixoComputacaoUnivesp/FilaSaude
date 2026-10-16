@@ -140,7 +140,9 @@ export function UnitDetailPage() {
             </div>
           </dl>
 
-          <UnitOccupancySection unitCnes={unit.id} />
+          {/* Keyed: another unit starts from an empty history, never with
+              the previous unit's chart. */}
+          <UnitOccupancySection key={unit.id} unitCnes={unit.id} />
 
           <UnitSources
             sources={unit.sources}
