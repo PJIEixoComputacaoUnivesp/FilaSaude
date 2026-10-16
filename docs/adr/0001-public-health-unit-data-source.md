@@ -102,15 +102,14 @@ recebida por UF e alertar quando ela deixar de avançar por mais de 30 dias. Ess
 sinal indica que a API pode ter sido descontinuada e que é preciso avaliar os
 arquivos do conjunto como alternativa.
 
-### Implementação transitória
+### Implementação
 
-A primeira entrega (PR #36) ainda não tem PostgreSQL nem job. Nela, a API
-consulta o CNES durante a requisição, com cache em memória de seis horas por UF.
-Se a consulta falhar, ela usa a última resposta válida marcada como
-desatualizada e, na falta dela, o snapshot incorporado da UF. O mesmo snapshot
-atende sozinho a visão nacional (`ALL` e `BR`), sem consultar o CNES. Essa
-abordagem é temporária e será substituída pela ingestão descrita acima nas
-issues #22 e #23.
+A persistência inicial foi criada na issue #22 e o job separado na issue #23.
+A API lê o cadastro do PostgreSQL tanto por UF quanto na visão nacional; não
+consulta mais o endpoint principal do CNES durante uma requisição. Se o banco
+estiver indisponível ou ainda vazio, o snapshot incorporado atende a consulta
+como contingência. A validação geográfica, o histórico mensal e o GeoSampa
+continuam sendo enriquecimentos independentes do cadastro principal.
 
 ## Dados persistidos
 
@@ -190,12 +189,12 @@ Cuidados com esse endpoint:
 
 Limitações: “dentro do município” é a única verificação geométrica, e um ponto
 do mesmo endereço também é autodeclarado, então não prova que a posição esteja
-certa. Enquanto a ingestão não existe (ver “Implementação transitória”), o
-histórico é consultado durante a requisição, só para as unidades com coordenada
-inválida, com um prazo único de 10 s para a fase, concorrência 5 e cache de
-24 h das linhas por unidade. Se falhar, a unidade cai no centro do município e a
-resposta é reavaliada em 1 hora (em 5 minutos quando o contorno do IBGE é que
-falhou). Essa consulta passa para o job de ingestão (#23).
+certa. O cadastro principal já vem da ingestão, mas o histórico continua sendo
+consultado durante a requisição, só para as unidades com coordenada inválida,
+com um prazo único de 10 s para a fase, concorrência 5 e cache de 24 h das
+linhas por unidade. Se falhar, a unidade cai no centro do município e a resposta
+é reavaliada em 1 hora (em 5 minutos quando o contorno do IBGE é que falhou).
+Persistir esse enriquecimento deve ser tratado em uma evolução separada.
 
 Município sem contorno no IBGE: a malha tem 5.570 municípios e não inclui os
 criados mais recentemente, como Boa Esperança do Norte (MT, 5101837). Para
@@ -206,12 +205,12 @@ Junto de uma posição `history`, a interface mostra a competência de origem do
 ponto, além da `data_atualizacao` do registro atual, que continua sendo a data
 do cadastro exibido.
 
-A visão nacional, servida pelo snapshot, passa pela mesma verificação, inclusive
-pelo histórico. O fallback por UF, que só ocorre quando o CNES está fora do ar,
-não consulta o histórico, pois ele estaria indisponível também.
+A visão nacional, servida pelo banco, passa pela mesma verificação, inclusive
+pelo histórico. O snapshot de contingência não consulta o histórico para se
+manter independente das fontes externas.
 
-A geocodificação pelo endereço (`geocoded`) será adicionada com o job de
-ingestão e, quando existir, também será identificada na interface.
+A geocodificação pelo endereço (`geocoded`) ainda não foi implementada e,
+quando existir, também será identificada na interface.
 
 #### Correção manual por administradores
 

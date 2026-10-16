@@ -38,7 +38,7 @@ limites orientam o produto e cada decisão de arquitetura abaixo.
 | Mapa, lista, busca e acessibilidade | Implementado | [`.interface-design/system.md`](.interface-design/system.md) |
 | Correção manual de posição por administradores | Implementado | [guia de deploy](docs/deployment.md#correções-manuais-de-posição) |
 | Recebimento de snapshots de ocupação (webhook assinado) | Implementado: recebe e guarda | [contrato v1](docs/contracts/occupancy-snapshot-v1.md) |
-| Ingestão diária do CNES no PostgreSQL | Planejado | [#23](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/23) |
+| Ingestão diária do CNES no PostgreSQL | Implementado | [#23](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/23) |
 | Processamento, estado atual e histórico de ocupação | Planejado | [#78](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/78) |
 | Simulador municipal de ocupação | Em implementação: CLI funcional | [README do simulador](apps/simulador/README.md), [#57](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/57) |
 | Camada de ocupação simulada no mapa | Planejado | [#79](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/79) |
@@ -57,14 +57,13 @@ flowchart LR
   caddy --> web["Web<br/>React e nginx"]
   caddy -->|"/api"| api["API<br/>NestJS"]
 
-  api --> db[("PostgreSQL")]
-  api -->|"unidades"| cnes["CNES"]
+  api -->|"catálogo e dados operacionais"| db[("PostgreSQL")]
   api -->|"municípios e contornos"| ibge["IBGE"]
   api -->|"posições em São Paulo"| geo["GeoSampa"]
 
   sim["Simulador municipal"] -.->|"webhook assinado"| api
-  job["Job de ingestão"] -.->|"diário"| cnes
-  job -.-> db
+  job["Job de ingestão"] -->|"diário"| cnes["CNES"]
+  job --> db
 ```
 
 Linhas contínuas existem hoje. Linhas tracejadas são o alvo.
@@ -75,7 +74,7 @@ Linhas contínuas existem hoje. Linhas tracejadas são o alvo.
 | --- | --- | --- | --- |
 | Web | Interface pública (mapa, lista, "Sobre os dados") e a página `/admin`, fora da navegação | React 19, Vite, Tailwind 4, React Router, Leaflet | [`apps/web`](apps/web) |
 | API | Integra e normaliza as fontes públicas, valida a posição das unidades, recebe webhooks e expõe REST | NestJS 12, TypeORM | [`apps/api`](apps/api) |
-| PostgreSQL | Correções manuais, inbox de webhooks e, quando houver ingestão, o cadastro de unidades | PostgreSQL 17 | [`apps/api/src/database`](apps/api/src/database) |
+| PostgreSQL | Cadastro de unidades, correções manuais e inbox de webhooks | PostgreSQL 17 | [`apps/api/src/database`](apps/api/src/database) |
 | Borda | HTTPS e roteamento de `/api` em produção | Caddy | [`deploy`](deploy) |
 | Infraestrutura | Droplet, IP reservado, firewall e DNS | Terraform, DigitalOcean | [`infra/terraform`](infra/terraform) |
 
@@ -88,13 +87,15 @@ Linhas contínuas existem hoje. Linhas tracejadas são o alvo.
    onde vem o ponto (`manual`, `source`, `history` ou `municipality`) e
    `location.original` guarda a coordenada informada pelo CNES. A interface
    avisa quando o ponto não é o do cadastro.
-3. **A fonte externa não fica no caminho da pessoa.** O alvo é um job separado
-   da API HTTP, que ingere o CNES por UF e atualiza o PostgreSQL de forma
-   idempotente pelo código CNES. Até lá, a API consulta o CNES durante a
-   requisição, com cache de seis horas e cópia de segurança.
-4. **Degradação previsível.** Se o CNES falhar, a API responde com a última
-   resposta válida marcada como desatualizada ou, na falta dela, com o snapshot
-   incorporado. `metadata.dataOrigin` e `metadata.isStale` dizem qual caso é.
+3. **A fonte cadastral não fica no caminho da pessoa.** Um job separado da API
+   HTTP ingere o CNES por UF e atualiza o PostgreSQL de forma idempotente pelo
+   código CNES. A API lê o catálogo persistido, com cache de seis horas e cópia
+   de segurança.
+4. **Degradação previsível.** Se uma coleta do CNES falhar, o banco mantém a
+   última versão válida daquela UF. Se a leitura do banco falhar, a API responde
+   com a última resposta em cache marcada como desatualizada ou, na falta dela,
+   com o snapshot incorporado. `metadata.dataOrigin` e `metadata.isStale` dizem
+   qual caso é.
 5. **Dado cadastral e dado operacional são separados.** O cadastro vem de
    fontes públicas reais. A ocupação, quando existir, vem de outro fluxo, é
    sintética e vem identificada como tal em tela, em resposta de API e em
@@ -109,16 +110,16 @@ Linhas contínuas existem hoje. Linhas tracejadas são o alvo.
 
 ### Como uma unidade chega à tela
 
-A consulta por UF passa pelo cache e pela cópia de segurança. A consulta
-nacional (`ALL` ou `BR`) é sempre atendida pelo snapshot, sem consultar o CNES.
+A consulta por UF ou nacional passa pelo cache e pelo catálogo no PostgreSQL.
+O snapshot é usado apenas quando o banco está indisponível ou vazio.
 
 ```mermaid
 flowchart TD
   req["GET /units?state=UF"] --> cache{"Resposta em cache<br/>de até 6 h?"}
   cache -->|"sim"| live["Resposta live"]
-  cache -->|"não"| cnes["Consulta o CNES"]
-  cnes -->|"ok"| live
-  cnes -->|"falha"| prev{"Há resposta<br/>anterior?"}
+  cache -->|"não"| dbq["Consulta o PostgreSQL"]
+  dbq -->|"ok"| live
+  dbq -->|"falha ou vazio"| prev{"Há resposta<br/>anterior?"}
   prev -->|"sim"| stale["Resposta anterior<br/>isStale = true"]
   prev -->|"não"| snap["Snapshot incorporado<br/>dataOrigin = fallback"]
 ```
@@ -184,7 +185,7 @@ Brasil.
 | `unit_location_corrections` | Posição definida por administradores, por código CNES | Implementado |
 | `unit_location_correction_events` | Histórico de cada alteração e quem a fez | Implementado |
 | `occupancy_webhook_inbox` | Snapshots recebidos, antes do processamento | Implementado |
-| `health_units` | Cadastro de unidades | Criada, ainda sem ingestão |
+| `health_units` | Cadastro de unidades ingerido do CNES | Implementado |
 | Ocupação atual e histórico | Estado e série por unidade | Planejado |
 
 As migrations são executadas de forma explícita e o `synchronize` do TypeORM
