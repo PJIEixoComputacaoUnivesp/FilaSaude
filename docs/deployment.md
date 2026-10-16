@@ -295,9 +295,9 @@ administradores. A correção vale enquanto o município e o endereço da unidad
 CNES forem os de quando ela foi feita. Se algum mudar, ela deixa de valer e o
 motivo vai para o log. Se, em vez disso, a coordenada do CNES mudar depois da
 correção, ela continua valendo e a mudança só é registrada no log, para
-revisão. A visão nacional vem de um snapshot que pode atrasar em relação ao
-CNES, então uma correção feita contra um endereço mais novo pode ficar de fora
-dela até o snapshot ser atualizado.
+revisão. A visão nacional vem do catálogo persistido e recebe a correção com a
+mesma regra das consultas por UF. Somente a contingência usa o snapshot, que
+pode atrasar em relação ao CNES.
 
 **Histórico.** Cada definição, substituição e remoção grava quem fez, quando, o
 método e a posição anterior e a nova, na tabela `unit_location_correction_events`,
@@ -349,11 +349,34 @@ gunzip -c backups/filasaude-AAAAMMDDTHHMMSSZ.sql.gz |
   sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" "$POSTGRES_DB"'
 ```
 
-Hoje o banco guarda as posições corrigidas por administradores, o histórico de
-cada alteração e a inbox de snapshots do webhook. Nada disso vem do CNES, então
-não pode ser reconstruído por ele: **o backup é a única cópia**. O cadastro de
-unidades ainda não é gravado no banco; quando a ingestão (#23) existir, ele
-poderá ser refeito a partir do CNES, mas as correções continuarão dependendo do
-backup.
+Hoje o banco também guarda o catálogo ingerido do CNES. As posições corrigidas
+por administradores, o histórico de cada alteração e a inbox de snapshots do
+webhook não vêm do CNES, então **o backup é a única cópia** desses dados. O
+cadastro de unidades pode ser refeito pela ingestão, mas as correções e os
+eventos de ocupação continuam dependendo do backup.
 
 O volume do Caddy guarda certificados e estado, e pode ser recriado.
+
+### Ingestão semanal do CNES
+
+Depois do primeiro deploy desta versão, faça uma carga inicial:
+
+```bash
+/opt/filasaude/ingest-units.sh
+```
+
+O script usa a imagem do último deploy confirmado, impede duas execuções
+simultâneas e encaminha argumentos para a CLI. Para repetir apenas uma UF, use
+`/opt/filasaude/ingest-units.sh --state SP`.
+
+Agende a coleta nacional semanalmente, separada do deploy e depois da janela de
+atualização da fonte:
+
+```cron
+15 4 * * 0 /opt/filasaude/ingest-units.sh >> /opt/filasaude/ingestion.log 2>&1
+```
+
+O comando retorna erro se qualquer UF falhar, mas mantém os resultados das UFs
+concluídas e preserva no banco a última versão válida das que falharam. O
+snapshot incorporado atende a API até a primeira carga e em indisponibilidades
+do catálogo persistido.

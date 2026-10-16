@@ -1,5 +1,7 @@
-import { CnesClient } from './cnes.client.js';
+import { HealthUnitEntity } from '../database/entities/health-unit.entity.js';
+import type { HealthUnitRepository } from '../database/repositories/health-unit.repository.js';
 import { GeoSampaClient } from './geosampa.client.js';
+import { brazilianStates } from './states.js';
 import { UnitsService } from './units.service.js';
 import type { UnitLocationsService } from './unit-locations.service.js';
 import type { HealthUnit } from './units.types.js';
@@ -37,6 +39,35 @@ const liveUnit: HealthUnit = {
   ],
 };
 
+const storedEntity = Object.assign(new HealthUnitEntity(), {
+  cnesCode: liveUnit.id,
+  name: liveUnit.name,
+  unitType: liveUnit.unitType,
+  street: liveUnit.address.street,
+  number: liveUnit.address.number,
+  district: liveUnit.address.district,
+  postalCode: liveUnit.address.postalCode,
+  municipalityCode: liveUnit.address.municipalityCode,
+  city: liveUnit.address.city,
+  state: liveUnit.address.state,
+  latitude: liveUnit.location.latitude,
+  longitude: liveUnit.location.longitude,
+  serviceHours: liveUnit.serviceHours,
+  sourceName: liveUnit.sources[0]!.name,
+  sourceUrl: liveUnit.sources[0]!.url,
+  sourceUpdatedAt: liveUnit.lastUpdatedAt,
+  ingestedAt: new Date('2026-09-21T12:00:00Z'),
+  isActive: true,
+});
+
+const nationalStoredEntities = brazilianStates().map(
+  ({ abbreviation }, index) =>
+    Object.assign(new HealthUnitEntity(), storedEntity, {
+      cnesCode: String(index).padStart(7, '0'),
+      state: abbreviation,
+    }),
+);
+
 const passthrough = {
   apply: vi.fn((units: HealthUnit[]) =>
     Promise.resolve({ units, validated: true, historyComplete: true }),
@@ -50,19 +81,19 @@ function createGeoSampaClient() {
 }
 
 function createService(
-  client: CnesClient,
+  repository: HealthUnitRepository,
   locations: UnitLocationsService,
   geoSampaClient = createGeoSampaClient(),
 ) {
-  return new UnitsService(client, locations, geoSampaClient);
+  return new UnitsService(repository, locations, geoSampaClient);
 }
 
 describe('UnitsService', () => {
   it('returns and caches live CNES data', async () => {
-    const fetchUnits = vi.fn().mockResolvedValue([liveUnit]);
-    const client = { fetchUnits } as unknown as CnesClient;
+    const findActive = vi.fn().mockResolvedValue([storedEntity]);
+    const repository = { findActive } as unknown as HealthUnitRepository;
     const geoSampaClient = createGeoSampaClient();
-    const service = createService(client, passthrough, geoSampaClient);
+    const service = createService(repository, passthrough, geoSampaClient);
 
     const first = await service.findAll('SP');
     const second = await service.findAll('sp');
@@ -76,36 +107,36 @@ describe('UnitsService', () => {
       latestSourceUpdate: '2026-09-20',
     });
     expect(second).toBe(first);
-    expect(fetchUnits).toHaveBeenCalledTimes(1);
+    expect(findActive).toHaveBeenCalledTimes(1);
     expect(geoSampaClient.enrichLocations).toHaveBeenCalledWith([liveUnit]);
   });
 
   it('shares an in-flight CNES request for the same state', async () => {
-    let resolveFetch: ((units: HealthUnit[]) => void) | undefined;
-    const fetchUnits = vi.fn().mockImplementation(
+    let resolveFetch: ((units: HealthUnitEntity[]) => void) | undefined;
+    const findActive = vi.fn().mockImplementation(
       () =>
-        new Promise<HealthUnit[]>((resolve) => {
+        new Promise<HealthUnitEntity[]>((resolve) => {
           resolveFetch = resolve;
         }),
     );
-    const client = { fetchUnits } as unknown as CnesClient;
-    const service = createService(client, passthrough);
+    const repository = { findActive } as unknown as HealthUnitRepository;
+    const service = createService(repository, passthrough);
 
     const first = service.findAll('SP');
     const second = service.findAll('SP');
 
-    expect(fetchUnits).toHaveBeenCalledTimes(1);
-    resolveFetch?.([liveUnit]);
+    expect(findActive).toHaveBeenCalledTimes(1);
+    resolveFetch?.([storedEntity]);
     const [firstResponse, secondResponse] = await Promise.all([first, second]);
 
     expect(secondResponse).toBe(firstResponse);
   });
 
   it('returns the snapshot when CNES is unavailable', async () => {
-    const client = {
-      fetchUnits: vi.fn().mockRejectedValue(new Error('unavailable')),
-    } as unknown as CnesClient;
-    const service = createService(client, passthrough);
+    const repository = {
+      findActive: vi.fn().mockRejectedValue(new Error('unavailable')),
+    } as unknown as HealthUnitRepository;
+    const service = createService(repository, passthrough);
 
     const response = await service.findAll('SP');
 
@@ -122,12 +153,12 @@ describe('UnitsService', () => {
   it('returns the last live response as stale when CNES fails after the cache expires', async () => {
     vi.useFakeTimers();
     try {
-      const fetchUnits = vi
+      const findActive = vi
         .fn()
-        .mockResolvedValueOnce([liveUnit])
+        .mockResolvedValueOnce([storedEntity])
         .mockRejectedValueOnce(new Error('unavailable'));
-      const client = { fetchUnits } as unknown as CnesClient;
-      const service = createService(client, passthrough);
+      const repository = { findActive } as unknown as HealthUnitRepository;
+      const service = createService(repository, passthrough);
 
       const live = await service.findAll('RJ');
       vi.advanceTimersByTime(7 * 60 * 60 * 1000);
@@ -139,7 +170,7 @@ describe('UnitsService', () => {
         isStale: true,
         retrievedAt: live.metadata.retrievedAt,
       });
-      expect(fetchUnits).toHaveBeenCalledTimes(2);
+      expect(findActive).toHaveBeenCalledTimes(2);
     } finally {
       vi.useRealTimers();
     }
@@ -148,61 +179,76 @@ describe('UnitsService', () => {
   it('rechecks sooner when the history could not be fully loaded', async () => {
     vi.useFakeTimers();
     try {
-      const fetchUnits = vi.fn().mockResolvedValue([liveUnit]);
-      const client = { fetchUnits } as unknown as CnesClient;
+      const findActive = vi.fn().mockResolvedValue([storedEntity]);
+      const repository = { findActive } as unknown as HealthUnitRepository;
       const incomplete = {
         apply: vi.fn((units: HealthUnit[]) =>
           Promise.resolve({ units, validated: true, historyComplete: false }),
         ),
       } as unknown as UnitLocationsService;
-      const service = createService(client, incomplete);
+      const service = createService(repository, incomplete);
 
       await service.findAll('RJ');
       vi.advanceTimersByTime(30 * 60 * 1000);
       await service.findAll('RJ');
-      expect(fetchUnits).toHaveBeenCalledTimes(1);
+      expect(findActive).toHaveBeenCalledTimes(1);
 
       vi.advanceTimersByTime(31 * 60 * 1000);
       await service.findAll('RJ');
-      expect(fetchUnits).toHaveBeenCalledTimes(2);
+      expect(findActive).toHaveBeenCalledTimes(2);
     } finally {
       vi.useRealTimers();
     }
   });
 
   it('rejects an invalid state before calling CNES', async () => {
-    const fetchUnits = vi.fn();
-    const client = { fetchUnits } as unknown as CnesClient;
-    const service = createService(client, passthrough);
+    const findActive = vi.fn();
+    const repository = { findActive } as unknown as HealthUnitRepository;
+    const service = createService(repository, passthrough);
 
     await expect(service.findAll('XX')).rejects.toThrow(
       'Invalid Brazilian state abbreviation',
     );
-    expect(fetchUnits).not.toHaveBeenCalled();
+    expect(findActive).not.toHaveBeenCalled();
   });
 
   it('returns all country units for ALL/BR', async () => {
-    const fetchUnits = vi.fn();
-    const client = { fetchUnits } as unknown as CnesClient;
+    const findActive = vi.fn().mockResolvedValue(nationalStoredEntities);
+    const repository = { findActive } as unknown as HealthUnitRepository;
     const geoSampaClient = createGeoSampaClient();
-    const service = createService(client, passthrough, geoSampaClient);
+    const service = createService(repository, passthrough, geoSampaClient);
 
     const response = await service.findAll('ALL');
-    expect(response.data.length).toBeGreaterThan(1000);
+    expect(response.data).toHaveLength(nationalStoredEntities.length);
     expect(response.metadata.state).toBe('BR');
-    expect(response.metadata.dataOrigin).toBe('fallback');
-    expect(fetchUnits).not.toHaveBeenCalled();
+    expect(response.metadata.dataOrigin).toBe('live');
+    expect(findActive).toHaveBeenCalledWith(undefined);
     expect(geoSampaClient.enrichLocations).not.toHaveBeenCalled();
   });
 
+  it('uses the fallback snapshot when the stored national catalog is partial', async () => {
+    const findActive = vi.fn().mockResolvedValue([storedEntity]);
+    const repository = { findActive } as unknown as HealthUnitRepository;
+    const service = createService(repository, passthrough);
+
+    const response = await service.findAll('BR');
+
+    expect(response.data.length).toBeGreaterThan(1_000);
+    expect(response.metadata).toMatchObject({
+      state: 'BR',
+      dataOrigin: 'fallback',
+      isStale: true,
+    });
+  });
+
   it('keeps validated locations when GeoSampa is unavailable', async () => {
-    const client = {
-      fetchUnits: vi.fn().mockResolvedValue([liveUnit]),
-    } as unknown as CnesClient;
+    const repository = {
+      findActive: vi.fn().mockResolvedValue([storedEntity]),
+    } as unknown as HealthUnitRepository;
     const geoSampaClient = {
       enrichLocations: vi.fn().mockRejectedValue(new Error('unavailable')),
     } as unknown as GeoSampaClient;
-    const service = createService(client, passthrough, geoSampaClient);
+    const service = createService(repository, passthrough, geoSampaClient);
 
     const response = await service.findAll('SP');
 
@@ -212,20 +258,20 @@ describe('UnitsService', () => {
 
   describe('invalidate', () => {
     const deferredFetch = () => {
-      const resolvers: ((units: HealthUnit[]) => void)[] = [];
-      const fetchUnits = vi.fn().mockImplementation(
+      const resolvers: ((units: HealthUnitEntity[]) => void)[] = [];
+      const findActive = vi.fn().mockImplementation(
         () =>
-          new Promise<HealthUnit[]>((resolve) => {
+          new Promise<HealthUnitEntity[]>((resolve) => {
             resolvers.push(resolve);
           }),
       );
-      return { fetchUnits, resolvers };
+      return { findActive, resolvers };
     };
 
     it('drops the cached response, so the next request loads again', async () => {
-      const fetchUnits = vi.fn().mockResolvedValue([liveUnit]);
+      const findActive = vi.fn().mockResolvedValue([storedEntity]);
       const service = createService(
-        { fetchUnits } as unknown as CnesClient,
+        { findActive } as unknown as HealthUnitRepository,
         passthrough,
       );
 
@@ -233,52 +279,52 @@ describe('UnitsService', () => {
       service.invalidate();
       await service.findAll('SP');
 
-      expect(fetchUnits).toHaveBeenCalledTimes(2);
+      expect(findActive).toHaveBeenCalledTimes(2);
     });
 
     it('keeps a load started before it from refilling the cache with outdated data', async () => {
-      const { fetchUnits, resolvers } = deferredFetch();
+      const { findActive, resolvers } = deferredFetch();
       const service = createService(
-        { fetchUnits } as unknown as CnesClient,
+        { findActive } as unknown as HealthUnitRepository,
         passthrough,
       );
 
       const stale = service.findAll('SP');
       service.invalidate();
-      resolvers[0]!([liveUnit]);
+      resolvers[0]!([storedEntity]);
       await stale;
 
       const fresh = service.findAll('SP');
-      resolvers[1]!([liveUnit]);
+      resolvers[1]!([storedEntity]);
       await fresh;
 
-      expect(fetchUnits).toHaveBeenCalledTimes(2);
+      expect(findActive).toHaveBeenCalledTimes(2);
     });
 
     it('does not let a request after it join a load that started before it', async () => {
-      const { fetchUnits, resolvers } = deferredFetch();
+      const { findActive, resolvers } = deferredFetch();
       const service = createService(
-        { fetchUnits } as unknown as CnesClient,
+        { findActive } as unknown as HealthUnitRepository,
         passthrough,
       );
 
       const before = service.findAll('SP');
       service.invalidate();
       const after = service.findAll('SP');
-      resolvers[0]!([liveUnit]);
-      resolvers[1]!([liveUnit]);
+      resolvers[0]!([storedEntity]);
+      resolvers[1]!([storedEntity]);
 
       expect(await after).not.toBe(await before);
-      expect(fetchUnits).toHaveBeenCalledTimes(2);
+      expect(findActive).toHaveBeenCalledTimes(2);
     });
 
     it('does not keep serving a removed position when CNES fails right after', async () => {
-      const fetchUnits = vi
+      const findActive = vi
         .fn()
-        .mockResolvedValueOnce([liveUnit])
+        .mockResolvedValueOnce([storedEntity])
         .mockRejectedValueOnce(new Error('unavailable'));
       const service = createService(
-        { fetchUnits } as unknown as CnesClient,
+        { findActive } as unknown as HealthUnitRepository,
         passthrough,
       );
       await service.findAll('SP');
@@ -292,9 +338,9 @@ describe('UnitsService', () => {
     });
 
     it('leaves the other states cached, since refetching one takes tens of seconds', async () => {
-      const fetchUnits = vi.fn().mockResolvedValue([liveUnit]);
+      const findActive = vi.fn().mockResolvedValue([storedEntity]);
       const service = createService(
-        { fetchUnits } as unknown as CnesClient,
+        { findActive } as unknown as HealthUnitRepository,
         passthrough,
       );
       await service.findAll('SP');
@@ -305,55 +351,55 @@ describe('UnitsService', () => {
       await service.findAll('SP');
 
       // RJ came from the cache; SP was loaded again.
-      expect(fetchUnits).toHaveBeenCalledTimes(3);
+      expect(findActive).toHaveBeenCalledTimes(3);
     });
 
     it('still caches a slow load of another state that finishes after the write', async () => {
-      const resolvers: ((units: HealthUnit[]) => void)[] = [];
-      const fetchUnits = vi.fn().mockImplementation(
+      const resolvers: ((units: HealthUnitEntity[]) => void)[] = [];
+      const findActive = vi.fn().mockImplementation(
         () =>
-          new Promise<HealthUnit[]>((resolve) => {
+          new Promise<HealthUnitEntity[]>((resolve) => {
             resolvers.push(resolve);
           }),
       );
       const service = createService(
-        { fetchUnits } as unknown as CnesClient,
+        { findActive } as unknown as HealthUnitRepository,
         passthrough,
       );
 
       const slow = service.findAll('SP');
       // A correction is saved for a unit in another state meanwhile.
       service.invalidate('RJ');
-      resolvers[0]!([liveUnit]);
+      resolvers[0]!([storedEntity]);
       await slow;
       await service.findAll('SP');
 
       // The SP load was not thrown away, so it did not have to be repeated.
-      expect(fetchUnits).toHaveBeenCalledTimes(1);
+      expect(findActive).toHaveBeenCalledTimes(1);
     });
 
     it('still discards a load of the same state that started before the write', async () => {
-      const resolvers: ((units: HealthUnit[]) => void)[] = [];
-      const fetchUnits = vi.fn().mockImplementation(
+      const resolvers: ((units: HealthUnitEntity[]) => void)[] = [];
+      const findActive = vi.fn().mockImplementation(
         () =>
-          new Promise<HealthUnit[]>((resolve) => {
+          new Promise<HealthUnitEntity[]>((resolve) => {
             resolvers.push(resolve);
           }),
       );
       const service = createService(
-        { fetchUnits } as unknown as CnesClient,
+        { findActive } as unknown as HealthUnitRepository,
         passthrough,
       );
 
       const stale = service.findAll('SP');
       service.invalidate('SP');
-      resolvers[0]!([liveUnit]);
+      resolvers[0]!([storedEntity]);
       await stale;
       const fresh = service.findAll('SP');
-      resolvers[1]!([liveUnit]);
+      resolvers[1]!([storedEntity]);
       await fresh;
 
-      expect(fetchUnits).toHaveBeenCalledTimes(2);
+      expect(findActive).toHaveBeenCalledTimes(2);
     });
 
     it('drops the national view along with the state', async () => {
@@ -361,7 +407,7 @@ describe('UnitsService', () => {
         Promise.resolve({ units, validated: true, historyComplete: true }),
       );
       const service = createService(
-        { fetchUnits: vi.fn() } as unknown as CnesClient,
+        { findActive: vi.fn() } as unknown as HealthUnitRepository,
         {
           apply,
         } as unknown as UnitLocationsService,
@@ -379,7 +425,7 @@ describe('UnitsService', () => {
         Promise.resolve({ units, validated: true, historyComplete: true }),
       );
       const service = createService(
-        { fetchUnits: vi.fn() } as unknown as CnesClient,
+        { findActive: vi.fn() } as unknown as HealthUnitRepository,
         {
           apply,
         } as unknown as UnitLocationsService,
@@ -394,7 +440,9 @@ describe('UnitsService', () => {
   });
 
   describe('national snapshot', () => {
-    const noClient = { fetchUnits: vi.fn() } as unknown as CnesClient;
+    const noRepository = {
+      findActive: vi.fn(),
+    } as unknown as HealthUnitRepository;
 
     it('checks the position of the snapshot units against their municipality', async () => {
       const apply = vi.fn((units: HealthUnit[]) =>
@@ -414,15 +462,18 @@ describe('UnitsService', () => {
           historyComplete: true,
         }),
       );
-      const service = createService(noClient, {
+      const service = createService(noRepository, {
         apply,
       } as unknown as UnitLocationsService);
 
       const response = await service.findAll('BR');
 
-      // History stays enabled: the CNES host is not known to be down here.
-      expect(apply).toHaveBeenCalledWith(expect.any(Array));
-      expect(apply.mock.calls[0]).toHaveLength(1);
+      // The emergency snapshot remains self-contained when the catalog table
+      // is unavailable or has not received its first ingestion yet.
+      expect(apply).toHaveBeenCalledWith(expect.any(Array), {
+        history: false,
+      });
+      expect(apply.mock.calls[0]).toHaveLength(2);
       expect(response.data[0]!.location.precision).toBe('municipality');
       expect(response.metadata.dataOrigin).toBe('fallback');
     });
@@ -431,7 +482,7 @@ describe('UnitsService', () => {
       const apply = vi.fn((units: HealthUnit[]) =>
         Promise.resolve({ units, validated: true, historyComplete: true }),
       );
-      const service = createService(noClient, {
+      const service = createService(noRepository, {
         apply,
       } as unknown as UnitLocationsService);
 
@@ -447,7 +498,7 @@ describe('UnitsService', () => {
       const apply = vi.fn((units: HealthUnit[]) =>
         Promise.resolve({ units, validated: true, historyComplete: true }),
       );
-      const service = createService(noClient, {
+      const service = createService(noRepository, {
         apply,
       } as unknown as UnitLocationsService);
 
@@ -461,23 +512,23 @@ describe('UnitsService', () => {
     });
 
     it.each([
-      ['everything loaded', true, true, 6 * 60],
-      ['the history could not be fully loaded', true, false, 60],
-      ['the municipality boundaries are unavailable', false, true, 5],
+      ['everything loaded', true, true],
+      ['the history could not be fully loaded', true, false],
+      ['the municipality boundaries are unavailable', false, true],
     ])(
-      'rechecks at the right time when %s',
-      async (_label, validated, historyComplete, minutes) => {
+      'rechecks the fallback soon when %s',
+      async (_label, validated, historyComplete) => {
         vi.useFakeTimers();
         try {
           const apply = vi.fn((units: HealthUnit[]) =>
             Promise.resolve({ units, validated, historyComplete }),
           );
-          const service = createService(noClient, {
+          const service = createService(noRepository, {
             apply,
           } as unknown as UnitLocationsService);
 
           await service.findAll('BR');
-          vi.advanceTimersByTime((minutes - 1) * 60 * 1000);
+          vi.advanceTimersByTime(4 * 60 * 1000);
           await service.findAll('BR');
           expect(apply).toHaveBeenCalledTimes(1);
 

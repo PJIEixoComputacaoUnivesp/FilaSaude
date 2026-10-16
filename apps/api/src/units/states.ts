@@ -40,6 +40,13 @@ const stateCodes: Record<string, string> = {
   TO: '17',
 };
 
+export function brazilianStates(): BrazilianState[] {
+  return Object.entries(stateCodes).map(([abbreviation, ibgeCode]) => ({
+    abbreviation,
+    ibgeCode,
+  }));
+}
+
 const abbreviationsByIbgeCode = new Map(
   Object.entries(stateCodes).map(([abbreviation, ibgeCode]) => [
     ibgeCode,

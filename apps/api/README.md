@@ -19,7 +19,7 @@ A API inicia em `http://localhost:3000`.
 | `GET /health`          | Verifica o estado da API.                                        |
 | `GET /units`           | Lista unidades públicas de pronto atendimento de todo o Brasil. |
 | `GET /units?state=SP`  | Lista unidades públicas de pronto atendimento da UF informada.  |
-| `GET /units?state=ALL` | Lista unidades de todo o Brasil a partir do snapshot local.      |
+| `GET /units?state=ALL` | Lista unidades de todo o Brasil a partir do catálogo persistido. |
 | `POST /webhooks/v1/occupancy` | Recebe snapshots de ocupação assinados.              |
 | `GET /boundaries/brazil` | Contorno do Brasil (IBGE) para a máscara do mapa, simplificado (`detail=low`, padrão). |
 | `GET /boundaries/brazil?detail=high` | Contorno do Brasil com o detalhe completo do arquivo do IBGE. |
@@ -63,13 +63,15 @@ Os cabeçalhos obrigatórios são `X-Webhook-Source`,
 bruto da requisição. O payload e os vetores de assinatura estão documentados
 em [`docs/contracts/occupancy-snapshot-v1.md`](../../docs/contracts/occupancy-snapshot-v1.md), que tambÃ©m traz um vetor fixo para validar implementaÃ§Ãµes independentes.
 
-O endpoint de unidades consulta diretamente os tipos oficiais `20` (pronto
-socorro geral), `21` (pronto socorro especializado) e `73` (pronto atendimento)
-do Cadastro Nacional de Estabelecimentos de Saúde (CNES), mantém o resultado em memória por seis horas e usa
-um snapshot local com cobertura nacional quando a fonte oficial está indisponível.
+Um job separado consulta os tipos oficiais `20` (pronto-socorro geral), `21`
+(pronto-socorro especializado) e `73` (pronto atendimento) do Cadastro Nacional
+de Estabelecimentos de Saúde (CNES) e atualiza o PostgreSQL por UF. O endpoint de
+unidades lê esse catálogo persistido, mantém a resposta em memória por seis
+horas e usa um snapshot local com cobertura nacional enquanto o banco estiver
+indisponível ou ainda não tiver recebido a primeira ingestão.
 O parâmetro `state` aceita qualquer sigla de UF ou `ALL`/`BR` para cobertura
-nacional. Sem o parâmetro, a API usa `ALL`. Consultas com `ALL` ou `BR` sempre
-retornam o snapshot local (`fallback`), sem consultar o CNES. Os nomes dos
+nacional. Sem o parâmetro, a API usa `ALL`. Consultas com `ALL` ou `BR` leem
+todas as UFs do banco sem consultar o CNES. Durante a ingestão, os nomes dos
 municípios vêm da API de localidades do IBGE. O campo
 `metadata.dataOrigin` indica `live` ou `fallback`, e `metadata.isStale` informa
 quando a cópia de segurança está sendo exibida.
@@ -96,9 +98,9 @@ informa de onde vem a posição:
 Uma posição `manual` vale sempre que existir, mesmo sobre uma coordenada do CNES
 dentro do município. Fora de `source`, `location.original` guarda a coordenada
 informada pelo CNES e, em `history`, `location.referenceMonth` traz a competência
-(`AAAA-MM`). A verificação vale também para as consultas `ALL`/`BR`, que vêm do snapshot. O
-fallback por UF, usado quando o CNES está indisponível, não consulta o
-histórico. Os detalhes e as limitações estão no
+(`AAAA-MM`). A verificação vale também para as consultas `ALL`/`BR`, que vêm do
+banco. O fallback por snapshot, usado quando o catálogo persistido está vazio
+ou indisponível, não consulta o histórico. Os detalhes e as limitações estão no
 [ADR 0001](../../docs/adr/0001-public-health-unit-data-source.md).
 
 Para unidades do município de São Paulo sem posição manual, a API tenta cruzar
@@ -156,6 +158,30 @@ ser exportadas no shell; a API não carrega arquivos `.env` automaticamente.
 
 A migration da inbox do webhook é executada pelo mesmo comando
 `pnpm --filter @filasaude/api migration:run`.
+
+### Ingestão do catálogo CNES
+
+Com o PostgreSQL iniciado e as migrations aplicadas, execute todas as UFs:
+
+```bash
+pnpm --filter @filasaude/api ingest:units
+```
+
+Para reprocessar somente uma UF:
+
+```bash
+pnpm --filter @filasaude/api ingest:units -- --state SP
+```
+
+Cada UF é coletada e persistida de forma independente. O job tenta novamente
+duas vezes com espera progressiva, faz upsert pelo código CNES e só desativa
+registros ausentes depois que a coleta completa da UF termina. Uma falha mantém
+a última versão válida daquela UF, permite que as demais sejam processadas e
+faz o comando terminar com código diferente de zero. Qualquer registro
+inconsistente torna a coleta da UF incompleta: depois das tentativas, o job
+rejeita toda a coleta e preserva o catálogo anterior dessa UF. A saída informa
+quantos foram importados ou desativados e avisa quando a atualização mais
+recente da fonte tem mais de 30 dias.
 
 O serviço deve expor apenas dados públicos e nunca oferecer diagnóstico,
 triagem, orientação médica ou recomendação de unidades.
