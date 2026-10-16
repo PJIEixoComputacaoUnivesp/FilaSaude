@@ -267,3 +267,95 @@ export async function fetchOccupancyHistory(
   }
   return parseOccupancyHistory(await response.json());
 }
+
+export interface SimulationScenario {
+  id: string;
+  label: string;
+  description: string;
+}
+
+export interface SimulationControl {
+  scenario: string;
+  /** `null` while the default scenario plays. */
+  changedAt: string | null;
+  expiresAt: string | null;
+  nextChangeAt: string | null;
+  scenarios: SimulationScenario[];
+  defaultScenario: string;
+}
+
+export function parseSimulationControl(value: unknown): SimulationControl {
+  if (
+    !isRecord(value) ||
+    !isRecord(value.data) ||
+    !isRecord(value.metadata) ||
+    value.metadata.simulated !== true ||
+    typeof value.metadata.defaultScenario !== "string" ||
+    typeof value.data.scenario !== "string" ||
+    !Array.isArray(value.data.scenarios) ||
+    !value.data.scenarios.every(
+      (scenario) =>
+        isRecord(scenario) &&
+        typeof scenario.id === "string" &&
+        typeof scenario.label === "string" &&
+        typeof scenario.description === "string",
+    )
+  ) {
+    throw new Error("Resposta de cenário inválida");
+  }
+  const optionalDate = (date: unknown) =>
+    typeof date === "string" ? date : null;
+  return {
+    scenario: value.data.scenario,
+    changedAt: optionalDate(value.data.changedAt),
+    expiresAt: optionalDate(value.data.expiresAt),
+    nextChangeAt: optionalDate(value.data.nextChangeAt),
+    scenarios: value.data.scenarios as SimulationScenario[],
+    defaultScenario: value.metadata.defaultScenario,
+  };
+}
+
+export async function fetchSimulationControl(
+  signal?: AbortSignal,
+): Promise<SimulationControl | null> {
+  const response = await fetch("/api/occupancy/simulation", { signal });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error("Não foi possível consultar o cenário.");
+  return parseSimulationControl(await response.json());
+}
+
+export type ScenarioChange =
+  | { status: "changed"; control: SimulationControl }
+  | { status: "cooldown"; retryAfterSeconds: number }
+  | { status: "error"; message: string };
+
+/** Asks the simulator to play another scenario; it applies to everyone. */
+export async function changeSimulationScenario(
+  scenario: string,
+): Promise<ScenarioChange> {
+  let response: Response;
+  try {
+    response = await fetch("/api/occupancy/simulation", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scenario }),
+    });
+  } catch {
+    return { status: "error", message: "Não foi possível trocar o cenário." };
+  }
+  if (response.status === 429) {
+    const retryAfter = Number(response.headers.get("Retry-After"));
+    return {
+      status: "cooldown",
+      retryAfterSeconds:
+        Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 15,
+    };
+  }
+  if (!response.ok) {
+    return { status: "error", message: "Não foi possível trocar o cenário." };
+  }
+  return {
+    status: "changed",
+    control: parseSimulationControl(await response.json()),
+  };
+}

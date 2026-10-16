@@ -5,7 +5,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { fetchOccupancy, type UnitOccupancy } from "./occupancy";
+import {
+  changeSimulationScenario,
+  fetchOccupancy,
+  fetchSimulationControl,
+  type SimulationControl,
+  type UnitOccupancy,
+} from "./occupancy";
 import {
   OccupancyLayerContext,
   type OccupancyLayerState,
@@ -15,6 +21,10 @@ import {
 // The simulator confirms every two minutes; a minute keeps the layer close to
 // it without loading the API for nothing.
 const REFRESH_MS = 60_000;
+// Right after someone changes the scenario, follow it closely for a while,
+// so the effect shows up in seconds (the simulator reacts within 10 s).
+const FAST_REFRESH_MS = 10_000;
+const FAST_REFRESH_DURATION_MS = 3 * 60_000;
 const STORAGE_KEY = "filasaude:ocupacao-simulada";
 
 function readStoredChoice(): boolean {
@@ -55,6 +65,8 @@ export function OccupancyLayerProvider({ children }: { children: ReactNode }) {
   const [isEnabled, setEnabledState] = useState(readStoredChoice);
   const [onlySimulated, setOnlySimulated] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [control, setControl] = useState<SimulationControl | null>(null);
+  const [fastUntil, setFastUntil] = useState(0);
 
   const isAvailable =
     state.status !== "checking" && state.status !== "unavailable";
@@ -66,6 +78,13 @@ export function OccupancyLayerProvider({ children }: { children: ReactNode }) {
     let timer: number | undefined;
 
     const load = () => {
+      if (isEnabled) {
+        fetchSimulationControl(controller.signal)
+          .then(setControl)
+          .catch(() => {
+            // The scenario is secondary: the layer works without it.
+          });
+      }
       fetchOccupancy(controller.signal)
         .then((response) => {
           setState(
@@ -96,18 +115,27 @@ export function OccupancyLayerProvider({ children }: { children: ReactNode }) {
     const refreshWhenVisible = () => {
       if (document.visibilityState === "visible") load();
     };
+    const isFast = fastUntil > Date.now();
 
     load();
     if (isEnabled) {
-      timer = window.setInterval(refreshWhenVisible, REFRESH_MS);
+      timer = window.setInterval(
+        refreshWhenVisible,
+        isFast ? FAST_REFRESH_MS : REFRESH_MS,
+      );
       document.addEventListener("visibilitychange", refreshWhenVisible);
     }
+    // Back to the normal pace when the fast period ends.
+    const slowDown = isFast
+      ? window.setTimeout(() => setFastUntil(0), fastUntil - Date.now())
+      : undefined;
     return () => {
       controller.abort();
       window.clearInterval(timer);
+      window.clearTimeout(slowDown);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [shouldFetch, isEnabled, attempt]);
+  }, [shouldFetch, isEnabled, attempt, fastUntil]);
 
   const setEnabled = useCallback((enabled: boolean) => {
     storeChoice(enabled);
@@ -115,6 +143,14 @@ export function OccupancyLayerProvider({ children }: { children: ReactNode }) {
     if (!enabled) setOnlySimulated(false);
   }, []);
   const retry = useCallback(() => setAttempt((current) => current + 1), []);
+  const changeScenario = useCallback(async (scenario: string) => {
+    const result = await changeSimulationScenario(scenario);
+    if (result.status === "changed") {
+      setControl(result.control);
+      setFastUntil(Date.now() + FAST_REFRESH_DURATION_MS);
+    }
+    return result;
+  }, []);
 
   const response = responseOf(state);
   const byUnit = useMemo(
@@ -146,6 +182,8 @@ export function OccupancyLayerProvider({ children }: { children: ReactNode }) {
       byUnit,
       simulatedFilter,
       retry,
+      control: isAvailable && isEnabled ? control : null,
+      changeScenario,
     }),
     [
       isAvailable,
@@ -156,6 +194,8 @@ export function OccupancyLayerProvider({ children }: { children: ReactNode }) {
       byUnit,
       simulatedFilter,
       retry,
+      control,
+      changeScenario,
     ],
   );
 

@@ -219,3 +219,67 @@ test("o detalhe traz as categorias e o histórico em tabela", async ({
     section.getByRole("cell", { name: "Ocupação baixa" }),
   ).toBeVisible();
 });
+
+test("qualquer visitante troca o cenário, com aviso de que vale para todos", async ({
+  page,
+}) => {
+  await mockApi(page);
+  const control = (scenario: string) => ({
+    data: {
+      scenario,
+      changedAt: scenario === "showcase" ? null : "2026-10-15T15:00:00.000Z",
+      expiresAt: scenario === "showcase" ? null : "2026-10-15T15:15:00.000Z",
+      nextChangeAt: null,
+      scenarios: [
+        {
+          id: "showcase",
+          label: "Demonstração completa",
+          description: "Todas as faixas ao mesmo tempo.",
+        },
+        {
+          id: "surge",
+          label: "Pico de ocupação",
+          description: "A ocupação sobe até a faixa alta.",
+        },
+      ],
+    },
+    metadata: { simulated: true, defaultScenario: "showcase" },
+  });
+  let puts = 0;
+  let current = "showcase";
+  await page.route("**/api/occupancy/simulation", (route) => {
+    if (route.request().method() === "PUT") {
+      puts += 1;
+      if (puts === 1) current = "surge";
+      return puts === 1
+        ? route.fulfill({ json: control(current) })
+        : route.fulfill({
+            status: 429,
+            headers: { "Retry-After": "12" },
+            json: { code: "scenario_cooldown" },
+          });
+    }
+    return route.fulfill({ json: control(current) });
+  });
+  await page.goto("/units?uf=SP");
+  await page.getByText("Ocupação simulada", { exact: true }).first().click();
+
+  const picker = page.getByRole("combobox", { name: "Cenário da simulação" });
+  await expect(picker).toHaveValue("showcase");
+  await expect(
+    page.getByText(/A escolha vale para todos que estão vendo o site/),
+  ).toBeVisible();
+
+  await picker.selectOption("surge");
+  await page.getByRole("button", { name: "Aplicar" }).click();
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: /Cenário trocado para "Pico de ocupação"/ }),
+  ).toBeVisible();
+  expect(puts).toBe(1);
+
+  await picker.selectOption("showcase");
+  await page.getByRole("button", { name: "Aplicar" }).click();
+  await expect(page.getByText(/Tente de novo em 12 segundos/)).toBeVisible();
+});
