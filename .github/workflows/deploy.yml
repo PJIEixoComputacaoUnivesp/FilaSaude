@@ -212,10 +212,11 @@ jobs:
             deploy/compose.prod.yaml \
             deploy/deploy.sh \
             deploy/backup.sh \
+            deploy/ingest-units.sh \
             "$RUNNER_TEMP/production.env" \
             "deploy@$DROPLET_HOST:/opt/filasaude/"
           ssh -i "$RUNNER_TEMP/deploy_key" "deploy@$DROPLET_HOST" \
-            'mv /opt/filasaude/production.env /opt/filasaude/.env && chmod 600 /opt/filasaude/.env && chmod 700 /opt/filasaude/deploy.sh /opt/filasaude/backup.sh'
+            'mv /opt/filasaude/production.env /opt/filasaude/.env && chmod 600 /opt/filasaude/.env && chmod 700 /opt/filasaude/deploy.sh /opt/filasaude/backup.sh /opt/filasaude/ingest-units.sh'
 
       - name: Authenticate server to GHCR
         env:
