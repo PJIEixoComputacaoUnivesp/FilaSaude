@@ -177,10 +177,11 @@ Cada UF é coletada e persistida de forma independente. O job tenta novamente
 duas vezes com espera progressiva, faz upsert pelo código CNES e só desativa
 registros ausentes depois que a coleta completa da UF termina. Uma falha mantém
 a última versão válida daquela UF, permite que as demais sejam processadas e
-faz o comando terminar com código diferente de zero. Registros inconsistentes
-são descartados individualmente; a saída informa quantos foram importados ou
-desativados e avisa quando a atualização mais recente da fonte tem mais de 30
-dias.
+faz o comando terminar com código diferente de zero. Qualquer registro
+inconsistente torna a coleta da UF incompleta: depois das tentativas, o job
+rejeita toda a coleta e preserva o catálogo anterior dessa UF. A saída informa
+quantos foram importados ou desativados e avisa quando a atualização mais
+recente da fonte tem mais de 30 dias.
 
 O serviço deve expor apenas dados públicos e nunca oferecer diagnóstico,
 triagem, orientação médica ou recomendação de unidades.
