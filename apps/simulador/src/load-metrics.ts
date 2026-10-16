@@ -33,16 +33,13 @@ export class LoadMetrics {
   private generated = 0;
   private accepted = 0;
   private rejected = 0;
-const MAX_LATENCY_SAMPLES = 10_000;
-
-export class LoadMetrics {
-  private generated = 0;
-  private accepted = 0;
-  private rejected = 0;
   private failed = 0;
   private retries = 0;
   private readonly responses = new Map<string, number>();
-  private readonly latencies = new Array<number>(MAX_LATENCY_SAMPLES);
+  private readonly latencies = Array.from(
+    { length: MAX_LATENCY_SAMPLES },
+    () => 0,
+  );
   private latencyCount = 0;
   private latencyOffset = 0;
 
@@ -65,6 +62,7 @@ export class LoadMetrics {
     if (error instanceof SnapshotTransportHttpError) {
       this.rejected += error.status >= 400 && error.status < 500 ? 1 : 0;
       this.failed += error.status >= 500 ? 1 : 0;
+      this.retries += Math.max(0, error.attempts - 1);
       this.recordResponse(error.status.toString());
       return;
     }
@@ -75,9 +73,14 @@ export class LoadMetrics {
   }
 
   snapshot(): LoadMetricsReport {
-    const latencies = this.latencies
-      .slice(0, this.latencyCount)
-      .sort((left, right) => left - right);
+    const latencies = Array.from(
+      { length: this.latencyCount },
+      (_, index) =>
+        this.latencies[
+          (this.latencyOffset - this.latencyCount + index + MAX_LATENCY_SAMPLES) %
+            MAX_LATENCY_SAMPLES
+        ]!,
+    ).sort((left, right) => left - right);
     return {
       generated: this.generated,
       accepted: this.accepted,
