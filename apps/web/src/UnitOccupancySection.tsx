@@ -34,8 +34,7 @@ export function UnitOccupancySection({ unitCnes }: { unitCnes: string }) {
   const titleId = useId();
   const hasCurrent = current !== undefined;
 
-  // The history covers hours, so it is read once and then every minute, not
-  // on each refresh of the current state (every 10 s after a scenario change).
+  // The history covers hours, so it is read once and then every minute.
   useEffect(() => {
     if (!layer.isEnabled || !hasCurrent) return;
     const controller = new AbortController();

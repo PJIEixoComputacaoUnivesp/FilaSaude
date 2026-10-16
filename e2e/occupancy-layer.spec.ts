@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-function unit(id: string, name: string, city: string) {
+function unit(id: string, name: string, city: string, state = "SP") {
   return {
     id,
     name,
@@ -11,7 +11,7 @@ function unit(id: string, name: string, city: string) {
       district: "Centro",
       postalCode: "01000-000",
       city,
-      state: "SP",
+      state,
     },
     location: {
       latitude: -23.55,
@@ -220,66 +220,84 @@ test("o detalhe traz as categorias e o histórico em tabela", async ({
   ).toBeVisible();
 });
 
-test("qualquer visitante troca o cenário, com aviso de que vale para todos", async ({
+test("filtros locais preservam a leitura nacional sem controlar as fontes", async ({
   page,
 }) => {
+  await page.clock.install();
   await mockApi(page);
-  const control = (scenario: string) => ({
-    data: {
-      scenario,
-      changedAt: scenario === "showcase" ? null : "2026-10-15T15:00:00.000Z",
-      expiresAt: scenario === "showcase" ? null : "2026-10-15T15:15:00.000Z",
-      nextChangeAt: null,
-      scenarios: [
-        {
-          id: "showcase",
-          label: "Demonstração completa",
-          description: "Todas as faixas ao mesmo tempo.",
-        },
-        {
-          id: "surge",
-          label: "Pico de ocupação",
-          description: "A ocupação sobe até a faixa alta.",
-        },
-      ],
-    },
-    metadata: { simulated: true, defaultScenario: "showcase" },
+  const rio = unit("3456789", "UPA Tijuca", "Rio de Janeiro", "RJ");
+  await page.route("**/api/units?state=RJ", (route) =>
+    route.fulfill({
+      json: {
+        data: [rio],
+        metadata: { ...unitsResponse.metadata, count: 1, state: "RJ" },
+      },
+    }),
+  );
+  let rioPercentage = 40;
+  const occupancyRequests: { method: string; search: string }[] = [];
+  await page.route("**/api/occupancy", (route) => {
+    const request = route.request();
+    occupancyRequests.push({
+      method: request.method(),
+      search: new URL(request.url()).search,
+    });
+    return route.fulfill({
+      json: {
+        data: [
+          highOccupancy,
+          staleOccupancy,
+          {
+            ...highOccupancy,
+            unitCnes: rio.id,
+            percentage: rioPercentage,
+            level: rioPercentage >= 85 ? "high" : "low",
+          },
+        ],
+        metadata,
+      },
+    });
   });
-  let puts = 0;
-  let current = "showcase";
-  await page.route("**/api/occupancy/simulation", (route) => {
-    if (route.request().method() === "PUT") {
-      puts += 1;
-      if (puts === 1) current = "surge";
-      return puts === 1
-        ? route.fulfill({ json: control(current) })
-        : route.fulfill({
-            status: 429,
-            headers: { "Retry-After": "12" },
-            json: { code: "scenario_cooldown" },
-          });
-    }
-    return route.fulfill({ json: control(current) });
+  const controlRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/occupancy/simulation"))
+      controlRequests.push(request.method());
   });
+
   await page.goto("/units?uf=SP");
-  await page.getByText("Ocupação simulada", { exact: true }).first().click();
-
-  const picker = page.getByRole("combobox", { name: "Cenário da simulação" });
-  await expect(picker).toHaveValue("showcase");
+  await page.getByRole("switch", { name: "Ocupação simulada" }).focus();
+  await page.keyboard.press("Space");
   await expect(
-    page.getByText(/A escolha vale para todos que estão vendo o site/),
-  ).toBeVisible();
-
-  await picker.selectOption("surge");
-  await page.getByRole("button", { name: "Aplicar" }).click();
+    page.getByRole("combobox", { name: "Cenário da simulação" }),
+  ).toHaveCount(0);
   await expect(
     page
-      .getByRole("status")
-      .filter({ hasText: /Cenário trocado para "Pico de ocupação"/ }),
+      .getByRole("article")
+      .filter({ hasText: "UPA Vila Mariana" })
+      .getByText("Ocupação alta (90%)"),
   ).toBeVisible();
-  expect(puts).toBe(1);
+  await page.getByRole("combobox", { name: "Estado" }).selectOption("RJ");
+  await expect(
+    page
+      .getByRole("article")
+      .filter({ hasText: rio.name })
+      .getByText("Ocupação baixa (40%)"),
+  ).toBeVisible();
 
-  await picker.selectOption("showcase");
-  await page.getByRole("button", { name: "Aplicar" }).click();
-  await expect(page.getByText(/Tente de novo em 12 segundos/)).toBeVisible();
+  // Sources keep producing while the visitor looks at a different state.
+  rioPercentage = 95;
+  await page.clock.fastForward(60_000);
+  await expect(
+    page
+      .getByRole("article")
+      .filter({ hasText: rio.name })
+      .getByText("Ocupação alta (95%)"),
+  ).toBeVisible();
+  expect(occupancyRequests.length).toBeGreaterThanOrEqual(2);
+  expect(
+    occupancyRequests.every(
+      ({ method, search }) => method === "GET" && search === "",
+    ),
+  ).toBe(true);
+  expect(controlRequests).toEqual([]);
 });

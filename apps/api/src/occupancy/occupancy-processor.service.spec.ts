@@ -121,6 +121,26 @@ describe('OccupancyProcessorService', () => {
     );
   });
 
+  it('processes events even when the public visualization is disabled', async () => {
+    vi.useFakeTimers();
+    const repository = repositoryMock();
+    const processor = new OccupancyProcessorService(repository as never, {
+      ...settings,
+      publicEnabled: false,
+      processorEnabled: true,
+    });
+    try {
+      processor.onApplicationBootstrap();
+      await vi.advanceTimersByTimeAsync(settings.processorIntervalMs);
+      expect(repository.processPending).toHaveBeenCalledWith(
+        settings.batchSize,
+      );
+    } finally {
+      await processor.onApplicationShutdown();
+      vi.useRealTimers();
+    }
+  });
+
   it('does not start a timer when the processor is turned off', () => {
     const setInterval = vi.spyOn(globalThis, 'setInterval');
     const processor = new OccupancyProcessorService(repositoryMock() as never, {

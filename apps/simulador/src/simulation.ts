@@ -66,27 +66,6 @@ export class SimulationState {
     };
   }
 
-  /**
-   * A new event, with its own eventId, for values the unit already had at
-   * `observedAt`: a late delivery of a real past state.
-   */
-  snapshotOf(
-    unit: SimulatorUnit,
-    categories: readonly SimulationCategory[],
-    observedAt: Date,
-  ): OccupancySnapshot {
-    const sequence = this.sequence;
-    this.sequence += 1;
-    return {
-      eventId: createEventId(this.seed, unit.id, sequence, observedAt),
-      type: SIMULATOR_SNAPSHOT_TYPE,
-      unitCnes: unit.id,
-      occurredAt: new Date(observedAt.getTime() - 1000).toISOString(),
-      observedAt: observedAt.toISOString(),
-      categories: categories.map((category) => ({ ...category })),
-    };
-  }
-
   advance(units: readonly SimulatorUnit[], cycle: number): void {
     if (!Number.isInteger(cycle) || cycle < 0) {
       throw new Error('cycle deve ser um inteiro não negativo.');
@@ -123,32 +102,6 @@ export class SimulationState {
       throw new Error('occupied não pode ser maior que capacity.');
     }
     category.occupied = occupied;
-  }
-
-  /**
-   * Adds `step` of the capacity to every category of the unit, without going
-   * past `ceiling` of it (or lowering a category already above it).
-   */
-  raise(unitCnes: string, step: number, ceiling: number): void {
-    for (const category of this.ensureUnit(unitCnes).categories.values()) {
-      const limit = Math.round(category.capacity * ceiling);
-      if (category.occupied >= limit) continue;
-      category.occupied = Math.min(
-        limit,
-        category.occupied + Math.max(1, Math.round(category.capacity * step)),
-      );
-    }
-  }
-
-  /** Sets every category of the unit to about this share of its capacity. */
-  setRatio(unitCnes: string, ratio: number): void {
-    if (!Number.isFinite(ratio) || ratio < 0 || ratio > 1) {
-      throw new Error('ratio deve estar entre 0 e 1.');
-    }
-
-    for (const category of this.ensureUnit(unitCnes).categories.values()) {
-      category.occupied = Math.round(category.capacity * ratio);
-    }
   }
 
   private ensureUnit(unitCnes: string): UnitState {

@@ -1,10 +1,5 @@
 import { createContext, useContext } from "react";
-import type {
-  OccupancyResponse,
-  ScenarioChange,
-  SimulationControl,
-  UnitOccupancy,
-} from "./occupancy";
+import type { OccupancyResponse, UnitOccupancy } from "./occupancy";
 
 export type OccupancyLayerState =
   /** The first check has not answered yet. */
@@ -36,9 +31,6 @@ export interface OccupancyLayerValue {
    */
   simulatedFilter: ReadonlySet<string> | null;
   retry: () => void;
-  /** Scenario the simulator plays; `null` until read or when unavailable. */
-  control: SimulationControl | null;
-  changeScenario: (scenario: string) => Promise<ScenarioChange>;
 }
 
 export const OccupancyLayerContext = createContext<OccupancyLayerValue | null>(

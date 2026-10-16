@@ -9,15 +9,7 @@ export interface OccupancyOverride {
   occupied: number;
 }
 
-export const SIMULATION_SCENARIOS = [
-  'normal',
-  'duplicate',
-  'delayed',
-  'showcase',
-  'surge',
-  'outage',
-  'replay',
-] as const;
+export const SIMULATION_SCENARIOS = ['normal', 'duplicate', 'delayed'] as const;
 export type SimulationScenario = (typeof SIMULATION_SCENARIOS)[number];
 
 export interface SimulatorConfig {
@@ -37,14 +29,6 @@ export interface SimulatorConfig {
   occupancyOverrides: OccupancyOverride[];
   scenario: SimulationScenario;
   delaySeconds: number;
-  /** Follows the scenario chosen on the site (GET /occupancy/simulation). */
-  followSite: boolean;
-  /**
-   * The sample is the CNES list authorized for the source in
-   * WEBHOOK_SOURCE_CONFIG: every one of them, and the ones missing from the
-   * catalog are skipped instead of stopping the simulator.
-   */
-  sampleFromSource: boolean;
 }
 
 export interface ParsedArguments {
@@ -125,43 +109,6 @@ function readScenario(value: string | undefined): SimulationScenario {
   return value as SimulationScenario;
 }
 
-interface SharedSource {
-  secret: string;
-  unitCnes: string[];
-}
-
-/**
- * The API authorizes each source by WEBHOOK_SOURCE_CONFIG. When the simulator
- * runs next to it (Compose, deploy), it reads the same variable, so the secret
- * and the authorized CNES list have a single place to be kept.
- */
-function readSharedSource(
-  rawConfig: string | undefined,
-  sourceId: string,
-): SharedSource | null {
-  if (!rawConfig) return null;
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(rawConfig);
-  } catch {
-    throw new Error('WEBHOOK_SOURCE_CONFIG deve conter JSON válido.');
-  }
-  const source =
-    typeof parsed === 'object' && parsed !== null
-      ? (parsed as Record<string, unknown>)[sourceId]
-      : undefined;
-  if (typeof source !== 'object' || source === null) return null;
-
-  const { secret, unitCnes } = source as Record<string, unknown>;
-  return {
-    secret: typeof secret === 'string' ? secret : '',
-    unitCnes: Array.isArray(unitCnes)
-      ? readUnitCnes(unitCnes.filter((code) => typeof code === 'string').join(','))
-      : [],
-  };
-}
-
 function readNonNegativeNumber(value: string | undefined, name: string): number {
   if (value === undefined) return 0;
   const parsed = Number(value);
@@ -232,32 +179,18 @@ export function loadConfig(
     throw new Error('scenario delayed exige --delay-seconds maior que zero.');
   }
 
-  const sourceId = value('source-id', 'SIMULATOR_SOURCE_ID', 'occupancy-feed')!;
-  const sharedSource = readSharedSource(environment.WEBHOOK_SOURCE_CONFIG, sourceId);
-  const municipalityCode = value('municipality-code', 'SIMULATOR_MUNICIPALITY_CODE') ?? null;
-  const city = value('city', 'SIMULATOR_CITY') ?? null;
-  let unitCnes = readUnitCnes(value('unit-cnes', 'SIMULATOR_UNIT_CNES'));
-  // Without another criterion, the sample is every unit the source may update.
-  const sampleFromSource =
-    unitCnes.length === 0 &&
-    !municipalityCode &&
-    !city &&
-    latitude === null &&
-    (sharedSource?.unitCnes.length ?? 0) > 0;
-  if (sampleFromSource) unitCnes = sharedSource!.unitCnes;
-
   return {
     apiUrl: value('api-url', 'SIMULATOR_API_URL', DEFAULT_API_URL)!,
-    sourceId,
-    sourceSecret: environment.SIMULATOR_SOURCE_SECRET || sharedSource?.secret || null,
+    sourceId: value('source-id', 'SIMULATOR_SOURCE_ID', 'occupancy-feed')!,
+    sourceSecret: environment.SIMULATOR_SOURCE_SECRET ?? null,
     state: value('state', 'SIMULATOR_STATE')?.toUpperCase() ?? null,
-    municipalityCode,
-    city,
+    municipalityCode: value('municipality-code', 'SIMULATOR_MUNICIPALITY_CODE') ?? null,
+    city: value('city', 'SIMULATOR_CITY') ?? null,
     latitude,
     longitude,
     radiusKm,
-    maxUnits: sampleFromSource ? unitCnes.length : maxUnits,
-    unitCnes,
+    maxUnits,
+    unitCnes: readUnitCnes(value('unit-cnes', 'SIMULATOR_UNIT_CNES')),
     seed: value('seed', 'SIMULATOR_SEED', 'fila-saude-v1')!,
     intervalSeconds,
     occupancyOverrides: readOccupancyOverrides(
@@ -265,8 +198,6 @@ export function loadConfig(
     ),
     scenario,
     delaySeconds,
-    followSite: value('follow-site', 'SIMULATOR_FOLLOW_SITE') === 'true',
-    sampleFromSource,
   };
 }
 
@@ -287,14 +218,10 @@ Opções:
   --seed VALUE               Seed do cenário (padrão: fila-saude-v1)
   --interval-seconds NUMBER  Intervalo entre ciclos (padrão: 120)
   --set-occupied VALUES      Ocupações iniciais CNES:CATEGORIA:VALOR
-  --scenario NAME            Cenário: normal, duplicate, delayed, showcase,
-                             surge, outage ou replay
-  --follow-site true         Segue o cenário escolhido no site
+  --scenario NAME            Cenário: normal, duplicate ou delayed
   --delay-seconds NUMBER     Atraso dos timestamps no cenário delayed
   --help                     Exibe esta ajuda
 
 As opções também podem ser informadas pelas variáveis SIMULATOR_* equivalentes.
-Sem SIMULATOR_SOURCE_SECRET, o segredo vem de WEBHOOK_SOURCE_CONFIG (o mesmo
-JSON da API); sem critério de seleção, a amostra são os CNES autorizados nele.
 `;
 }

@@ -6,7 +6,6 @@ import { HealthUnitEntity } from './entities/health-unit.entity.js';
 import { UnitLocationCorrectionEntity } from './entities/unit-location-correction.entity.js';
 import { UnitLocationCorrectionEventEntity } from './entities/unit-location-correction-event.entity.js';
 import { OccupancyCurrentEntity } from './entities/occupancy-current.entity.js';
-import { SimulationControlEntity } from './entities/simulation-control.entity.js';
 import { OccupancyWebhookInboxEntity } from './entities/occupancy-webhook-inbox.entity.js';
 
 const databaseDirectory = dirname(fileURLToPath(import.meta.url));
@@ -33,7 +32,6 @@ export const databaseOptions = {
     UnitLocationCorrectionEventEntity,
     OccupancyWebhookInboxEntity,
     OccupancyCurrentEntity,
-    SimulationControlEntity,
   ],
   migrations: [resolve(databaseDirectory, 'migrations/*.js')],
   synchronize: false,

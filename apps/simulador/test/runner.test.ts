@@ -22,8 +22,6 @@ const config: SimulatorConfig = {
   occupancyOverrides: [],
   scenario: 'normal',
   delaySeconds: 0,
-  followSite: false,
-  sampleFromSource: false,
 };
 
 const units: SimulatorUnit[] = [

@@ -1,7 +1,6 @@
 import { useId, useState } from "react";
 import { LiveStatus } from "./LiveStatus";
 import { OccupancySwatch } from "./OccupancySwatch";
-import { ScenarioPicker } from "./ScenarioPicker";
 import { SimulationPill } from "./SimulationPill";
 import {
   formatTime,
@@ -103,7 +102,6 @@ export function OccupancyControls({ compact = false }: { compact?: boolean }) {
               </button>
             </p>
           )}
-          <ScenarioPicker />
           <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-slate-800">
             <input
               type="checkbox"
