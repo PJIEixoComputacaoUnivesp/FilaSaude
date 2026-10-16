@@ -35,9 +35,15 @@ export function MapPage() {
   const { state, retry } = useUnits(requestState);
   const panelRef = useRef<HTMLElement>(null);
   const filtersRef = useRef<HTMLDialogElement>(null);
+  const filtersButtonRef = useRef<HTMLButtonElement>(null);
+  const filtersOpenerRef = useRef<HTMLElement | null>(null);
   const filtersTitleId = useId();
   const [isLegendOpen, setLegendOpen] = useState(false);
   function openFilters(showLegend = false) {
+    filtersOpenerRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     setLegendOpen(showLegend);
     if (filtersRef.current) filtersRef.current.scrollTop = 0;
     filtersRef.current?.showModal();
@@ -138,9 +144,14 @@ export function MapPage() {
             />
           </label>
           <button
+            ref={filtersButtonRef}
             type="button"
             onClick={() => openFilters()}
-            aria-label="Abrir filtros e legenda"
+            aria-label={
+              stateCode === NationalStateCode.All
+                ? "Abrir filtros e legenda"
+                : `Abrir filtros e legenda: ${stateName(stateCode)}`
+            }
             aria-haspopup="dialog"
             className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-fila-blue sm:hidden"
           >
@@ -204,7 +215,13 @@ export function MapPage() {
       <dialog
         ref={filtersRef}
         aria-labelledby={filtersTitleId}
-        onClose={() => setLegendOpen(false)}
+        onClose={() => {
+          setLegendOpen(false);
+          if (filtersOpenerRef.current && !filtersOpenerRef.current.isConnected) {
+            filtersButtonRef.current?.focus();
+          }
+          filtersOpenerRef.current = null;
+        }}
         className="fixed inset-x-0 bottom-0 top-auto m-0 max-h-[85dvh] w-full max-w-none overflow-y-auto overscroll-contain rounded-t-2xl border border-slate-200 bg-white p-0 text-slate-900 backdrop:bg-slate-900/40"
       >
         <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 py-2">

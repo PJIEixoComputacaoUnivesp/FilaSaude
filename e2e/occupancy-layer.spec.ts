@@ -213,13 +213,22 @@ for (const viewport of [
       ),
     ).toBe(true);
 
-    const open = page.getByRole("button", { name: "Abrir filtros e legenda" });
+    const open = page.getByRole("button", { name: /^Abrir filtros e legenda/ });
+    await expect(open).toHaveAccessibleName("Abrir filtros e legenda: São Paulo");
     await open.click();
     const dialog = page.getByRole("dialog", { name: "Filtros e legenda" });
     await expect(dialog).toBeVisible();
     await expect(
       dialog.getByRole("combobox", { name: "Estado", exact: true }),
     ).toHaveValue("SP");
+    const stateSelect = dialog.getByRole("combobox", {
+      name: "Estado",
+      exact: true,
+    });
+    await stateSelect.selectOption("ALL");
+    await expect(open).toHaveAccessibleName("Abrir filtros e legenda");
+    await stateSelect.selectOption("SP");
+    await expect(open).toHaveAccessibleName("Abrir filtros e legenda: São Paulo");
     await dialog
       .getByText("Legenda da ocupação de leitos", { exact: true })
       .click();
@@ -260,6 +269,49 @@ for (const viewport of [
       ),
     ).toBe(true);
   });
+
+  for (const closeMethod of ["button", "escape"] as const) {
+    test(`restaura o foco ao desligar leitos pela legenda e fechar com ${closeMethod} em ${viewport.width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await mockApi(page);
+      await page.route("**/api/units?state=ALL", (route) =>
+        route.fulfill({ json: unitsResponse }),
+      );
+      await page.goto("/?uf=SP");
+
+      const panel = page.getByRole("region", { name: "Controles do mapa" });
+      const toggle = panel.getByRole("switch", {
+        name: "Ocupação simulada de leitos",
+      });
+      await toggle.focus();
+      await page.keyboard.press("Space");
+      await expect(toggle).toBeChecked();
+      await panel.getByRole("button", { name: "Legenda", exact: true }).click();
+
+      const dialog = page.getByRole("dialog", { name: "Filtros e legenda" });
+      const dialogToggle = dialog.getByRole("switch", {
+        name: "Ocupação simulada de leitos",
+      });
+      await dialogToggle.focus();
+      await page.keyboard.press("Space");
+      await expect(dialogToggle).not.toBeChecked();
+      await expect(
+        panel.getByRole("button", { name: "Legenda", exact: true }),
+      ).toHaveCount(0);
+
+      if (closeMethod === "escape") {
+        await page.keyboard.press("Escape");
+      } else {
+        await dialog.getByRole("button", { name: "Voltar ao mapa" }).click();
+      }
+      await expect(dialog).not.toBeVisible();
+      await expect(
+        panel.getByRole("button", { name: /^Abrir filtros e legenda/ }),
+      ).toBeFocused();
+    });
+  }
 }
 
 test("a camada começa desligada e mostra só dados cadastrais", async ({
