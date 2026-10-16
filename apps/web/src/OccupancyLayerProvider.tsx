@@ -2,19 +2,26 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { fetchOccupancy, type UnitOccupancy } from "./occupancy";
+import {
+  fetchOccupancy,
+  type OccupancyResponse,
+  type UnitOccupancy,
+} from "./occupancy";
+import {
+  expireOccupancy,
+  mergeOccupancy,
+  subscribeOccupancy,
+} from "./occupancyStream";
 import {
   OccupancyLayerContext,
   type OccupancyLayerState,
   type OccupancyLayerValue,
 } from "./useOccupancyLayer";
 
-// The simulator confirms every two minutes; a minute keeps the layer close to
-// it without loading the API for nothing.
-const REFRESH_MS = 60_000;
 const STORAGE_KEY = "filasaude:ocupacao-simulada";
 
 function readStoredChoice(): boolean {
@@ -42,72 +49,118 @@ function responseOf(state: OccupancyLayerState) {
 
 const noOccupancy: ReadonlyMap<string, UnitOccupancy> = new Map();
 
-/**
- * Asks the API once whether the demonstration is on (GET /occupancy answers
- * 404 when it is off). While the layer is on, it refreshes on a timer, only
- * when the page is visible, and replaces the data in place: focus never moves
- * and nothing is announced on a refresh.
- */
+/** One national SSE subscription shared by map, list and unit detail. */
 export function OccupancyLayerProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<OccupancyLayerState>({
     status: "checking",
   });
   const [isEnabled, setEnabledState] = useState(readStoredChoice);
   const [onlySimulated, setOnlySimulated] = useState(false);
+  const [historyVersions, setHistoryVersions] = useState<
+    ReadonlyMap<string, number>
+  >(new Map());
   const [attempt, setAttempt] = useState(0);
 
   const isAvailable =
     state.status !== "checking" && state.status !== "unavailable";
-  const shouldFetch = state.status === "checking" || (isAvailable && isEnabled);
+  const checking = state.status === "checking";
+  const serverOffset = useRef(0);
 
   useEffect(() => {
-    if (!shouldFetch) return;
     const controller = new AbortController();
-    let timer: number | undefined;
-
-    const load = () => {
-      fetchOccupancy(controller.signal)
-        .then((response) => {
-          setState(
-            response === null
-              ? { status: "unavailable" }
-              : { status: "success", response },
-          );
-        })
+    const noteUpdates = (response: OccupancyResponse) => {
+      serverOffset.current =
+        Date.parse(response.metadata.generatedAt) - Date.now();
+      setHistoryVersions((previous) => {
+        const next = new Map(previous);
+        for (const unit of response.data)
+          next.set(unit.unitCnes, (next.get(unit.unitCnes) ?? 0) + 1);
+        return next;
+      });
+    };
+    const receiveDelta = (delta: OccupancyResponse) => {
+      if (controller.signal.aborted) return;
+      noteUpdates(delta);
+      setState((previous) => {
+        const response = responseOf(previous);
+        return response
+          ? { status: "success", response: mergeOccupancy(response, delta) }
+          : previous;
+      });
+    };
+    const receive = (response: OccupancyResponse | null) => {
+      if (controller.signal.aborted) return;
+      if (response) noteUpdates(response);
+      setState(
+        response === null
+          ? { status: "unavailable" }
+          : { status: "success", response },
+      );
+    };
+    const fail = (error: Error) => {
+      if (controller.signal.aborted) return;
+      setState((previous) =>
+        previous.status === "checking"
+          ? { status: "unavailable" }
+          : {
+              status: "error",
+              message: error.message,
+              response: responseOf(previous),
+            },
+      );
+    };
+    if (checking) {
+      void fetchOccupancy(controller.signal)
+        .then(receive)
         .catch((error: unknown) => {
-          if (controller.signal.aborted) return;
-          setState((previous) =>
-            // A first check that fails offers no layer, as when it is off: a
-            // switch that only leads to an error helps nobody.
-            previous.status === "checking"
-              ? { status: "unavailable" }
-              : {
-                  status: "error",
-                  message:
-                    error instanceof Error
-                      ? error.message
-                      : "Não foi possível consultar a ocupação simulada.",
-                  // A failed refresh keeps the last data, marked by its time.
-                  response: responseOf(previous),
-                },
+          fail(
+            error instanceof Error
+              ? error
+              : new Error("Não foi possível consultar a ocupação simulada de leitos."),
           );
         });
-    };
-    const refreshWhenVisible = () => {
-      if (document.visibilityState === "visible") load();
-    };
-
-    load();
-    if (isEnabled) {
-      timer = window.setInterval(refreshWhenVisible, REFRESH_MS);
-      document.addEventListener("visibilitychange", refreshWhenVisible);
+      return () => controller.abort();
     }
+    if (!isAvailable || !isEnabled) return;
+    let unsubscribe: (() => void) | undefined;
+    const followVisibility = () => {
+      unsubscribe?.();
+      unsubscribe = undefined;
+      if (document.visibilityState === "visible") {
+        unsubscribe = subscribeOccupancy({
+          onResponse: receive,
+          onDelta: receiveDelta,
+          onError: fail,
+        });
+      }
+    };
+    followVisibility();
+    document.addEventListener("visibilitychange", followVisibility);
     return () => {
       controller.abort();
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      unsubscribe?.();
+      document.removeEventListener("visibilitychange", followVisibility);
     };
-  }, [shouldFetch, isEnabled, attempt]);
+  }, [checking, isAvailable, isEnabled, attempt]);
+
+  useEffect(() => {
+    if (!isAvailable || !isEnabled) return;
+    // Only the local confirmation clock advances here; there is no polling.
+    const timer = window.setInterval(() => {
+      setState((previous) => {
+        const response = responseOf(previous);
+        if (!response) return previous;
+        const expired = expireOccupancy(
+          response,
+          Date.now() + serverOffset.current,
+        );
+        return expired === response
+          ? previous
+          : { ...previous, response: expired };
+      });
+    }, 15_000);
+    return () => window.clearInterval(timer);
+  }, [isAvailable, isEnabled]);
 
   const setEnabled = useCallback((enabled: boolean) => {
     storeChoice(enabled);
@@ -144,6 +197,7 @@ export function OccupancyLayerProvider({ children }: { children: ReactNode }) {
       state,
       response,
       byUnit,
+      historyVersions,
       simulatedFilter,
       retry,
     }),
@@ -155,6 +209,7 @@ export function OccupancyLayerProvider({ children }: { children: ReactNode }) {
       state,
       response,
       byUnit,
+      historyVersions,
       simulatedFilter,
       retry,
     ],

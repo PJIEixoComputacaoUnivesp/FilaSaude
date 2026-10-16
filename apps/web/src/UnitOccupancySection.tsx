@@ -3,6 +3,8 @@ import { OccupancyBadge } from "./OccupancyBadge";
 import { SimulationPill } from "./SimulationPill";
 import {
   CATEGORY_LABELS,
+  OCCUPANCY_EXPLANATION,
+  SIMULATION_NOTICE,
   fetchOccupancyHistory,
   formatDateTime,
   formatTime,
@@ -14,8 +16,6 @@ import {
 } from "./occupancy";
 import { chartSegments, hourlyHistory } from "./occupancyHistory";
 import { useOccupancyLayer } from "./useOccupancyLayer";
-
-const HISTORY_REFRESH_MS = 60_000;
 
 type HistoryState =
   | { status: "loading" }
@@ -34,32 +34,60 @@ export function UnitOccupancySection({ unitCnes }: { unitCnes: string }) {
   const titleId = useId();
   const hasCurrent = current !== undefined;
 
-  // The history covers hours, so it is read once and then every minute.
+  const refreshHistory = useRef<(() => void) | null>(null);
+  // A unit revision follows its SSE delta or a full reconnect snapshot.
+  // Keep one history request in flight and coalesce notifications while slow.
   useEffect(() => {
     if (!layer.isEnabled || !hasCurrent) return;
     const controller = new AbortController();
-    const load = () =>
-      fetchOccupancyHistory(unitCnes, controller.signal)
-        .then((response) => setState({ status: "success", response }))
-        .catch((error: unknown) => {
-          if (controller.signal.aborted) return;
-          setState({
-            status: "error",
-            message:
-              error instanceof Error
-                ? error.message
-                : "Não foi possível consultar o histórico.",
-          });
-        });
-    load();
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") void load();
-    }, HISTORY_REFRESH_MS);
+    let running = false;
+    let requested = false;
+    const load = async () => {
+      requested = true;
+      if (running) return;
+      running = true;
+      try {
+        while (requested && !controller.signal.aborted) {
+          requested = false;
+          try {
+            const response = await fetchOccupancyHistory(
+              unitCnes,
+              controller.signal,
+            );
+            if (!controller.signal.aborted)
+              setState({ status: "success", response });
+          } catch (error: unknown) {
+            if (controller.signal.aborted) return;
+            setState({
+              status: "error",
+              message:
+                error instanceof Error
+                  ? error.message
+                  : "Não foi possível consultar o histórico.",
+            });
+          }
+        }
+      } finally {
+        running = false;
+      }
+    };
+    refreshHistory.current = () => {
+      void load();
+    };
     return () => {
+      refreshHistory.current = null;
       controller.abort();
-      window.clearInterval(timer);
     };
   }, [layer.isEnabled, unitCnes, hasCurrent]);
+
+  useEffect(() => {
+    refreshHistory.current?.();
+  }, [
+    layer.isEnabled,
+    unitCnes,
+    hasCurrent,
+    layer.historyVersions.get(unitCnes),
+  ]);
 
   if (!layer.isEnabled || !current) return null;
 
@@ -76,13 +104,19 @@ export function UnitOccupancySection({ unitCnes }: { unitCnes: string }) {
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <h2 id={titleId} className="text-lg font-bold text-slate-900">
-          Ocupação simulada
+          Ocupação simulada de leitos
         </h2>
         <SimulationPill />
       </div>
       <p className="mt-2 text-sm leading-relaxed text-slate-700">
-        {source ? `${source.name}. ${source.description}` : null} Não mede fila
-        nem tempo de espera e não indica qual unidade procurar.
+        {SIMULATION_NOTICE}
+      </p>
+      <p className="mt-2 text-sm leading-relaxed text-slate-700">
+        {OCCUPANCY_EXPLANATION}
+      </p>
+      <p className="mt-2 text-xs leading-relaxed text-slate-600">
+        {source ? `Fonte: ${source.name}. ` : null}As capacidades e as faixas
+        são convenções da demonstração, não o inventário real da unidade.
       </p>
 
       <OccupancyBadge occupancy={current} className="mt-4 sm:max-w-lg" />
@@ -160,10 +194,10 @@ function CategoryTable({
               Categoria
             </th>
             <th scope="col" className="py-2 pr-4 text-right font-semibold">
-              Ocupados
+              Leitos ocupados
             </th>
             <th scope="col" className="py-2 pr-4 text-right font-semibold">
-              Capacidade
+              Leitos simulados
             </th>
             <th scope="col" className="py-2 text-right font-semibold">
               Percentual
@@ -192,7 +226,7 @@ function CategoryTable({
         <tfoot>
           <tr className="border-t-2 border-slate-300 font-semibold text-slate-900">
             <th scope="row" className="py-2 pr-4">
-              Total
+              Total das categorias
             </th>
             <td className="py-2 pr-4 text-right tabular-nums">
               {totalOccupied}
@@ -275,10 +309,10 @@ function HistoryChart({
           className="block max-w-full"
         >
           <title id={titleId}>
-            Ocupação simulada nas últimas {periodHours} horas
+            Ocupação simulada de leitos nas últimas {periodHours} horas
           </title>
           <desc id={descriptionId}>
-            Percentual de ocupação de cada envio, de{" "}
+            Percentual total de leitos simulados de cada envio, de{" "}
             {formatDateTime(first.occurredAt)} a{" "}
             {formatDateTime(last.occurredAt)}. Os valores por hora estão em "Ver
             histórico em tabela".

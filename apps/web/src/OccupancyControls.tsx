@@ -5,6 +5,7 @@ import { SimulationPill } from "./SimulationPill";
 import {
   formatTime,
   OCCUPANCY_STATUSES,
+  OCCUPANCY_EXPLANATION,
   SIMULATION_NOTICE,
   STATUS_LABELS,
   STATUS_RANGES,
@@ -13,7 +14,7 @@ import { formatCount } from "./units";
 import { useOccupancyLayer } from "./useOccupancyLayer";
 
 /**
- * Switch, filter, legend and simulation notice of the "Ocupação simulada"
+ * Switch, filter, legend and simulation notice of the "Ocupação simulada de leitos"
  * layer. Renders nothing when the server has the demonstration turned off.
  * The compact variant sits inside the map panel; the list uses a card.
  */
@@ -30,8 +31,8 @@ export function OccupancyControls({ compact = false }: { compact?: boolean }) {
   const unitCount = response?.data.length ?? 0;
   const simulatedText = `${formatCount(
     unitCount,
-    "unidade com ocupação simulada",
-    "unidades com ocupação simulada",
+    "unidade com ocupação simulada de leitos",
+    "unidades com ocupação simulada de leitos",
   )} no Brasil`;
   const announcement =
     announceCount && layer.isEnabled && response ? `${simulatedText}.` : "";
@@ -65,7 +66,7 @@ export function OccupancyControls({ compact = false }: { compact?: boolean }) {
           <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full border-2 border-slate-500 bg-slate-500 transition motion-reduce:transition-none" />
         </span>
         <span className="text-sm font-semibold text-slate-900">
-          Ocupação simulada
+          Ocupação simulada de leitos
         </span>
       </label>
       {/* Visible wherever simulated data is on screen. In the map panel, with
@@ -109,11 +110,11 @@ export function OccupancyControls({ compact = false }: { compact?: boolean }) {
               onChange={(event) => layer.setOnlySimulated(event.target.checked)}
               className="h-5 w-5 shrink-0 accent-occupancy-control"
             />
-            Mostrar só unidades com ocupação simulada
+            Mostrar só unidades com ocupação simulada de leitos
           </label>
           <details className="group text-xs text-slate-700">
             <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 text-sm font-semibold text-fila-blue underline underline-offset-2 [&::-webkit-details-marker]:hidden">
-              Legenda da ocupação
+              Legenda da ocupação de leitos
               <svg
                 aria-hidden="true"
                 focusable="false"
@@ -151,9 +152,8 @@ export function OccupancyControls({ compact = false }: { compact?: boolean }) {
               )}
             </ul>
             <p className="mt-2 leading-relaxed">
-              Ocupação da capacidade informada em observação, estabilização e
-              internação. Não mede fila nem tempo de espera e não indica qual
-              unidade procurar.
+              {OCCUPANCY_EXPLANATION} As faixas são convenções da demonstração e
+              não indicam qual unidade procurar.
               {response &&
                 ` Sem envio por mais de ${response.metadata.staleAfterMinutes} minutos, a faixa deixa de ser mostrada. Dados atualizados às ${formatTime(response.metadata.generatedAt)}.`}
             </p>

@@ -15,6 +15,8 @@ export interface OccupancyCategory {
 
 export interface UnitOccupancy {
   unitCnes: string;
+  /** Present in current API responses; optional for older snapshots. */
+  eventId?: string;
   percentage: number | null;
   level: OccupancyLevel | null;
   confirmation: "recent" | "stale";
@@ -114,7 +116,11 @@ export const NEUTRAL_MARKER = { fill: "#1266cc", stroke: "#ffffff" };
 
 /** One name for the synthetic data in every screen. */
 export const SIMULATION_NOTICE =
-  "Dados fictícios, gerados por um simulador para demonstração acadêmica. Não são a ocupação real das unidades.";
+  "Dados fictícios de ocupação de leitos. Não representam fila, tempo de espera nem capacidade de atendimento da unidade.";
+
+/** The current color summarizes simulated beds, not patient flow. */
+export const OCCUPANCY_EXPLANATION =
+  "A cor e o percentual representam o total de leitos ocupados dividido pelo total de leitos simulados das categorias informadas: observação, estabilização e internação.";
 
 export function occupancyStatus(occupancy: UnitOccupancy): OccupancyStatus {
   if (occupancy.confirmation === "stale") return "stale";
@@ -247,7 +253,9 @@ export async function fetchOccupancy(
   const response = await fetch("/api/occupancy", { signal });
   if (response.status === 404) return null;
   if (!response.ok)
-    throw new Error("Não foi possível consultar a ocupação simulada.");
+    throw new Error(
+      "Não foi possível consultar a ocupação simulada de leitos.",
+    );
   return parseOccupancyResponse(await response.json());
 }
 
@@ -262,7 +270,7 @@ export async function fetchOccupancyHistory(
   if (response.status === 404) return null;
   if (!response.ok) {
     throw new Error(
-      "Não foi possível consultar o histórico da ocupação simulada.",
+      "Não foi possível consultar o histórico da ocupação simulada de leitos.",
     );
   }
   return parseOccupancyHistory(await response.json());

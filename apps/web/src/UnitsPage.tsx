@@ -99,7 +99,7 @@ function UnitCard({
             as a highlight of the units in the simulation. */}
         {occupancy && (
           <div>
-            <dt className="font-semibold text-slate-900">Ocupação simulada</dt>
+            <dt className="font-semibold text-slate-900">Ocupação simulada de leitos</dt>
             <dd className="mt-1">
               <OccupancyBadge occupancy={occupancy} />
             </dd>
@@ -364,7 +364,7 @@ export function UnitsPage() {
               <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-700">
                 <p>
                   {simulatedFilter
-                    ? "Nenhuma unidade com ocupação simulada corresponde a este filtro."
+                    ? "Nenhuma unidade com ocupação simulada de leitos corresponde a este filtro."
                     : "Nenhuma unidade corresponde à busca. Tente outro nome, cidade ou bairro."}
                 </p>
                 {simulatedFilter && (

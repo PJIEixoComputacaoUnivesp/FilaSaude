@@ -24,6 +24,8 @@ export interface OccupancyLayerValue {
   response: OccupancyResponse | null;
   /** Current occupancy by CNES, empty while the layer is off. */
   byUnit: ReadonlyMap<string, UnitOccupancy>;
+  /** Advances only for units whose current state or history was updated. */
+  historyVersions: ReadonlyMap<string, number>;
   /**
    * CNES of the simulation while "only simulated" is on, else `null`. It keeps
    * its identity across refreshes, so filtering on it does not rebuild the
@@ -38,7 +40,7 @@ export const OccupancyLayerContext = createContext<OccupancyLayerValue | null>(
 );
 
 /**
- * The "Ocupação simulada" layer is shared by the map, the list and the unit
+ * The "Ocupação simulada de leitos" layer is shared by the map, the list and the unit
  * detail, so it is held above the routes (see OccupancyLayerProvider).
  */
 export function useOccupancyLayer(): OccupancyLayerValue {

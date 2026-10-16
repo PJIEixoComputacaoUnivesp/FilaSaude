@@ -88,7 +88,42 @@ const staleOccupancy = {
   observedAt: "2026-10-15T14:00:01.000Z",
 };
 
+async function mockOccupancyStream(page: Page) {
+  await page.addInitScript(() => {
+    const streams: EventTarget[] = [];
+    Object.assign(window, { occupancyTestStreams: streams });
+    class MockEventSource extends EventTarget {
+      constructor() {
+        super();
+        streams.push(this);
+        queueMicrotask(() => this.dispatchEvent(new Event("open")));
+      }
+      close() {
+        const index = streams.indexOf(this);
+        if (index >= 0) streams.splice(index, 1);
+      }
+    }
+    Object.defineProperty(window, "EventSource", { value: MockEventSource });
+  });
+}
+
+async function emitOccupancyEvent(page: Page, type: string, payload?: unknown) {
+  await page.evaluate(
+    ({ eventType, data }) => {
+      const streams = (
+        window as unknown as { occupancyTestStreams: EventTarget[] }
+      ).occupancyTestStreams;
+      for (const stream of streams)
+        stream.dispatchEvent(
+          new MessageEvent(eventType, { data: JSON.stringify(data) }),
+        );
+    },
+    { eventType: type, data: payload },
+  );
+}
+
 async function mockApi(page: Page, occupancyStatus = 200) {
+  await mockOccupancyStream(page);
   await page.route("**/api/units?state=SP", (route) =>
     route.fulfill({ json: unitsResponse }),
   );
@@ -134,7 +169,7 @@ test("sem a demonstração na API, a camada não aparece", async ({ page }) => {
 
   await expect(page.getByText("3 unidades encontradas")).toBeVisible();
   await expect(
-    page.getByRole("switch", { name: "Ocupação simulada" }),
+    page.getByRole("switch", { name: "Ocupação simulada de leitos" }),
   ).toHaveCount(0);
 });
 
@@ -144,9 +179,11 @@ test("a camada começa desligada e mostra só dados cadastrais", async ({
   await mockApi(page);
   await page.goto("/units?uf=SP");
 
-  const toggle = page.getByRole("switch", { name: "Ocupação simulada" });
+  const toggle = page.getByRole("switch", {
+    name: "Ocupação simulada de leitos",
+  });
   await expect(toggle).not.toBeChecked();
-  await expect(page.getByText("Dado simulado")).toHaveCount(0);
+  await expect(page.getByText("Dado simulado de leitos")).toHaveCount(0);
 });
 
 test("ligada, mostra a faixa em texto, a marca de simulação e filtra a amostra", async ({
@@ -156,14 +193,16 @@ test("ligada, mostra a faixa em texto, a marca de simulação e filtra a amostra
   await page.goto("/units?uf=SP");
 
   // Keyboard: the switch is a native checkbox.
-  await page.getByRole("switch", { name: "Ocupação simulada" }).focus();
+  await page
+    .getByRole("switch", { name: "Ocupação simulada de leitos" })
+    .focus();
   await page.keyboard.press("Space");
 
   const mariana = page
     .getByRole("article")
     .filter({ hasText: "UPA Vila Mariana" });
   await expect(mariana.getByText("Ocupação alta (90%)")).toBeVisible();
-  await expect(mariana.getByText("Dado simulado")).toBeVisible();
+  await expect(mariana.getByText("Dado simulado de leitos")).toBeVisible();
 
   const mooca = page.getByRole("article").filter({ hasText: "UPA Mooca" });
   await expect(mooca.getByText("Sem confirmação recente")).toBeVisible();
@@ -172,11 +211,11 @@ test("ligada, mostra a faixa em texto, a marca de simulação e filtra a amostra
   const osasco = page
     .getByRole("article")
     .filter({ hasText: "Pronto Atendimento Osasco" });
-  await expect(osasco.getByText("Dado simulado")).toHaveCount(0);
+  await expect(osasco.getByText("Dado simulado de leitos")).toHaveCount(0);
 
   await page
     .getByRole("checkbox", {
-      name: "Mostrar só unidades com ocupação simulada",
+      name: "Mostrar só unidades com ocupação simulada de leitos",
     })
     .check();
   await expect(page.getByText("2 unidades encontradas")).toBeVisible();
@@ -187,28 +226,35 @@ test("o detalhe traz as categorias e o histórico em tabela", async ({
 }) => {
   await mockApi(page);
   await page.goto("/units?uf=SP");
-  await page.getByText("Ocupação simulada", { exact: true }).first().click();
+  await page
+    .getByText("Ocupação simulada de leitos", { exact: true })
+    .first()
+    .click();
   await page
     .getByRole("article")
     .filter({ hasText: "UPA Vila Mariana" })
     .getByRole("link", { name: /Ver detalhes/ })
     .click();
 
-  const section = page.getByRole("region", { name: "Ocupação simulada" });
+  const section = page.getByRole("region", {
+    name: "Ocupação simulada de leitos",
+  });
   await expect(section.getByText("Dados simulados")).toBeVisible();
   await expect(
-    section.getByText(/Não mede fila nem tempo de espera/),
+    section.getByText(
+      /Não representam fila, tempo de espera nem capacidade de atendimento/,
+    ),
   ).toBeVisible();
   await expect(
     section.getByRole("row", { name: /Observação 18 20 90%/ }),
   ).toBeVisible();
   // The level is computed on the total of the categories.
   await expect(
-    section.getByRole("row", { name: /Total 27 30 90%/ }),
+    section.getByRole("row", { name: /Total das categorias 27 30 90%/ }),
   ).toBeVisible();
   await expect(
     section.getByRole("img", {
-      name: /Ocupação simulada nas últimas 24 horas/,
+      name: /Ocupação simulada de leitos nas últimas 24 horas/,
     }),
   ).toBeVisible();
 
@@ -265,7 +311,9 @@ test("filtros locais preservam a leitura nacional sem controlar as fontes", asyn
   });
 
   await page.goto("/units?uf=SP");
-  await page.getByRole("switch", { name: "Ocupação simulada" }).focus();
+  await page
+    .getByRole("switch", { name: "Ocupação simulada de leitos" })
+    .focus();
   await page.keyboard.press("Space");
   await expect(
     page.getByRole("combobox", { name: "Cenário da simulação" }),
@@ -277,7 +325,7 @@ test("filtros locais preservam a leitura nacional sem controlar as fontes", asyn
       .getByText("Ocupação alta (90%)"),
   ).toBeVisible();
   await expect(
-    page.getByText(/3 unidades com ocupação simulada no Brasil$/),
+    page.getByText(/3 unidades com ocupação simulada de leitos no Brasil$/),
   ).toBeVisible();
   await page.getByRole("combobox", { name: "Estado" }).selectOption("RJ");
   await expect(
@@ -288,19 +336,128 @@ test("filtros locais preservam a leitura nacional sem controlar as fontes", asyn
   ).toBeVisible();
 
   // Sources keep producing while the visitor looks at a different state.
+  const requestsBefore = occupancyRequests.length;
   rioPercentage = 95;
   await page.clock.fastForward(60_000);
+  expect(occupancyRequests).toHaveLength(requestsBefore);
+  await emitOccupancyEvent(page, "occupancy.updated", {
+    data: [
+      {
+        ...highOccupancy,
+        unitCnes: rio.id,
+        percentage: rioPercentage,
+        level: "high",
+      },
+    ],
+    metadata,
+  });
   await expect(
     page
       .getByRole("article")
       .filter({ hasText: rio.name })
       .getByText("Ocupação alta (95%)"),
   ).toBeVisible();
-  expect(occupancyRequests.length).toBeGreaterThanOrEqual(2);
+  expect(occupancyRequests).toHaveLength(requestsBefore);
   expect(
     occupancyRequests.every(
       ({ method, search }) => method === "GET" && search === "",
     ),
   ).toBe(true);
   expect(controlRequests).toEqual([]);
+});
+
+test("SSE reconecta pela consulta REST e encerra ao desligar a camada", async ({
+  page,
+}) => {
+  await mockApi(page);
+  let percentage = 90;
+  let reads = 0;
+  await page.route("**/api/occupancy", (route) => {
+    reads++;
+    return route.fulfill({
+      json: { data: [{ ...highOccupancy, percentage }], metadata },
+    });
+  });
+  await page.goto("/units?uf=SP");
+  const toggle = page.getByRole("switch", {
+    name: "Ocupação simulada de leitos",
+  });
+  await toggle.focus();
+  await page.keyboard.press("Space");
+  const card = page
+    .getByRole("article")
+    .filter({ hasText: "UPA Vila Mariana" });
+  await expect(card.getByText("Ocupação alta (90%)")).toBeVisible();
+  const beforeReconnect = reads;
+  await emitOccupancyEvent(page, "error");
+  await expect(
+    page.getByText(/A atualização em tempo real foi interrompida/),
+  ).toBeVisible();
+  percentage = 95;
+  await emitOccupancyEvent(page, "open");
+  await expect(card.getByText("Ocupação alta (95%)")).toBeVisible();
+  expect(reads).toBeGreaterThan(beforeReconnect);
+  await expect(toggle).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(toggle).not.toBeChecked();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { occupancyTestStreams: EventTarget[] })
+          .occupancyTestStreams.length,
+    ),
+  ).toBe(0);
+});
+
+test("SSE atualiza o histórico da unidade mesmo quando o estado atual não muda", async ({
+  page,
+}) => {
+  await mockApi(page);
+  const points = [{ ...highOccupancy, percentage: 90, level: "high" }];
+  let reads = 0;
+  await page.route("**/api/units/1234567/occupancy-history", (route) => {
+    reads++;
+    return route.fulfill({
+      json: {
+        data: { unitCnes: "1234567", current: highOccupancy, history: points },
+        metadata: { ...metadata, periodHours: 24 },
+      },
+    });
+  });
+  await page.goto("/units?uf=SP");
+  await page
+    .getByRole("switch", { name: "Ocupação simulada de leitos" })
+    .focus();
+  await page.keyboard.press("Space");
+  await page
+    .getByRole("article")
+    .filter({ hasText: "UPA Vila Mariana" })
+    .getByRole("link", { name: /Ver detalhes/ })
+    .click();
+  const section = page.getByRole("region", {
+    name: "Ocupação simulada de leitos",
+  });
+  await section
+    .locator("summary", { hasText: "Ver histórico em tabela" })
+    .click();
+  await expect(
+    section.locator("details").getByRole("cell", { name: "90%", exact: true }),
+  ).toBeVisible();
+  const beforeUpdate = reads;
+  // An out-of-order event changes history but preserves the current projection.
+  points.unshift({
+    ...highOccupancy,
+    occurredAt: "2026-10-15T13:00:00Z",
+    percentage: 20,
+    level: "low",
+  });
+  await emitOccupancyEvent(page, "occupancy.updated", {
+    data: [highOccupancy],
+    metadata,
+  });
+  await expect(
+    section.locator("details").getByRole("cell", { name: "20%", exact: true }),
+  ).toBeVisible();
+  expect(reads).toBeGreaterThan(beforeUpdate);
+  await expect(section.getByText("Ocupação alta (90%)")).toBeVisible();
 });

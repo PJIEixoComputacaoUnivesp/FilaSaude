@@ -29,7 +29,7 @@ export function OccupancyBadge({
         {describeOccupancy(occupancy)}
       </div>
       <div className="mt-1 text-xs leading-relaxed text-slate-700">
-        <span className="font-semibold text-occupancy-ink">Dado simulado</span>{" "}
+        <span className="font-semibold text-occupancy-ink">Dado simulado de leitos</span>{" "}
         · Simulador do FilaSaúde ·{" "}
         {status === "stale" ? "último envio em " : "enviado às "}
         <time dateTime={occupancy.observedAt}>
