@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Not, Repository } from 'typeorm';
 import { HealthUnitEntity } from '../entities/health-unit.entity.js';
 
+const UPSERT_BATCH_SIZE = 1_000;
+
 @Injectable()
 export class HealthUnitRepository {
   constructor(
@@ -37,10 +39,16 @@ export class HealthUnitRepository {
     }
 
     return this.repository.manager.transaction(async (manager) => {
-      await manager.upsert(HealthUnitEntity, units, {
-        conflictPaths: ['cnesCode'],
-        skipUpdateIfNoValuesChanged: true,
-      });
+      for (let index = 0; index < units.length; index += UPSERT_BATCH_SIZE) {
+        await manager.upsert(
+          HealthUnitEntity,
+          units.slice(index, index + UPSERT_BATCH_SIZE),
+          {
+            conflictPaths: ['cnesCode'],
+            skipUpdateIfNoValuesChanged: true,
+          },
+        );
+      }
       const result = await manager.update(
         HealthUnitEntity,
         {
