@@ -76,15 +76,21 @@ export function OccupancyLayerProvider({ children }: { children: ReactNode }) {
         })
         .catch((error: unknown) => {
           if (controller.signal.aborted) return;
-          setState((previous) => ({
-            status: "error",
-            message:
-              error instanceof Error
-                ? error.message
-                : "Não foi possível consultar a ocupação simulada.",
-            // A failed refresh keeps the last data, marked by its own time.
-            response: responseOf(previous),
-          }));
+          setState((previous) =>
+            // A first check that fails offers no layer, as when it is off: a
+            // switch that only leads to an error helps nobody.
+            previous.status === "checking"
+              ? { status: "unavailable" }
+              : {
+                  status: "error",
+                  message:
+                    error instanceof Error
+                      ? error.message
+                      : "Não foi possível consultar a ocupação simulada.",
+                  // A failed refresh keeps the last data, marked by its time.
+                  response: responseOf(previous),
+                },
+          );
         });
     };
     const refreshWhenVisible = () => {
