@@ -40,7 +40,7 @@ limites orientam o produto e cada decisão de arquitetura abaixo.
 | Recebimento de snapshots de ocupação (webhook assinado) | Implementado: recebe e guarda | [contrato v1](docs/contracts/occupancy-snapshot-v1.md) |
 | Ingestão diária do CNES no PostgreSQL | Planejado | [#23](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/23) |
 | Processamento, estado atual e histórico de ocupação | Planejado | [#78](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/78) |
-| Simulador municipal de ocupação | Planejado | [#57](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/57) |
+| Simulador municipal de ocupação | Em implementação: CLI funcional | [README do simulador](apps/simulador/README.md), [#57](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/57) |
 | Camada de ocupação simulada no mapa | Planejado | [#79](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/79) |
 | Busca por proximidade e filtros por característica | Planejado | [#28](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/28), [#29](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/29) |
 
@@ -164,6 +164,7 @@ ela, a interface consulta por polling.
 | --- | --- | --- |
 | `GET /health` | Estado da API | Implementado |
 | `GET /units?state=UF` | Unidades de uma UF; sem `state` ou com `ALL`/`BR`, todo o Brasil | Implementado |
+| `GET /boundaries/brazil?detail=low\|high` | Contorno do Brasil (IBGE) para a máscara do mapa; `low` por padrão | Implementado |
 | `POST /webhooks/v1/occupancy` | Recebe um snapshot de ocupação assinado | Implementado |
 | `GET /admin/me` e `/admin/location-corrections` | Administração de posições, com `Authorization: Bearer` | Implementado |
 | `GET /units` com ocupação | Estado de ocupação, em campos opcionais que não quebram o contrato atual | Planejado (#78) |
@@ -195,7 +196,8 @@ fica desligado.
 .
 ├── apps/
 │   ├── web/                # React: mapa, lista, Sobre os dados e /admin
-│   └── api/                # NestJS: units, admin, webhooks e database
+│   ├── api/                # NestJS: units, admin, webhooks e database
+│   └── simulador/          # CLI de snapshots sintéticos assinados
 ├── e2e/                    # Playwright (fluxo da interface com API simulada)
 ├── docs/
 │   ├── adr/                # Decisões de arquitetura aceitas
@@ -227,6 +229,11 @@ pnpm dev
 O frontend fica em `http://localhost:5173` e a API em `http://localhost:3000`
 (`/health`). O frontend repassa `/api` para a API. A API conecta ao PostgreSQL
 ao iniciar, então ele precisa estar no ar.
+
+Para executar o simulador e enviar snapshots à API, consulte o
+[README do simulador](apps/simulador/README.md). Nesta etapa, a API apenas
+autentica, valida e guarda os snapshots; o processamento e a exibição da
+ocupação ainda estão planejados.
 
 Para subir tudo em contêineres, com o frontend em `http://localhost:8080` e a
 API acessível também por `http://localhost:8080/api`:
@@ -283,6 +290,7 @@ backups e o passo a passo.
 - [ADR 0002](docs/adr/0002-additional-public-data-sources.md): fontes públicas adicionais.
 - [Proposta 0001](docs/proposals/0001-operational-occupancy-simulation.md): simulação de ocupação operacional.
 - [Contrato do snapshot de ocupação v1](docs/contracts/occupancy-snapshot-v1.md) e seu [JSON Schema](docs/contracts/occupancy-snapshot-v1.schema.json).
+- [Roteiro de teste do `occupancy-feed`](docs/simulator-testing.md).
 - [Visão geral da pesquisa](docs/research/README.md).
 - [Sistema de interface](.interface-design/system.md): jornada, acessibilidade e mobile.
 - [Guia de deploy](docs/deployment.md) e [infraestrutura](infra/terraform/README.md).
