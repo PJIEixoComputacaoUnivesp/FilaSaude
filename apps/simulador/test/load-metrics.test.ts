@@ -26,15 +26,30 @@ test('agrega respostas, retries e percentis de latência', () => {
 test('distingue rejeição HTTP de falha de rede', () => {
   const metrics = new LoadMetrics();
   metrics.recordGenerated();
-  metrics.recordError(new SnapshotTransportHttpError(403));
+  metrics.recordError(new SnapshotTransportHttpError(403, 3));
 
   assert.deepEqual(metrics.snapshot(), {
     generated: 1,
     accepted: 0,
     rejected: 1,
     failed: 0,
-    retries: 0,
+    retries: 2,
     responses: { '403': 1 },
     latencyMs: { count: 0, p50: 0, p95: 0, p99: 0 },
+  });
+});
+
+test('mantém uma janela limitada para os percentis de latência', () => {
+  const metrics = new LoadMetrics();
+
+  for (let index = 1; index <= 10_001; index += 1) {
+    metrics.recordResult({ attempts: 1, status: 202 }, index);
+  }
+
+  assert.deepEqual(metrics.snapshot().latencyMs, {
+    count: 10_000,
+    p50: 5_001,
+    p95: 9_501,
+    p99: 9_901,
   });
 });

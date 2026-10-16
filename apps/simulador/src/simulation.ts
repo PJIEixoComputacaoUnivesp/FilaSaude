@@ -76,7 +76,7 @@ export class SimulationState {
 
   advanceUnit(unit: SimulatorUnit, occurrence: number): void {
     if (!Number.isInteger(occurrence) || occurrence < 0) {
-      throw new Error('occurrence deve ser um inteiro nÃ£o negativo.');
+      throw new Error('occurrence deve ser um inteiro não negativo.');
     }
 
     const state = this.ensureUnit(unit.id);

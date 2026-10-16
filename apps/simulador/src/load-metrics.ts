@@ -3,6 +3,8 @@ import {
   type SnapshotTransportResult,
 } from './transport.ts';
 
+const MAX_LATENCY_SAMPLES = 10_000;
+
 export interface LoadReport {
   durationSeconds: number;
   seed: string;
@@ -47,12 +49,16 @@ export class LoadMetrics {
     this.retries += Math.max(0, result.attempts - 1);
     this.recordResponse(result.status.toString());
     this.latencies.push(latencyMs);
+    if (this.latencies.length > MAX_LATENCY_SAMPLES) {
+      this.latencies.splice(0, this.latencies.length - MAX_LATENCY_SAMPLES);
+    }
   }
 
   recordError(error: unknown): void {
     if (error instanceof SnapshotTransportHttpError) {
       this.rejected += error.status >= 400 && error.status < 500 ? 1 : 0;
       this.failed += error.status >= 500 ? 1 : 0;
+      this.retries += Math.max(0, error.attempts - 1);
       this.recordResponse(error.status.toString());
       return;
     }

@@ -28,11 +28,17 @@ export interface SnapshotTransportResult {
 
 export class SnapshotTransportHttpError extends Error {
   readonly status: number;
+  readonly attempts: number;
 
-  constructor(status: number, message = `Webhook rejeitado pela API com status ${status}.`) {
+  constructor(
+    status: number,
+    attempts = 1,
+    message = `Webhook rejeitado pela API com status ${status}.`,
+  ) {
     super(message);
     this.name = 'SnapshotTransportHttpError';
     this.status = status;
+    this.attempts = attempts;
   }
 }
 
@@ -92,11 +98,12 @@ export async function sendSnapshot(
 
     if (response.ok) return { attempts: attempt, status: response.status };
     if (!isRetryable(response.status)) {
-      throw new SnapshotTransportHttpError(response.status);
+      throw new SnapshotTransportHttpError(response.status, attempt);
     }
     if (attempt === maxAttempts) {
       throw new SnapshotTransportHttpError(
         response.status,
+        attempt,
         `Webhook não aceito após ${attempt} tentativas.`,
       );
     }

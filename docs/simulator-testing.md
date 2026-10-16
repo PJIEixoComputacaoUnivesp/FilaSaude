@@ -474,7 +474,7 @@ Este roteiro ainda não confirma:
 Esses comportamentos dependem do processamento de ocupação da API e das
 respectivas entregas do frontend.
 
-## 10. Encerramento do ambiente
+## 11. Encerramento do ambiente
 
 Para parar os contêineres sem remover os dados locais:
 
