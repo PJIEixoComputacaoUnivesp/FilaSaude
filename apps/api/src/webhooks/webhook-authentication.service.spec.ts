@@ -23,13 +23,13 @@ describe('WebhookAuthenticationService', () => {
 
     expect(
       service.authenticate(
-        'academic-simulator',
+        'occupancy-feed',
         timestamp,
         `sha256=${signature}`,
         rawBody,
         new Date(1790000000 * 1000),
       ),
-    ).toBe('academic-simulator');
+    ).toBe('occupancy-feed');
   });
 
   it('accepts the documented signature vector', () => {
@@ -48,19 +48,19 @@ describe('WebhookAuthenticationService', () => {
 
     expect(
       vectorService.authenticate(
-        'academic-simulator',
+        'occupancy-feed',
         vectorTimestamp,
         'sha256=da56c33183345cfa94a63775704a2b52655350b77dae47c84a836db888cc62e5',
         vectorBody,
         new Date(1790000000 * 1000),
       ),
-    ).toBe('academic-simulator');
+    ).toBe('occupancy-feed');
   });
 
   it('rejects an invalid signature without exposing cryptographic details', () => {
     expect(() =>
       service.authenticate(
-        'academic-simulator',
+        'occupancy-feed',
         timestamp,
         `sha256=${'0'.repeat(64)}`,
         rawBody,
@@ -97,7 +97,7 @@ describe('WebhookAuthenticationService', () => {
   it('rejects a signature without the sha256 prefix', () => {
     expect(() =>
       service.authenticate(
-        'academic-simulator',
+        'occupancy-feed',
         timestamp,
         '0'.repeat(64),
         rawBody,
@@ -114,7 +114,7 @@ describe('WebhookAuthenticationService', () => {
 
     expect(() =>
       service.authenticate(
-        'academic-simulator',
+        'occupancy-feed',
         timestamp,
         `sha256=${signature}`,
         rawBody,

@@ -1,0 +1,25 @@
+{
+  "name": "@filasaude/simulador",
+  "version": "0.0.1",
+  "description": "CLI para simular fontes de snapshots de ocupação do FilaSaúde",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "filasaude-simulador": "dist/main.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "node --experimental-strip-types src/main.ts",
+    "lint": "oxlint src/ test/",
+    "start": "node dist/main.js",
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "test:integration": "node --experimental-strip-types --test test/integration.test.ts",
+    "typecheck": "tsc --noEmit --pretty false"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "oxlint": "^1.81.0",
+    "typescript": "^6.0.2"
+  }
+}
