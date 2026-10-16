@@ -8,6 +8,7 @@ import { HealthUnitEntity } from './../src/database/entities/health-unit.entity.
 import { HealthUnitRepository } from './../src/database/repositories/health-unit.repository.js';
 import { CnesClient } from './../src/units/cnes.client.js';
 import { GeoSampaClient } from './../src/units/geosampa.client.js';
+import { brazilianStates } from './../src/units/states.js';
 import { UnitLocationsService } from './../src/units/unit-locations.service.js';
 import type { HealthUnit } from './../src/units/units.types.js';
 
@@ -65,6 +66,14 @@ const storedUnit = Object.assign(new HealthUnitEntity(), {
   isActive: true,
 });
 
+const nationalStoredUnits = brazilianStates().map(
+  ({ abbreviation }, index) =>
+    Object.assign(new HealthUnitEntity(), storedUnit, {
+      cnesCode: String(index).padStart(7, '0'),
+      state: abbreviation,
+    }),
+);
+
 describe('AppController (e2e)', () => {
   let app: INestApplication<Server>;
 
@@ -81,7 +90,11 @@ describe('AppController (e2e)', () => {
       .overrideProvider(CnesClient)
       .useValue({ fetchUnits: vi.fn().mockResolvedValue([testUnit]) })
       .overrideProvider(HealthUnitRepository)
-      .useValue({ findActive: vi.fn().mockResolvedValue([storedUnit]) })
+      .useValue({
+        findActive: vi.fn((state?: string) =>
+          Promise.resolve(state ? [storedUnit] : nationalStoredUnits),
+        ),
+      })
       .overrideProvider(GeoSampaClient)
       .useValue({ enrichLocations: vi.fn().mockResolvedValue([testUnit]) })
       .overrideProvider(UnitLocationsService)
@@ -108,7 +121,7 @@ describe('AppController (e2e)', () => {
       .get('/units')
       .expect(200)
       .expect(({ body }) => {
-        expect(body.data).toEqual([testUnit]);
+        expect(body.data).toHaveLength(nationalStoredUnits.length);
         expect(body.metadata.state).toBe('BR');
         expect(body.metadata.dataOrigin).toBe('live');
       });
