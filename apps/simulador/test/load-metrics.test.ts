@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LoadMetrics } from '../src/load-metrics.ts';
-import { SnapshotTransportHttpError } from '../src/transport.ts';
+import {
+  SnapshotTransportHttpError,
+  SnapshotTransportNetworkError,
+} from '../src/transport.ts';
 
 test('agrega respostas, retries e percentis de latência', () => {
   const metrics = new LoadMetrics();
@@ -35,6 +38,21 @@ test('distingue rejeição HTTP de falha de rede', () => {
     failed: 0,
     retries: 2,
     responses: { '403': 1 },
+    latencyMs: { count: 0, p50: 0, p95: 0, p99: 0 },
+  });
+});
+
+test('contabiliza retries de falha de rede após esgotar tentativas', () => {
+  const metrics = new LoadMetrics();
+  metrics.recordError(new SnapshotTransportNetworkError(3, new Error('timeout')));
+
+  assert.deepEqual(metrics.snapshot(), {
+    generated: 0,
+    accepted: 0,
+    rejected: 0,
+    failed: 1,
+    retries: 2,
+    responses: { network_error: 1 },
     latencyMs: { count: 0, p50: 0, p95: 0, p99: 0 },
   });
 });

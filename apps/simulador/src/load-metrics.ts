@@ -1,4 +1,5 @@
 import {
+  SnapshotTransportNetworkError,
   SnapshotTransportHttpError,
   type SnapshotTransportResult,
 } from './transport.ts';
@@ -68,6 +69,9 @@ export class LoadMetrics {
     }
 
     this.failed += 1;
+    if (error instanceof SnapshotTransportNetworkError) {
+      this.retries += Math.max(0, error.attempts - 1);
+    }
     const key = error instanceof Error ? 'network_error' : 'unknown_error';
     this.recordResponse(key);
   }

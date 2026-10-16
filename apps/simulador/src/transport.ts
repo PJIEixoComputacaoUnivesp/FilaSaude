@@ -42,6 +42,18 @@ export class SnapshotTransportHttpError extends Error {
   }
 }
 
+export class SnapshotTransportNetworkError extends Error {
+  readonly attempts: number;
+
+  constructor(attempts: number, cause: unknown) {
+    super(`Não foi possível enviar o webhook após ${attempts} tentativas.`, {
+      cause,
+    });
+    this.name = 'SnapshotTransportNetworkError';
+    this.attempts = attempts;
+  }
+}
+
 export async function sendSnapshot(
   snapshot: OccupancySnapshot,
   options: SnapshotTransportOptions,
@@ -116,10 +128,7 @@ export async function sendSnapshot(
     );
   }
 
-  throw new Error(
-    `Não foi possível enviar o webhook após ${maxAttempts} tentativas.`,
-    { cause: lastError },
-  );
+  throw new SnapshotTransportNetworkError(maxAttempts, lastError);
 }
 
 async function postSnapshot(
