@@ -354,8 +354,12 @@ export async function changeSimulationScenario(
   if (!response.ok) {
     return { status: "error", message: "Não foi possível trocar o cenário." };
   }
-  return {
-    status: "changed",
-    control: parseSimulationControl(await response.json()),
-  };
+  try {
+    return {
+      status: "changed",
+      control: parseSimulationControl(await response.json()),
+    };
+  } catch {
+    return { status: "error", message: "Não foi possível trocar o cenário." };
+  }
 }

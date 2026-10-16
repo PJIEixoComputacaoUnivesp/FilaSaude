@@ -71,6 +71,21 @@ describe("changeSimulationScenario", () => {
     });
   });
 
+  it("turns an unreadable or unexpected body into an error", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("not json", { status: 200 }))
+      .mockResolvedValueOnce(new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(changeSimulationScenario("normal")).resolves.toMatchObject({
+      status: "error",
+    });
+    await expect(changeSimulationScenario("normal")).resolves.toMatchObject({
+      status: "error",
+    });
+  });
+
   it("turns a network failure into a message", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("offline")));
 
