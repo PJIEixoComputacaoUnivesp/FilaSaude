@@ -140,6 +140,262 @@ test("informa quando a busca não encontra unidades", async ({ page }) => {
   await expect(page.getByRole("article")).toHaveCount(0);
 });
 
+test("abre o detalhe da unidade em uma URL própria", async ({ page }) => {
+  await openUnitsPage(page);
+
+  const card = page
+    .getByRole("article")
+    .filter({ hasText: "UPA Vila Mariana" });
+  await card
+    .getByRole("link", { name: /Ver detalhes\s*: UPA Vila Mariana/ })
+    .click();
+
+  await expect(page).toHaveURL(/\/units\/1234567\?uf=SP$/);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "UPA Vila Mariana" }),
+  ).toBeFocused();
+  await expect(page.getByText("CNES 1234567")).toBeVisible();
+  await expect(
+    page.getByText("Atendimento contínuo de 24 horas por dia"),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", {
+      name: "Cadastro Nacional de Estabelecimentos de Saúde (CNES)",
+    }),
+  ).toHaveAttribute("href", "https://cnes.datasus.gov.br/");
+});
+
+test("liga o cartão ao popup do mapa e volta ao mesmo cartão", async ({
+  page,
+}) => {
+  await openUnitsPage(page);
+
+  const card = page
+    .getByRole("article")
+    .filter({ hasText: "UPA Vila Mariana" });
+  await card
+    .getByRole("link", { name: /Ver no mapa\s*: UPA Vila Mariana/ })
+    .click();
+
+  await expect(page).toHaveURL(/\/\?uf=SP&unidade=1234567$/);
+  const popup = page.locator(".leaflet-popup");
+  await expect(popup).toContainText("UPA Vila Mariana");
+  await expect(
+    popup.getByText("UPA Vila Mariana", { exact: true }),
+  ).toBeFocused();
+  await expect(
+    popup.getByRole("link", { name: /Ver na lista\s*: UPA Vila Mariana/ }),
+  ).toBeVisible();
+
+  await popup
+    .getByRole("link", { name: /Ver na lista\s*: UPA Vila Mariana/ })
+    .click();
+
+  await expect(page).toHaveURL(/\/units\?uf=SP#unit-1234567$/);
+  await expect(
+    page.getByRole("heading", { level: 2, name: "UPA Vila Mariana" }),
+  ).toBeFocused();
+
+  const searchbox = page.getByRole("searchbox", {
+    name: "Buscar por unidade, cidade ou bairro",
+  });
+  await searchbox.fill("Vila");
+  await expect(page.getByText("1 unidade encontrada")).toBeVisible();
+  await expect(searchbox).toBeFocused();
+});
+
+test("mantém o popup selecionado dentro da área útil no celular", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  const historicalUnit = {
+    ...unitsResponse.data[0],
+    location: {
+      ...unitsResponse.data[0].location,
+      precision: "history",
+      referenceMonth: "2026-08",
+    },
+  };
+  await page.route("**/api/units?state=SP", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...unitsResponse,
+        data: [historicalUnit],
+        metadata: {
+          ...unitsResponse.metadata,
+          dataOrigin: "fallback",
+          isStale: true,
+        },
+      }),
+    }),
+  );
+
+  await page.goto("/?uf=SP&unidade=1234567");
+
+  const popup = page.locator(".leaflet-popup");
+  await expect(popup).toBeVisible();
+  const panel = page
+    .getByRole("search", { name: "Buscar no mapa" })
+    .locator("..");
+  const map = page.locator(".leaflet-container");
+  await expect
+    .poll(async () => {
+      const [popupBox, panelBox, mapBox] = await Promise.all([
+        popup.boundingBox(),
+        panel.boundingBox(),
+        map.boundingBox(),
+      ]);
+      return (
+        popupBox !== null &&
+        panelBox !== null &&
+        mapBox !== null &&
+        popupBox.x >= 0 &&
+        popupBox.x + popupBox.width <= 320 &&
+        popupBox.y >= panelBox.y + panelBox.height &&
+        popupBox.y + popupBox.height <= mapBox.y + mapBox.height
+      );
+    })
+    .toBe(true);
+
+  const listLink = popup.getByRole("link", {
+    name: /Ver na lista\s*: UPA Vila Mariana/,
+  });
+  await listLink.scrollIntoViewIfNeeded();
+  await listLink.click();
+  await expect(page).toHaveURL(/\/units\?uf=SP#unit-1234567$/);
+});
+
+test("mostra unidade não encontrada e dado desatualizado no detalhe", async ({
+  page,
+}) => {
+  await page.route("**/api/units?state=SP", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...unitsResponse,
+        metadata: { ...unitsResponse.metadata, isStale: true },
+      }),
+    }),
+  );
+
+  await page.goto("/units/0000000?uf=SP");
+
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Unidade não encontrada" }),
+  ).toBeVisible();
+  await expect(page.getByText("Não encontramos uma unidade")).toBeVisible();
+
+  await page.goto("/units/1234567?uf=SP");
+  await expect(
+    page.getByText(/A fonte oficial está temporariamente indisponível/),
+  ).toBeVisible();
+});
+
+test("revela e foca um cartão além da primeira página da lista", async ({
+  page,
+}) => {
+  const units = Array.from({ length: 25 }, (_, index) => ({
+    ...unitsResponse.data[0],
+    id: String(index + 1).padStart(7, "0"),
+    name: `UPA ${String(index + 1).padStart(2, "0")}`,
+  }));
+  await page.route("**/api/units?state=SP", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...unitsResponse,
+        data: units,
+        metadata: { ...unitsResponse.metadata, count: units.length },
+      }),
+    }),
+  );
+
+  await page.goto("/units?uf=SP#unit-0000025");
+
+  await expect(page.getByRole("article")).toHaveCount(25);
+  await expect(
+    page.getByRole("heading", { level: 2, name: "UPA 25" }),
+  ).toBeFocused();
+});
+
+test("ignora fragmento de unidade malformado", async ({ page }) => {
+  await page.route("**/api/units?state=SP", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(unitsResponse),
+    }),
+  );
+
+  await page.goto("/units?uf=SP#unit-%E0%A4%A");
+
+  await expect(
+    page.getByRole("heading", {
+      level: 1,
+      name: "Unidades de pronto atendimento",
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole("article")).toHaveCount(2);
+});
+
+test("restaura a UF correta ao voltar entre detalhes", async ({ page }) => {
+  const rioUnit = {
+    ...unitsResponse.data[0],
+    id: "2222222",
+    name: "UPA Rio",
+    address: {
+      ...unitsResponse.data[0].address,
+      city: "Rio de Janeiro",
+      state: "RJ",
+    },
+  };
+  await page.route("**/api/units?state=*", (route) => {
+    const state = new URL(route.request().url()).searchParams.get("state");
+    const data = state === "RJ" ? [rioUnit] : unitsResponse.data;
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...unitsResponse,
+        data,
+        metadata: { ...unitsResponse.metadata, count: data.length, state },
+      }),
+    });
+  });
+
+  await page.goto("/units?uf=SP");
+  await page
+    .getByRole("heading", { level: 2, name: "UPA Vila Mariana" })
+    .getByRole("link")
+    .click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "UPA Vila Mariana" }),
+  ).toBeVisible();
+
+  await page
+    .getByRole("navigation", { name: "Forma de visualização" })
+    .getByRole("link", { name: "Lista" })
+    .click();
+  await page.getByRole("combobox", { name: "Estado" }).selectOption("RJ");
+  await page.getByRole("link", { name: /Ver detalhes\s*: UPA Rio/ }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "UPA Rio" }),
+  ).toBeVisible();
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/units\?uf=RJ$/);
+  await page.goBack();
+
+  await expect(page).toHaveURL(/\/units\/1234567\?uf=SP$/);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "UPA Vila Mariana" }),
+  ).toBeVisible();
+});
+
 test("leva a busca do mapa para a lista", async ({ page }) => {
   await page.route("**/api/units?state=ALL", (route) =>
     route.fulfill({
@@ -206,15 +462,17 @@ test("redireciona /map e caminhos desconhecidos para o mapa, mantendo a busca", 
 
   await page.goto("/map?uf=SP&q=osasco");
   await expect(page).toHaveURL(/\/\?uf=SP&q=osasco$/);
-  await expect(page.getByRole("searchbox", { name: "Buscar no mapa" })).toHaveValue(
-    "osasco",
-  );
+  await expect(
+    page.getByRole("searchbox", { name: "Buscar no mapa" }),
+  ).toHaveValue("osasco");
 
   await page.goto("/caminho-que-nao-existe");
   await expect(page).toHaveURL(/\/$/);
 });
 
-test("mantém a busca ao ler Sobre os dados e voltar ao mapa", async ({ page }) => {
+test("mantém a busca ao ler Sobre os dados e voltar ao mapa", async ({
+  page,
+}) => {
   await page.route("**/api/units?state=ALL", (route) =>
     route.fulfill({
       status: 200,

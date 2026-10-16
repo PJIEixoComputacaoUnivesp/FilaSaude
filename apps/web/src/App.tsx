@@ -12,6 +12,7 @@ import { AdminPage } from "./AdminPage";
 import { Logo } from "./Logo";
 import { MapPage } from "./MapPage";
 import { SearchFiltersProvider } from "./SearchFiltersProvider";
+import { UnitDetailPage } from "./UnitDetailPage";
 import { UnitsPage } from "./UnitsPage";
 import { useSearchFilters } from "./useSearchFilters";
 
@@ -99,6 +100,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<MapPage />} />
               <Route path="/units" element={<UnitsPage />} />
+              <Route path="/units/:unitId" element={<UnitDetailPage />} />
               <Route path="/map" element={<RedirectToMap />} />
               <Route path="/about" element={<AboutPage />} />
               {/* Not in the navigation: only the team is meant to find it. */}

@@ -85,6 +85,16 @@
   margin-right: 2.75rem;
 }
 
+/* Search (900), popup (850), controls (800), focus ring (750), map panes. */
+.leaflet-container .leaflet-top,
+.leaflet-container .leaflet-bottom {
+  z-index: 800;
+}
+
+.leaflet-container .leaflet-popup-pane {
+  z-index: 850;
+}
+
 .leaflet-container .leaflet-control-attribution a {
   display: inline-block;
   padding-block: 0.375rem;
