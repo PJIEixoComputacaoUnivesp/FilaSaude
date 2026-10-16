@@ -72,8 +72,10 @@
   in words. The notice "Dados fictícios… não são a ocupação real" stays
   visible while the layer is on.
 - In the list the occupancy is one more field of the card, after the registry
-  data, not a highlight. The map panel is capped in height and scrolls, so it
-  never covers the zoom buttons.
+  data, not a highlight. On desktop the map panel is capped in height and
+  scrolls. On mobile it contains only search, the filters action and the layer
+  switch with a short simulation notice. Enabling the layer does not reveal
+  long controls over the map.
 - SSE aplica apenas as unidades alteradas ao estado nacional; REST inicial e
   reconexão recompõem o snapshot. O histórico acompanha os eventos da unidade,
   sem polling. Durante falhas, preservar os dados anteriores e indicar a
@@ -142,6 +144,11 @@
 - Map overlays stay compact on narrow screens, and map fitting must keep points
   out from under them. In DOM order the search panel comes before the map, so
   keyboard users reach it first.
+- No celular, UF, contagem, filtro de unidades simuladas, procedência e legenda
+  ficam em uma janela modal aberta por “Filtros”. O atalho “Legenda” junto do
+  interruptor abre a explicação expandida. “Voltar ao mapa” permanece visível
+  durante a rolagem; Escape fecha a janela e o foco retorna ao acionador.
+  Preservar a área segura inferior do dispositivo e alvos de toque de 44 px.
 - Text fields are 16px or larger, and placeholders are `slate-500` or darker.
 
 ## Initial patterns

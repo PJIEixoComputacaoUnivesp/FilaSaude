@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { LiveStatus } from "./LiveStatus";
 import { OccupancySwatch } from "./OccupancySwatch";
 import { SimulationPill } from "./SimulationPill";
@@ -18,9 +18,21 @@ import { useOccupancyLayer } from "./useOccupancyLayer";
  * layer. Renders nothing when the server has the demonstration turned off.
  * The compact variant sits inside the map panel; the list uses a card.
  */
-export function OccupancyControls({ compact = false }: { compact?: boolean }) {
+export function OccupancyControls({
+  compact = false,
+  onOpenLegend,
+  legendOpen = false,
+}: {
+  compact?: boolean;
+  onOpenLegend?: () => void;
+  legendOpen?: boolean;
+}) {
   const layer = useOccupancyLayer();
   const hintId = useId();
+  const legendRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (legendOpen) legendRef.current?.scrollIntoView({ block: "start" });
+  }, [legendOpen]);
   // Announced only after the person turns the layer on, once the data is in:
   // not when the page loads with the layer already on, and not on refreshes.
   const [announceCount, setAnnounceCount] = useState(false);
@@ -45,43 +57,70 @@ export function OccupancyControls({ compact = false }: { compact?: boolean }) {
           : "rounded-2xl border border-slate-200 bg-white p-4 sm:p-5"
       }
     >
-      <label className="flex min-h-11 cursor-pointer items-center gap-3">
-        <input
-          type="checkbox"
-          role="switch"
-          checked={layer.isEnabled}
-          onChange={(event) => {
-            layer.setEnabled(event.target.checked);
-            setAnnounceCount(event.target.checked);
-          }}
-          aria-describedby={hintId}
-          className="peer sr-only"
-        />
-        {/* The thumb has a border, so its position still shows the state in
+      <div className="flex items-center justify-between gap-2">
+        <label className="flex min-h-11 cursor-pointer items-center gap-3">
+          <input
+            type="checkbox"
+            role="switch"
+            checked={layer.isEnabled}
+            onChange={(event) => {
+              layer.setEnabled(event.target.checked);
+              setAnnounceCount(event.target.checked);
+            }}
+            aria-describedby={hintId}
+            className="peer sr-only"
+          />
+          {/* The thumb has a border, so its position still shows the state in
             forced colors, where backgrounds are replaced. */}
-        <span
-          aria-hidden="true"
-          className="relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-slate-500 bg-white transition peer-checked:border-occupancy-control peer-checked:bg-occupancy-control peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-fila-blue motion-reduce:transition-none peer-checked:[&>span]:translate-x-5 peer-checked:[&>span]:border-white peer-checked:[&>span]:bg-white"
-        >
-          <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full border-2 border-slate-500 bg-slate-500 transition motion-reduce:transition-none" />
-        </span>
-        <span className="text-sm font-semibold text-slate-900">
-          Ocupação simulada de leitos
-        </span>
-      </label>
+          <span
+            aria-hidden="true"
+            className="relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-slate-500 bg-white transition peer-checked:border-occupancy-control peer-checked:bg-occupancy-control peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-fila-blue motion-reduce:transition-none peer-checked:[&>span]:translate-x-5 peer-checked:[&>span]:border-white peer-checked:[&>span]:bg-white"
+          >
+            <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full border-2 border-slate-500 bg-slate-500 transition motion-reduce:transition-none" />
+          </span>
+          <span
+            className={`text-sm font-semibold text-slate-900 ${compact ? "sr-only sm:not-sr-only" : ""}`}
+          >
+            Ocupação simulada de leitos
+          </span>
+          {compact && (
+            <span
+              aria-hidden="true"
+              className="text-sm font-semibold text-slate-900 sm:hidden"
+            >
+              Leitos simulados
+            </span>
+          )}
+        </label>
+        {compact && layer.isEnabled && onOpenLegend && (
+          <button
+            type="button"
+            onClick={onOpenLegend}
+            aria-haspopup="dialog"
+            className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-fila-blue underline underline-offset-2 sm:hidden"
+          >
+            Legenda
+          </button>
+        )}
+      </div>
       {/* Visible wherever simulated data is on screen. In the map panel, with
           the layer off, it stays for screen readers only: the panel is the
           first thing every visitor sees and must leave room for the map. */}
       <p
         id={hintId}
-        className={`text-xs leading-relaxed text-slate-700 ${compact && !layer.isEnabled ? "sr-only" : ""}`}
+        className={`text-xs leading-relaxed text-slate-700 ${compact ? (layer.isEnabled ? "sr-only sm:not-sr-only" : "sr-only") : ""}`}
       >
         {SIMULATION_NOTICE}
       </p>
+      {compact && layer.isEnabled && (
+        <p className="text-xs leading-relaxed text-slate-700 sm:hidden">
+          Leitos fictícios. Não representam filas.
+        </p>
+      )}
       <LiveStatus message={announcement} delay={0} />
 
       {layer.isEnabled && (
-        <div className="mt-2 space-y-1">
+        <div className={`mt-2 space-y-1 ${compact ? "hidden sm:block" : ""}`}>
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-700">
             <SimulationPill />
             {response ? simulatedText : "Carregando…"}
@@ -112,7 +151,11 @@ export function OccupancyControls({ compact = false }: { compact?: boolean }) {
             />
             Mostrar só unidades com ocupação simulada de leitos
           </label>
-          <details className="group text-xs text-slate-700">
+          <details
+            ref={legendRef}
+            open={legendOpen}
+            className="group scroll-mt-20 text-xs text-slate-700"
+          >
             <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 text-sm font-semibold text-fila-blue underline underline-offset-2 [&::-webkit-details-marker]:hidden">
               Legenda da ocupação de leitos
               <svg
@@ -159,6 +202,21 @@ export function OccupancyControls({ compact = false }: { compact?: boolean }) {
             </p>
           </details>
         </div>
+      )}
+      {compact && layer.isEnabled && state.status === "error" && (
+        <p
+          className="mt-1 text-xs text-red-900 sm:hidden"
+          role={response ? "status" : "alert"}
+        >
+          {state.message}{" "}
+          <button
+            type="button"
+            onClick={layer.retry}
+            className="inline-flex min-h-11 items-center font-semibold underline"
+          >
+            Tentar novamente
+          </button>
+        </p>
       )}
     </div>
   );
