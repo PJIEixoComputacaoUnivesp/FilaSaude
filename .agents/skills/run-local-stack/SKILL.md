@@ -129,12 +129,18 @@ kill "$(ss -ltnp | grep ':5173 ' | grep -o 'pid=[0-9]*' | head -1 | cut -d= -f2)
 pgrep -f 'experimental-strip-types src/main.ts' | xargs -r kill
 ```
 
-The demo leaves data in the shared database. Clear it when done:
+The demo leaves data in the shared database. Clear only the rows of the demo
+source, never whole tables: another session may be using the same database.
 
 ```bash
 docker compose exec -T postgres psql -U filasaude -c \
-  "DELETE FROM simulation_control; DELETE FROM occupancy_current; DELETE FROM occupancy_webhook_inbox WHERE source_id = 'occupancy-feed';"
+  "DELETE FROM occupancy_current WHERE source_id = 'occupancy-feed'; DELETE FROM occupancy_webhook_inbox WHERE source_id = 'occupancy-feed';"
 ```
+
+`simulation_control` has no source column, so it is left alone: a scenario
+chosen on the site expires by itself after 15 minutes and the API then answers
+with the default. If the database is yours alone (an isolated Compose project),
+you can also `DELETE FROM simulation_control;`.
 
 ## Before Playwright
 
