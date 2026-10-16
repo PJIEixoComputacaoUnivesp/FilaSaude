@@ -5,6 +5,7 @@ import request from 'supertest';
 import { configureApp } from '../src/app-configuration.js';
 import { AppModule } from '../src/app.module.js';
 import { OccupancyRepository } from '../src/database/repositories/occupancy.repository.js';
+import { SimulationControlRepository } from '../src/database/repositories/simulation-control.repository.js';
 
 describe('Occupancy (e2e)', () => {
   let app: NestExpressApplication | undefined;
@@ -26,6 +27,11 @@ describe('Occupancy (e2e)', () => {
     findHistory: vi.fn().mockResolvedValue([]),
   };
 
+  const controlRepository = {
+    find: vi.fn().mockResolvedValue(null),
+    change: vi.fn(),
+  };
+
   async function start(enabled: boolean) {
     process.env.OCCUPANCY_SIMULATION_ENABLED = enabled ? 'true' : 'false';
     const moduleFixture = await Test.createTestingModule({
@@ -39,6 +45,8 @@ describe('Occupancy (e2e)', () => {
       })
       .overrideProvider(OccupancyRepository)
       .useValue(repository)
+      .overrideProvider(SimulationControlRepository)
+      .useValue(controlRepository)
       .compile();
 
     app = moduleFixture.createNestApplication<NestExpressApplication>({
@@ -94,5 +102,50 @@ describe('Occupancy (e2e)', () => {
       .get('/units/12ab/occupancy-history')
       .expect(400);
     expect(invalid.body.code).toBe('invalid_cnes');
+  });
+
+  it('lets a visitor change the scenario, spaced out', async () => {
+    const server = (await start(true)).getHttpServer();
+    controlRepository.change.mockImplementationOnce(
+      (scenario: string, changedAt: Date, expiresAt: Date) =>
+        Promise.resolve({ id: 1, scenario, changedAt, expiresAt }),
+    );
+
+    const changed = await request(server)
+      .put('/occupancy/simulation')
+      .send({ scenario: 'surge' })
+      .expect(200);
+    expect(changed.body.data.scenario).toBe('surge');
+
+    controlRepository.change.mockResolvedValueOnce(null);
+    controlRepository.find.mockResolvedValueOnce({
+      id: 1,
+      scenario: 'surge',
+      changedAt: new Date(),
+      expiresAt: new Date(Date.now() + 900_000),
+    });
+    const refused = await request(server)
+      .put('/occupancy/simulation')
+      .send({ scenario: 'normal' })
+      .expect(429);
+    expect(refused.body.code).toBe('scenario_cooldown');
+    expect(Number(refused.headers['retry-after'])).toBeGreaterThan(0);
+  });
+
+  it('accepts only known scenarios and only while the simulation is on', async () => {
+    const server = (await start(true)).getHttpServer();
+    const invalid = await request(server)
+      .put('/occupancy/simulation')
+      .send({ scenario: 'drop-tables' })
+      .expect(400);
+    expect(invalid.body.code).toBe('invalid_scenario');
+
+    await app?.close();
+    const off = (await start(false)).getHttpServer();
+    await request(off).get('/occupancy/simulation').expect(404);
+    await request(off)
+      .put('/occupancy/simulation')
+      .send({ scenario: 'surge' })
+      .expect(404);
   });
 });
