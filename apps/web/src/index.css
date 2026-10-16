@@ -95,6 +95,14 @@
   box-shadow: inset 0 0 0 3px var(--color-fila-blue);
 }
 
+/* A popup without room above its marker opens below it (UnitsMap), with the
+   tip moved above the content and pointing up. */
+.leaflet-container .leaflet-popup-below .leaflet-popup-tip-container {
+  top: -20px;
+  margin-top: 1px;
+  transform: rotate(180deg);
+}
+
 .leaflet-container .leaflet-popup-content {
   /* Keeps long unit names clear of the 44px close button. */
   margin-right: 2.75rem;

@@ -173,6 +173,85 @@ test("sem a demonstração na API, a camada não aparece", async ({ page }) => {
   ).toHaveCount(0);
 });
 
+/** Markers are painted on a canvas: finds the only one by its blue pixels. */
+function findOnlyMarker(page: Page) {
+  return page.evaluate(() => {
+    for (const canvas of document.querySelectorAll<HTMLCanvasElement>(
+      ".leaflet-overlay-pane canvas",
+    )) {
+      const { width, height } = canvas;
+      const pixels = canvas.getContext("2d")!.getImageData(0, 0, width, height)
+        .data;
+      let sumX = 0;
+      let sumY = 0;
+      let count = 0;
+      for (let i = 0; i < pixels.length; i += 4) {
+        if (pixels[i + 3] > 200 && pixels[i + 2] > 150 && pixels[i] < 80) {
+          sumX += (i / 4) % width;
+          sumY += Math.floor(i / 4 / width);
+          count++;
+        }
+      }
+      if (count > 5 && count < 2000) {
+        const box = canvas.getBoundingClientRect();
+        return {
+          x: box.left + ((sumX / count) * box.width) / width,
+          y: box.top + ((sumY / count) * box.height) / height,
+        };
+      }
+    }
+    return null;
+  });
+}
+
+test("no computador, o popup de uma unidade perto do norte abre para baixo", async ({
+  page,
+}) => {
+  const boaVista = unit("2566206", "UPA 24H COSME E SILVA", "Boa Vista", "RR");
+  boaVista.location.latitude = 2.82;
+  boaVista.location.longitude = -60.67;
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await mockApi(page);
+  await page.route("**/api/units?state=ALL", (route) =>
+    route.fulfill({
+      json: {
+        data: [boaVista],
+        metadata: { ...unitsResponse.metadata, count: 1, state: "BR" },
+      },
+    }),
+  );
+  await page.goto("/");
+  await expect(page.getByText("1 unidade no mapa.")).toBeVisible();
+
+  // The map settles (minimum zoom, pan limit) before the marker stays put.
+  let marker: { x: number; y: number } | null = null;
+  await expect
+    .poll(async () => {
+      const previous = marker;
+      marker = await findOnlyMarker(page);
+      return marker !== null && JSON.stringify(marker) === JSON.stringify(previous);
+    })
+    .toBe(true);
+  marker = marker!;
+  const pane = page.locator(".leaflet-map-pane");
+  const panePosition = () =>
+    pane.evaluate((element) => getComputedStyle(element).transform);
+  const before = await panePosition();
+  await page.mouse.click(marker.x, marker.y);
+
+  const popup = page.locator(".leaflet-popup");
+  await expect(
+    popup.getByText("UPA 24H COSME E SILVA", { exact: true }),
+  ).toBeVisible();
+  await expect(popup).toHaveClass(/leaflet-popup-below/);
+  const box = (await popup.boundingBox())!;
+  const map = (await page.locator(".leaflet-container").boundingBox())!;
+  expect(box.y).toBeGreaterThan(marker.y);
+  expect(box.y + box.height).toBeLessThanOrEqual(map.y + map.height);
+  // The map stays put instead of trying to pan the popup into view.
+  expect(await panePosition()).toBe(before);
+});
+
 test("a página do mapa não rola em celular com a barra do navegador visível", async ({
   page,
 }) => {

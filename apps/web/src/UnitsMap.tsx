@@ -388,7 +388,13 @@ function UnitMarker({
       renderer={renderer}
       eventHandlers={{
         popupopen: () => {
+          // React renders the content after this event, so measure next frame.
           window.requestAnimationFrame(() => {
+            placePopupWhereItFits(
+              map,
+              markerRef.current?.getPopup(),
+              overlayRef?.current,
+            );
             keepPopupClearOfOverlay(
               map,
               markerRef.current?.getPopup(),
@@ -407,6 +413,9 @@ function UnitMarker({
       }
     >
       <Popup
+        // Leaflet's animated auto pan fought the pan limit near the edges of
+        // Brazil; placePopupWhereItFits and keepPopupClearOfOverlay replace it.
+        autoPan={false}
         autoPanPaddingTopLeft={autoPanPaddingTopLeft}
         autoPanPaddingBottomRight={[fitPadding, fitPadding]}
         maxWidth={popupMaxWidth}
@@ -589,6 +598,42 @@ function popupAutoPanPadding(
   return box.width > mapBox.width * 0.6
     ? [fitPadding, box.bottom - mapBox.top + fitPadding]
     : [box.right - mapBox.left + fitPadding, fitPadding];
+}
+
+// Leaflet's default popup offset; the tip below the content takes 20px.
+const popupAboveOffset = L.point(0, 7);
+const popupTipHeight = 20;
+
+/**
+ * Opens the popup below its marker when it does not fit above. Near the north
+ * of Brazil the map cannot pan down far enough, and the popup was cut off
+ * above the map while the map kept trying to bring it into view.
+ */
+function placePopupWhereItFits(
+  map: L.Map,
+  popup: L.Popup | undefined,
+  overlay: HTMLElement | null | undefined,
+): void {
+  const element = popup?.getElement();
+  if (!popup?.isOpen() || !element) return;
+
+  popup.options.offset = popupAboveOffset;
+  element.classList.remove("leaflet-popup-below");
+  popup.update();
+
+  const anchorY = map.latLngToContainerPoint(popup.getLatLng()!).y;
+  const height = element.offsetHeight;
+  const gap = popupTipHeight - popupAboveOffset.y;
+  const [, topPadding] = popupAutoPanPadding(map, overlay);
+  const fitsAbove = anchorY - gap - height >= topPadding;
+  const fitsBelow = anchorY + gap + height <= map.getSize().y - fitPadding;
+  if (fitsAbove || !fitsBelow) return;
+
+  // Mirrors the default placement: the content starts as far below the
+  // marker as it ends above it by default.
+  popup.options.offset = L.point(0, height + gap + popupTipHeight);
+  element.classList.add("leaflet-popup-below");
+  popup.update();
 }
 
 /** Leaflet's automatic pan does not account reliably for an HTML overlay. */
