@@ -98,7 +98,7 @@ export function MapPage() {
         : "";
 
   return (
-    <div className="relative min-h-[28rem] w-full flex-1">
+    <div className="relative min-h-0 w-full flex-1 sm:min-h-[28rem]">
       <h1
         ref={selectedUnitId ? undefined : headingRef}
         tabIndex={-1}

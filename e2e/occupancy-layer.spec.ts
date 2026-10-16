@@ -173,6 +173,37 @@ test("sem a demonstração na API, a camada não aparece", async ({ page }) => {
   ).toHaveCount(0);
 });
 
+test("a página do mapa não rola em celular com a barra do navegador visível", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 548 });
+  await mockApi(page);
+  await page.route("**/api/units?state=ALL", (route) =>
+    route.fulfill({ json: unitsResponse }),
+  );
+  await page.goto("/?uf=SP");
+  await expect(page.getByText("3 unidades no mapa.").first()).toBeAttached();
+
+  const toggle = page
+    .getByRole("region", { name: "Controles do mapa" })
+    .getByRole("switch", { name: "Ocupação simulada de leitos" });
+  for (const checked of [false, true]) {
+    if (checked) {
+      await toggle.focus();
+      await page.keyboard.press("Space");
+      await expect(toggle).toBeChecked();
+    }
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollHeight <=
+          document.documentElement.clientHeight,
+      ),
+    ).toBe(true);
+    await expect(page.getByRole("contentinfo")).toBeInViewport();
+  }
+});
+
 for (const viewport of [
   { width: 320, height: 640 },
   { width: 390, height: 844 },
