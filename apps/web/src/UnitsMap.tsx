@@ -19,7 +19,6 @@ import {
   useMapEvents,
   ZoomControl,
 } from "react-leaflet";
-import type { LatLngBoundsExpression } from "leaflet";
 import { MapFocusRing } from "./MapFocusRing";
 import { OccupancyBadge } from "./OccupancyBadge";
 import {
@@ -129,10 +128,10 @@ const boundaryOptions: L.PolylineOptions = { smoothFactor: 1 };
 const boundaryPane = "brazilBoundary";
 const boundaryTimeout = 10_000;
 
-const BRAZIL_BOUNDS: LatLngBoundsExpression = [
+const BRAZIL_BOUNDS = L.latLngBounds([
   [-34, -74],
   [6, -34],
-];
+]);
 // The outline's own box, oceanic islands included (BRAZIL_BOUNDS stops at
 // -34 and would cut Fernando de Noronha and Trindade). Tiles are only
 // requested inside it, so the world beyond it is never downloaded.
@@ -802,6 +801,50 @@ function EnforceCountryZoom() {
   return null;
 }
 
+/**
+ * The pan limit is Brazil plus the room the search panel takes. A wall at the
+ * country's own edges left the west under the panel, with no way to drag it
+ * out, and froze the map at the minimum zoom.
+ */
+function KeepCountryClearOfOverlay({
+  overlayRef,
+}: {
+  overlayRef?: RefObject<HTMLElement | null>;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    const updateMaxBounds = () => {
+      const zoom = map.getZoom();
+      const [left, top] = popupAutoPanPadding(map, overlayRef?.current);
+      const northWest = map
+        .project(BRAZIL_BOUNDS.getNorthWest(), zoom)
+        .subtract([left, top]);
+      const southEast = map
+        .project(BRAZIL_BOUNDS.getSouthEast(), zoom)
+        .add([fitPadding, fitPadding]);
+      map.setMaxBounds(
+        L.latLngBounds(
+          map.unproject(northWest, zoom),
+          map.unproject(southEast, zoom),
+        ),
+      );
+    };
+
+    updateMaxBounds();
+    map.on("zoomend", updateMaxBounds);
+    const resizeObserver = new ResizeObserver(updateMaxBounds);
+    resizeObserver.observe(map.getContainer());
+    if (overlayRef?.current) resizeObserver.observe(overlayRef.current);
+    return () => {
+      map.off("zoomend", updateMaxBounds);
+      resizeObserver.disconnect();
+    };
+  }, [map, overlayRef]);
+
+  return null;
+}
+
 export function UnitsMap({
   units,
   className = "",
@@ -850,6 +893,7 @@ export function UnitsMap({
       <MapLocalization />
       <MapFocusRing />
       <EnforceCountryZoom />
+      <KeepCountryClearOfOverlay overlayRef={overlayRef} />
       <ZoomControl
         position="bottomleft"
         zoomInTitle="Aproximar o mapa"
