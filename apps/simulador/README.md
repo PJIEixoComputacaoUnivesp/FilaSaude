@@ -130,8 +130,9 @@ unidades seguem o comportamento normal:
 
 Com `--follow-site true` (ou `SIMULATOR_FOLLOW_SITE=true`), o simulador
 consulta `GET /occupancy/simulation` a cada 10 segundos e passa a executar o
-cenário escolhido por um visitante do site, começando um ciclo novo assim que
-a escolha muda. A API recusa trocas com menos de 15 segundos de intervalo e
+cenário escolhido por um visitante do site. Quando a escolha muda, um ciclo
+novo começa sem esperar o intervalo completo, mas no mínimo 30 segundos após o
+ciclo anterior. A API recusa trocas com menos de 15 segundos de intervalo e
 volta ao `showcase` depois de 15 minutos. Se a consulta falhar, o cenário
 atual continua.
 
