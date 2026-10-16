@@ -3,6 +3,7 @@
 import { helpText, loadConfig, parseArguments } from './config.ts';
 import { SimulationState } from './simulation.ts';
 import { SimulationRunner } from './runner.ts';
+import { NationalLoadRunner } from './national-runner.ts';
 import { fetchUnits, selectUnits } from './units.ts';
 
 async function main(): Promise<void> {
@@ -14,7 +15,10 @@ async function main(): Promise<void> {
 
   const config = loadConfig(process.argv.slice(2));
   const catalog = await fetchUnits(config.apiUrl, config.state);
-  const selected = selectUnits(catalog, config);
+  const selected = selectUnits(catalog, {
+    ...config,
+    national: config.scenario === 'national',
+  });
   const state = new SimulationState(config.seed);
   const selectedCnes = new Set(selected.map((unit) => unit.id));
   for (const override of config.occupancyOverrides) {
@@ -53,6 +57,17 @@ async function main(): Promise<void> {
       2,
     ),
   );
+
+  if (config.scenario === 'national') {
+    const runner = new NationalLoadRunner(config, selected, state, {
+      onReport: (report) => {
+        console.log(`Relatório parcial: ${JSON.stringify(report)}`);
+      },
+    });
+    const report = await runner.run(controller.signal);
+    console.log(`Relatório final: ${JSON.stringify(report)}`);
+    return;
+  }
 
   const runner = new SimulationRunner(config, selected, state, {
     onSnapshotSent: (snapshot, result) => {

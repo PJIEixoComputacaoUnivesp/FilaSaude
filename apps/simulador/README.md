@@ -17,12 +17,13 @@ O simulador já oferece:
 - retentativas para falhas transitórias e `429`, respeitando `Retry-After`;
 - envio periódico, com primeiro ciclo imediato;
 - encerramento gracioso com `Ctrl+C`.
+- cenário nacional distribuído com jitter determinístico, concorrência limitada
+  e métricas de envio.
 - ocupações iniciais manuais por unidade e categoria para demonstrações.
 
-A API autentica, valida e guarda os eventos na inbox; um processador aplica o
-estado atual e o histórico ([#78](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/78)).
-Com `OCCUPANCY_SIMULATION_ENABLED=true`, o site mostra o resultado na camada
-"Ocupação simulada".
+O simulador ainda não altera o estado atual exibido pela aplicação. A API, nesta
+etapa, autentica, valida e guarda os eventos na inbox; o processamento de
+ocupação está planejado na issue [#78](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/78).
 
 ## Pré-requisitos
 
@@ -61,6 +62,72 @@ Ou por CNES explícito:
 pnpm --filter @filasaude/simulador dev --unit-cnes 1234567,7654321 --interval-seconds 30
 ```
 
+### Carga nacional controlada
+
+O cenário `national` cria uma agenda independente para cada unidade retornada
+por `/units?state=ALL`. O intervalo é uma referência para a cadência média por
+unidade; os eventos não são sincronizados em ciclos globais.
+
+O cenário `national` consulta todas as unidades retornadas por
+`/units?state=ALL`, distribui os envios com agenda independente e encerra após
+a duração configurada. Ele exige autorização explícita e aceita somente
+destino local por padrão:
+
+```bash
+pnpm --filter @filasaude/simulador dev \
+  --scenario national \
+  --allow-load-test \
+  --duration-seconds 300 \
+  --interval-seconds 120 \
+  --concurrency 10 \
+  --source-ids occupancy-feed-001,occupancy-feed-002
+```
+
+As fontes sintéticas precisam estar configuradas no `WEBHOOK_SOURCE_CONFIG`,
+com o mesmo segredo local e com os CNES que cada fonte poderá atualizar. O
+particionamento das unidades entre fontes é determinístico para a mesma seed.
+O cenário imprime relatórios parciais por ciclo e um relatório JSON final com
+eventos gerados, respostas, retries e percentis de latência. Para permitir um
+ambiente controlado não local, use `--allow-nonlocal-target` explicitamente.
+
+Há dois modos de duração. Com um valor positivo em `--duration-seconds`, a
+execução termina automaticamente. Com `--duration-seconds 0`, o cenário
+`national` continua até receber `CTRL+C` ou `SIGTERM`:
+
+```bash
+pnpm --filter @filasaude/simulador dev \
+  --scenario national \
+  --allow-load-test \
+  --duration-seconds 0 \
+  --interval-seconds 120 \
+  --concurrency 32 \
+  --source-ids occupancy-feed-001,occupancy-feed-002
+```
+
+O modo contínuo é apropriado para soak tests, mas exige monitoramento do banco,
+pois a inbox continuará crescendo enquanto o processamento posterior não
+estiver disponível. O cancelamento aguarda as requisições em andamento e emite
+o relatório final.
+
+O runner nacional está separado da CLI para permitir futura integração com a
+aplicação. Uma página web não deve receber `SIMULATOR_SOURCE_SECRET`; a
+integração deverá acionar um serviço backend controlado ou um job autorizado,
+reutilizando o runner e suas métricas no lado servidor.
+
+O comportamento de cada evento nacional pode reutilizar os cenários existentes.
+Por padrão, os eventos são normais. Para reenviar o primeiro evento de cada
+unidade com o mesmo `eventId`, use `--national-event-scenario duplicate`. Para
+gerar timestamps atrasados, use `delayed` junto com `--delay-seconds`:
+
+```bash
+pnpm --filter @filasaude/simulador dev \
+  --scenario national \
+  --national-event-scenario delayed \
+  --delay-seconds 600 \
+  --allow-load-test \
+  --duration-seconds 300
+```
+
 Opções também podem ser informadas pelas variáveis `SIMULATOR_*`. Os principais
 parâmetros são:
 
@@ -73,16 +140,24 @@ parâmetros são:
 | `--city` | `SIMULATOR_CITY` | — | Cidade alternativa |
 | `--unit-cnes` | `SIMULATOR_UNIT_CNES` | — | CNES separados por vírgula |
 | `--radius-km` | `SIMULATOR_RADIUS_KM` | `25` | Raio para seleção por coordenadas |
-| `--max-units` | `SIMULATOR_MAX_UNITS` | `10` | Limite de unidades |
+| `--max-units` | `SIMULATOR_MAX_UNITS` | `10` (`national`: todas) | Limite de unidades |
 | `--seed` | `SIMULATOR_SEED` | `fila-saude-v1` | Reprodutibilidade do cenário |
-| `--interval-seconds` | `SIMULATOR_INTERVAL_SECONDS` | `120` | Intervalo entre ciclos |
+| `--interval-seconds` | `SIMULATOR_INTERVAL_SECONDS` | `120` | Referência da cadência média por unidade |
 | `--set-occupied` | `SIMULATOR_SET_OCCUPIED` | — | Valores iniciais `CNES:CATEGORIA:VALOR`, separados por vírgula |
-| `--scenario` | `SIMULATOR_SCENARIO` | `normal` | Cenário `normal`, `duplicate`, `delayed`, `showcase`, `surge`, `outage` ou `replay` |
+| `--scenario` | `SIMULATOR_SCENARIO` | `normal` | Cenário `normal`, `duplicate`, `delayed` ou `national` |
+| `--national-event-scenario` | `SIMULATOR_NATIONAL_EVENT_SCENARIO` | `normal` | Comportamento dos eventos no `national` |
 | `--delay-seconds` | `SIMULATOR_DELAY_SECONDS` | `0` | Atraso dos timestamps no cenário `delayed` |
-| `--follow-site` | `SIMULATOR_FOLLOW_SITE` | `false` | Segue o cenário escolhido no site |
+| `--source-ids` | `SIMULATOR_SOURCE_IDS` | fonte única | Fontes sintéticas separadas por vírgula |
+| `--duration-seconds` | `SIMULATOR_DURATION_SECONDS` | `300` | Duração; `0` mantém o `national` até cancelamento |
+| `--concurrency` | `SIMULATOR_CONCURRENCY` | `10` | Envios simultâneos máximos |
+| `--allow-load-test` | `SIMULATOR_ALLOW_LOAD_TEST` | `false` | Autoriza a carga nacional |
 
 As unidades são selecionadas uma vez no início da execução e permanecem fixas.
 O estado é mantido somente em memória e é perdido ao encerrar o processo.
+
+O cenário nacional é uma carga de ingestão do cliente até a inbox. Ele não mede
+processamento, estado atual ou backlog escoado, que dependem da issue
+[#78](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/78).
 
 Exemplo de cenário com ocupação inicial controlada:
 
@@ -110,55 +185,6 @@ pnpm --filter @filasaude/simulador dev --unit-cnes 1234567 --scenario delayed --
 O cenário `delayed` mantém a cadência normal, mas gera `occurredAt` e
 `observedAt` no passado. O cenário `duplicate` atua somente no primeiro ciclo;
 os ciclos seguintes seguem o comportamento normal.
-
-### Cenário `showcase` (site publicado)
-
-O `showcase` mantém, ao mesmo tempo e de forma contínua, os estados do roteiro
-da proposta 0001. Os papéis seguem a ordem dos CNES da amostra; as demais
-unidades seguem o comportamento normal:
-
-| Posição | Comportamento | O que o site mostra |
-| ---: | --- | --- |
-| 1ª | ocupação fixa em cerca de 90% | faixa alta |
-| 2ª | ocupação fixa em cerca de 70% | faixa moderada |
-| 3ª | ocupação fixa em cerca de 30% | faixa baixa |
-| 4ª | alterna 30 minutos enviando e 30 minutos em silêncio, alinhados ao relógio | "sem confirmação recente" e a retomada com snapshot completo |
-| 5ª | reenvia cada snapshot com o mesmo `eventId` | nada muda (idempotência) |
-| 6ª | envia também um snapshot 10 minutos no passado | o atraso fica no histórico sem substituir o estado atual |
-
-### Cenários escolhidos no site
-
-Com `--follow-site true` (ou `SIMULATOR_FOLLOW_SITE=true`), o simulador
-consulta `GET /occupancy/simulation` a cada 10 segundos e passa a executar o
-cenário escolhido por um visitante do site. Quando a escolha muda, um ciclo
-novo começa sem esperar o intervalo completo, mas no mínimo 30 segundos após o
-ciclo anterior. A API recusa trocas com menos de 15 segundos de intervalo e
-volta ao `showcase` depois de 15 minutos. Se a consulta falhar, o cenário
-atual continua.
-
-| Cenário | Comportamento |
-| --- | --- |
-| `showcase` | Papéis fixos descritos acima |
-| `normal` | Variação aleatória de cada unidade |
-| `surge` | A ocupação sobe 10% da capacidade a cada ciclo, até 95% |
-| `outage` | Nada é enviado; depois do prazo, "sem confirmação recente" |
-| `replay` | Cada snapshot é reenviado e acompanhado de um evento 10 minutos no passado |
-
-## Configuração compartilhada com a API
-
-Sem `SIMULATOR_SOURCE_SECRET`, o simulador lê o segredo da fonte em
-`WEBHOOK_SOURCE_CONFIG`, a mesma variável da API. Sem critério de seleção
-(CNES, município, cidade ou coordenadas), a amostra é a lista `unitCnes`
-autorizada para a fonte. Assim o segredo e a amostra ficam num lugar só, e o
-simulador nunca envia para uma unidade que a API recusaria.
-
-Com o Compose, o simulador é um serviço do perfil `simulation`:
-
-```bash
-export OCCUPANCY_SIMULATION_ENABLED=true
-export WEBHOOK_SOURCE_CONFIG='{"occupancy-feed":{"secret":"<openssl rand -hex 32>","unitCnes":["0004340","0017396","0050571","0466611","0924857","0932280","2339315","6481876","7429398","7458606"]}}'
-docker compose --profile simulation up --build
-```
 
 ## Validação local
 
