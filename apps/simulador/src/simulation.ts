@@ -104,6 +104,17 @@ export class SimulationState {
     category.occupied = occupied;
   }
 
+  /** Sets every category of the unit to about this share of its capacity. */
+  setRatio(unitCnes: string, ratio: number): void {
+    if (!Number.isFinite(ratio) || ratio < 0 || ratio > 1) {
+      throw new Error('ratio deve estar entre 0 e 1.');
+    }
+
+    for (const category of this.ensureUnit(unitCnes).categories.values()) {
+      category.occupied = Math.round(category.capacity * ratio);
+    }
+  }
+
   private ensureUnit(unitCnes: string): UnitState {
     const existing = this.units.get(unitCnes);
     if (existing) return existing;

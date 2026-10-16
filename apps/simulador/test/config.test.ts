@@ -34,3 +34,36 @@ test('rejeita CNES com formato inválido', () => {
 test('reconhece a opção de ajuda sem exigir valores', () => {
   assert.deepEqual(parseArguments(['--help']), { values: {}, help: true });
 });
+
+test('lê o segredo e a amostra da mesma configuração da API', () => {
+  const config = loadConfig([], {
+    WEBHOOK_SOURCE_CONFIG: JSON.stringify({
+      'occupancy-feed': {
+        secret: 'shared-secret-with-at-least-32-chars',
+        unitCnes: ['7654321', '1234567'],
+      },
+    }),
+  });
+
+  assert.equal(config.sourceSecret, 'shared-secret-with-at-least-32-chars');
+  assert.deepEqual(config.unitCnes, ['1234567', '7654321']);
+});
+
+test('prefere o segredo e o critério informados explicitamente', () => {
+  const config = loadConfig(['--city', 'Santos'], {
+    SIMULATOR_SOURCE_SECRET: 'explicit-secret',
+    WEBHOOK_SOURCE_CONFIG: JSON.stringify({
+      'occupancy-feed': { secret: 'shared', unitCnes: ['1234567'] },
+    }),
+  });
+
+  assert.equal(config.sourceSecret, 'explicit-secret');
+  assert.deepEqual(config.unitCnes, []);
+});
+
+test('rejeita WEBHOOK_SOURCE_CONFIG que não é JSON', () => {
+  assert.throws(
+    () => loadConfig([], { WEBHOOK_SOURCE_CONFIG: '{' }),
+    /WEBHOOK_SOURCE_CONFIG deve conter JSON válido/,
+  );
+});

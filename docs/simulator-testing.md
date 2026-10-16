@@ -245,16 +245,34 @@ Este roteiro confirma:
 - persistência na inbox;
 - encerramento gracioso.
 
-Este roteiro ainda não confirma:
+Com o processamento da inbox (#78), o roteiro também confirma, com
+`OCCUPANCY_SIMULATION_ENABLED=true` na API:
 
-- ocupação atual em `GET /units`;
-- histórico de ocupação;
-- atualização do mapa ou da lista;
-- polling ou SSE;
-- rollback de dados processados.
+- estado atual em `GET /occupancy`, com faixa, percentual e marca de simulação;
+- histórico das últimas 24 horas em `GET /units/{cnes}/occupancy-history`;
+- duplicidade sem efeito e evento atrasado preservado no histórico sem
+  substituir o estado atual;
+- "sem confirmação recente" após 20 minutos sem snapshots da unidade.
 
-Esses comportamentos dependem do processamento de ocupação da API e das
-respectivas entregas do frontend.
+## Amostra da demonstração
+
+A amostra não é municipal: uma UPA de cada uma de dez UFs, todas com
+coordenadas do próprio CNES, para que a camada apareça em várias regiões do
+mapa nacional. Os códigos são públicos; o segredo da fonte continua fora do
+repositório.
+
+| CNES | UF | Unidade | Papel no `showcase` |
+| --- | --- | --- | --- |
+| 0004340 | BA | UPA 24H Dr. Hélio Machado (Salvador) | faixa alta |
+| 0017396 | PR | UPA Boa Vista (Curitiba) | faixa moderada |
+| 0050571 | PA | UPA Marambaia (Belém) | faixa baixa |
+| 0466611 | SP | UPA Mooca III (São Paulo) | confirmação intermitente |
+| 0924857 | DF | UPA II Ceilândia (Brasília) | duplicidade |
+| 0932280 | RJ | UPA 24H Del Castilho (Rio de Janeiro) | evento atrasado |
+| 2339315 | GO | UPA Jardim Novo Mundo (Goiânia) | normal |
+| 6481876 | PE | UPA Imbiribeira (Recife) | normal |
+| 7429398 | CE | UPA Jangurussu (Fortaleza) | normal |
+| 7458606 | AM | UPA Campos Salles (Manaus) | normal |
 
 ## 10. Encerramento do ambiente
 

@@ -2,6 +2,12 @@ import type { SimulatorUnit } from './units.ts';
 import type { SimulatorConfig } from './config.ts';
 import { SimulationState, type OccupancySnapshot } from './simulation.ts';
 import { sendSnapshot, type SnapshotTransportResult } from './transport.ts';
+import {
+  isSilent,
+  LATE_EVENT_DELAY_MS,
+  showcaseRoles,
+  type ShowcaseRole,
+} from './showcase.ts';
 
 export interface SimulationRunnerOptions {
   now?: () => Date;
@@ -27,6 +33,7 @@ export class SimulationRunner {
     signal?: AbortSignal,
   ) => Promise<SnapshotTransportResult>;
   private readonly onSnapshotSent?: SimulationRunnerOptions['onSnapshotSent'];
+  private readonly roles: ReadonlyMap<string, ShowcaseRole>;
 
   constructor(
     config: SimulatorConfig,
@@ -43,6 +50,7 @@ export class SimulationRunner {
       options.send ??
       ((snapshot, signal) => sendSnapshot(snapshot, { ...config, signal }));
     this.onSnapshotSent = options.onSnapshotSent;
+    this.roles = config.scenario === 'showcase' ? showcaseRoles(units) : new Map();
   }
 
   async run(signal?: AbortSignal): Promise<void> {
@@ -52,6 +60,9 @@ export class SimulationRunner {
       const observedAt = this.now();
       for (const unit of this.units) {
         if (signal?.aborted) return;
+        const role = this.roles.get(unit.id);
+        if (role?.kind === 'intermittent' && isSilent(observedAt)) continue;
+        if (role?.kind === 'fixed') this.state.setRatio(unit.id, role.ratio);
         const snapshot = this.state.snapshotFor(
           unit,
           new Date(observedAt.getTime() - this.config.delaySeconds * 1000),
@@ -65,16 +76,26 @@ export class SimulationRunner {
         }
         if (signal?.aborted) return;
         this.onSnapshotSent?.(snapshot, result);
-        if (cycle === 0 && this.config.scenario === 'duplicate') {
-          let duplicateResult: SnapshotTransportResult;
+        const extra =
+          (cycle === 0 && this.config.scenario === 'duplicate') ||
+          role?.kind === 'duplicate'
+            ? snapshot
+            : role?.kind === 'late'
+              ? this.state.snapshotFor(
+                  unit,
+                  new Date(observedAt.getTime() - LATE_EVENT_DELAY_MS),
+                )
+              : null;
+        if (extra) {
+          let extraResult: SnapshotTransportResult;
           try {
-            duplicateResult = await this.send(snapshot, signal);
+            extraResult = await this.send(extra, signal);
           } catch (error) {
             if (signal?.aborted) return;
             throw error;
           }
           if (signal?.aborted) return;
-          this.onSnapshotSent?.(snapshot, duplicateResult);
+          this.onSnapshotSent?.(extra, extraResult);
         }
       }
 

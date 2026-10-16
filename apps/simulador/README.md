@@ -19,9 +19,10 @@ O simulador já oferece:
 - encerramento gracioso com `Ctrl+C`.
 - ocupações iniciais manuais por unidade e categoria para demonstrações.
 
-O simulador ainda não altera o estado atual exibido pela aplicação. A API, nesta
-etapa, autentica, valida e guarda os eventos na inbox; o processamento de
-ocupação está planejado na issue [#78](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/78).
+A API autentica, valida e guarda os eventos na inbox; um processador aplica o
+estado atual e o histórico ([#78](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/78)).
+Com `OCCUPANCY_SIMULATION_ENABLED=true`, o site mostra o resultado na camada
+"Ocupação simulada".
 
 ## Pré-requisitos
 
@@ -76,7 +77,7 @@ parâmetros são:
 | `--seed` | `SIMULATOR_SEED` | `fila-saude-v1` | Reprodutibilidade do cenário |
 | `--interval-seconds` | `SIMULATOR_INTERVAL_SECONDS` | `120` | Intervalo entre ciclos |
 | `--set-occupied` | `SIMULATOR_SET_OCCUPIED` | — | Valores iniciais `CNES:CATEGORIA:VALOR`, separados por vírgula |
-| `--scenario` | `SIMULATOR_SCENARIO` | `normal` | Cenário `normal`, `duplicate` ou `delayed` |
+| `--scenario` | `SIMULATOR_SCENARIO` | `normal` | Cenário `normal`, `duplicate`, `delayed` ou `showcase` |
 | `--delay-seconds` | `SIMULATOR_DELAY_SECONDS` | `0` | Atraso dos timestamps no cenário `delayed` |
 
 As unidades são selecionadas uma vez no início da execução e permanecem fixas.
@@ -108,6 +109,37 @@ pnpm --filter @filasaude/simulador dev --unit-cnes 1234567 --scenario delayed --
 O cenário `delayed` mantém a cadência normal, mas gera `occurredAt` e
 `observedAt` no passado. O cenário `duplicate` atua somente no primeiro ciclo;
 os ciclos seguintes seguem o comportamento normal.
+
+### Cenário `showcase` (site publicado)
+
+O `showcase` mantém, ao mesmo tempo e de forma contínua, os estados do roteiro
+da proposta 0001. Os papéis seguem a ordem dos CNES da amostra; as demais
+unidades seguem o comportamento normal:
+
+| Posição | Comportamento | O que o site mostra |
+| ---: | --- | --- |
+| 1ª | ocupação fixa em cerca de 90% | faixa alta |
+| 2ª | ocupação fixa em cerca de 70% | faixa moderada |
+| 3ª | ocupação fixa em cerca de 30% | faixa baixa |
+| 4ª | alterna 30 minutos enviando e 30 minutos em silêncio, alinhados ao relógio | "sem confirmação recente" e a retomada com snapshot completo |
+| 5ª | reenvia cada snapshot com o mesmo `eventId` | nada muda (idempotência) |
+| 6ª | envia também um snapshot 10 minutos no passado | o atraso fica no histórico sem substituir o estado atual |
+
+## Configuração compartilhada com a API
+
+Sem `SIMULATOR_SOURCE_SECRET`, o simulador lê o segredo da fonte em
+`WEBHOOK_SOURCE_CONFIG`, a mesma variável da API. Sem critério de seleção
+(CNES, município, cidade ou coordenadas), a amostra é a lista `unitCnes`
+autorizada para a fonte. Assim o segredo e a amostra ficam num lugar só, e o
+simulador nunca envia para uma unidade que a API recusaria.
+
+Com o Compose, o simulador é um serviço do perfil `simulation`:
+
+```bash
+export OCCUPANCY_SIMULATION_ENABLED=true
+export WEBHOOK_SOURCE_CONFIG='{"occupancy-feed":{"secret":"<openssl rand -hex 32>","unitCnes":["0004340","0017396","0050571","0466611","0924857","0932280","2339315","6481876","7429398","7458606"]}}'
+docker compose --profile simulation up --build
+```
 
 ## Validação local
 
