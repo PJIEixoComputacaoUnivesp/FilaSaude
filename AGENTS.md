@@ -60,7 +60,7 @@ estabelecimentos.
 - `infra/terraform`: infraestrutura, validada na CI.
 - `scripts`: `new-worktree.sh` e lembretes do Discord.
 - `.agents/skills`: skills do projeto, válidas para qualquer agente (ex. `small-commits`,
-  `open-pull-request`, `review-pull-request`, `fila-saude-frontend`).
+  `open-pull-request`, `review-pull-request`, `fila-saude-frontend`, `run-local-stack`).
 - `.agents/agents`: agentes do projeto (ex. `code-reviewer`, usado por `review-pull-request`);
   `.claude/agents` aponta para essa pasta.
 - `.agents/agent-memory/<agente>`: memória local de cada agente, ignorada pelo Git.
@@ -71,7 +71,10 @@ estabelecimentos.
 - Instalação: `pnpm install` na raiz (a CI usa `pnpm install --frozen-lockfile`).
 - Banco local: `docker compose up -d postgres`, depois
   `pnpm --filter @filasaude/api migration:run`.
-- Desenvolvimento: `pnpm dev` (todos os apps) ou `pnpm --filter @filasaude/web dev`.
+- Desenvolvimento: `pnpm --filter @filasaude/web dev` e os demais apps um a um. Para
+  subir a stack completa (PostgreSQL, API, web e simulador com a ocupação simulada),
+  siga a skill `run-local-stack`: ordem, variáveis, portas e limpeza. O `pnpm dev` da
+  raiz sobe o simulador antes da API e sem as variáveis, e ele sai na hora.
 - Stack completa em contêineres: `docker compose up --build`.
 - Verificações da raiz: `pnpm lint` (oxlint), `pnpm typecheck`, `pnpm test` (Vitest),
   `pnpm build`; `pnpm check` roda os quatro em sequência.
