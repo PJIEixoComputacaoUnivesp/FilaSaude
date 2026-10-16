@@ -216,7 +216,49 @@ node --experimental-strip-types apps/simulador/src/main.ts `
 No cenário `delayed`, a API ainda pode aceitar o evento na inbox, mas o
 processamento posterior deverá decidir como tratar sua precedência temporal.
 
-## 8. Teste automatizado contra a API
+## 8. Carga nacional controlada
+
+O cenário `national` usa todas as unidades retornadas por `state=ALL`, distribui
+os envios com jitter determinístico e produz métricas de respostas, retries e
+latência. Ele exige `--allow-load-test` e aceita somente `localhost` por padrão.
+
+Para autorizar duas fontes sintéticas no ambiente local, configure ambas antes
+de iniciar a API. O segredo pode ser o mesmo porque se trata de uma carga local:
+
+```powershell
+$secret = 'local-national-load-secret-32-chars'
+$allCnes = @(
+  Get-Content apps/api/src/units/units.snapshot.json -Raw |
+    ConvertFrom-Json |
+    ForEach-Object { $_.data } |
+    ForEach-Object { $_.id }
+)
+$config = @{
+  'occupancy-feed-001' = @{ secret = $secret; unitCnes = $allCnes }
+  'occupancy-feed-002' = @{ secret = $secret; unitCnes = $allCnes }
+} | ConvertTo-Json -Compress
+$env:WEBHOOK_SOURCE_CONFIG = $config
+$env:SIMULATOR_SOURCE_SECRET = $secret
+```
+
+Em outro terminal, com a API e o PostgreSQL em execução:
+
+```powershell
+$env:SIMULATOR_SOURCE_IDS = 'occupancy-feed-001,occupancy-feed-002'
+node --experimental-strip-types apps/simulador/src/main.ts `
+  --api-url http://localhost:3000 `
+  --scenario national `
+  --allow-load-test `
+  --duration-seconds 300 `
+  --interval-seconds 120 `
+  --concurrency 10
+```
+
+O terminal exibe relatórios parciais e um relatório final. O teste mede a
+ingestão do simulador até a inbox. Processamento, estado atual e backlog
+dependem da issue #78. Não execute este cenário contra produção.
+
+## 9. Teste automatizado contra a API
 
 Com a API em execução e o segredo já definido no terminal do simulador:
 
@@ -231,7 +273,7 @@ e espera `202`. A persistência pode ser confirmada na inbox com a consulta da
 seção anterior. Sem essas variáveis, o teste é ignorado para permitir a execução
 da suíte padrão sem uma API externa.
 
-## 9. Interpretação dos resultados
+## 10. Interpretação dos resultados
 
 Este roteiro confirma:
 

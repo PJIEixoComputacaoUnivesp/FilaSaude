@@ -40,7 +40,7 @@ limites orientam o produto e cada decisão de arquitetura abaixo.
 | Recebimento de snapshots de ocupação (webhook assinado) | Implementado: recebe e guarda | [contrato v1](docs/contracts/occupancy-snapshot-v1.md) |
 | Ingestão diária do CNES no PostgreSQL | Planejado | [#23](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/23) |
 | Processamento, estado atual e histórico de ocupação | Planejado | [#78](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/78) |
-| Simulador municipal de ocupação | Em implementação: CLI funcional | [README do simulador](apps/simulador/README.md), [#57](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/57) |
+| Simulador de ocupação municipal e nacional | CLI funcional; carga nacional controlada em evolução | [README do simulador](apps/simulador/README.md), [#57](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/57), [#102](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/102) |
 | Camada de ocupação simulada no mapa | Planejado | [#79](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/79) |
 | Busca por proximidade e filtros por característica | Planejado | [#28](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/28), [#29](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/29) |
 

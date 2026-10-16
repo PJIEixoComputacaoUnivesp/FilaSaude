@@ -17,6 +17,8 @@ O simulador já oferece:
 - retentativas para falhas transitórias e `429`, respeitando `Retry-After`;
 - envio periódico, com primeiro ciclo imediato;
 - encerramento gracioso com `Ctrl+C`.
+- cenário nacional distribuído com jitter determinístico, concorrência limitada
+  e métricas de envio.
 - ocupações iniciais manuais por unidade e categoria para demonstrações.
 
 O simulador ainda não altera o estado atual exibido pela aplicação. A API, nesta
@@ -60,6 +62,30 @@ Ou por CNES explícito:
 pnpm --filter @filasaude/simulador dev --unit-cnes 1234567,7654321 --interval-seconds 30
 ```
 
+### Carga nacional controlada
+
+O cenário `national` consulta todas as unidades retornadas por
+`/units?state=ALL`, distribui os envios ao longo do intervalo e encerra após a
+duração configurada. Ele exige autorização explícita e aceita somente destino
+local por padrão:
+
+```bash
+pnpm --filter @filasaude/simulador dev \
+  --scenario national \
+  --allow-load-test \
+  --duration-seconds 300 \
+  --interval-seconds 120 \
+  --concurrency 10 \
+  --source-ids occupancy-feed-001,occupancy-feed-002
+```
+
+As fontes sintéticas precisam estar configuradas no `WEBHOOK_SOURCE_CONFIG`,
+com o mesmo segredo local e com os CNES que cada fonte poderá atualizar. O
+particionamento das unidades entre fontes é determinístico para a mesma seed.
+O cenário imprime relatórios parciais por ciclo e um relatório JSON final com
+eventos gerados, respostas, retries e percentis de latência. Para permitir um
+ambiente controlado não local, use `--allow-nonlocal-target` explicitamente.
+
 Opções também podem ser informadas pelas variáveis `SIMULATOR_*`. Os principais
 parâmetros são:
 
@@ -78,9 +104,17 @@ parâmetros são:
 | `--set-occupied` | `SIMULATOR_SET_OCCUPIED` | — | Valores iniciais `CNES:CATEGORIA:VALOR`, separados por vírgula |
 | `--scenario` | `SIMULATOR_SCENARIO` | `normal` | Cenário `normal`, `duplicate` ou `delayed` |
 | `--delay-seconds` | `SIMULATOR_DELAY_SECONDS` | `0` | Atraso dos timestamps no cenário `delayed` |
+| `--source-ids` | `SIMULATOR_SOURCE_IDS` | fonte única | Fontes sintéticas separadas por vírgula |
+| `--duration-seconds` | `SIMULATOR_DURATION_SECONDS` | `300` | Duração do cenário `national` |
+| `--concurrency` | `SIMULATOR_CONCURRENCY` | `10` | Envios simultâneos máximos |
+| `--allow-load-test` | `SIMULATOR_ALLOW_LOAD_TEST` | `false` | Autoriza a carga nacional |
 
 As unidades são selecionadas uma vez no início da execução e permanecem fixas.
 O estado é mantido somente em memória e é perdido ao encerrar o processo.
+
+O cenário nacional é uma carga de ingestão do cliente até a inbox. Ele não mede
+processamento, estado atual ou backlog escoado, que dependem da issue
+[#78](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/78).
 
 Exemplo de cenário com ocupação inicial controlada:
 
