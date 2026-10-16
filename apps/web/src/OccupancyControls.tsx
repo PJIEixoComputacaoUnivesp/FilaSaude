@@ -71,7 +71,13 @@ export function OccupancyControls({ compact = false }: { compact?: boolean }) {
           Ocupação simulada
         </span>
       </label>
-      <p id={hintId} className="text-xs leading-relaxed text-slate-700">
+      {/* Visible wherever simulated data is on screen. In the map panel, with
+          the layer off, it stays for screen readers only: the panel is the
+          first thing every visitor sees and must leave room for the map. */}
+      <p
+        id={hintId}
+        className={`text-xs leading-relaxed text-slate-700 ${compact && !layer.isEnabled ? "sr-only" : ""}`}
+      >
         {SIMULATION_NOTICE}
       </p>
       <LiveStatus message={announcement} delay={0} />

@@ -627,9 +627,12 @@ function keepPopupClearOfOverlay(
 function FitUnits({
   units,
   overlayRef,
+  hasSelection,
 }: {
   units: HealthUnit[];
   overlayRef?: RefObject<HTMLElement | null>;
+  /** A selected unit frames the map itself (see UnitMarker). */
+  hasSelection: boolean;
 }) {
   const map = useMap();
 
@@ -671,7 +674,7 @@ function FitUnits({
     // view is still the one fitted here, fit again, so the points stay out
     // from under the panel; once the person moves the map, leave it.
     const overlay = overlayRef?.current;
-    if (!overlay || coordinates.length === 0) {
+    if (!overlay || coordinates.length === 0 || hasSelection) {
       return () => map.off("moveend", remember);
     }
     let height = overlay.getBoundingClientRect().height;
@@ -690,7 +693,7 @@ function FitUnits({
       observer.disconnect();
       map.off("moveend", remember);
     };
-  }, [map, overlayRef, units]);
+  }, [map, overlayRef, units, hasSelection]);
 
   return null;
 }
@@ -847,7 +850,11 @@ export function UnitsMap({
         zoomInTitle="Aproximar o mapa"
         zoomOutTitle="Afastar o mapa"
       />
-      <FitUnits units={unitsToFit} overlayRef={overlayRef} />
+      <FitUnits
+        units={unitsToFit}
+        overlayRef={overlayRef}
+        hasSelection={selectedUnitId !== undefined}
+      />
       <UnitMarkers
         units={unitsWithLocation}
         occupancy={occupancy}
