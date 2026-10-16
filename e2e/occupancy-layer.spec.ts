@@ -276,6 +276,9 @@ test("filtros locais preservam a leitura nacional sem controlar as fontes", asyn
       .filter({ hasText: "UPA Vila Mariana" })
       .getByText("Ocupação alta (90%)"),
   ).toBeVisible();
+  await expect(
+    page.getByText(/3 unidades com ocupação simulada no Brasil$/),
+  ).toBeVisible();
   await page.getByRole("combobox", { name: "Estado" }).selectOption("RJ");
   await expect(
     page

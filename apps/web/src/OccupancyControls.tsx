@@ -28,11 +28,11 @@ export function OccupancyControls({ compact = false }: { compact?: boolean }) {
   const { state } = layer;
   const { response } = layer;
   const unitCount = response?.data.length ?? 0;
-  const simulatedText = formatCount(
+  const simulatedText = `${formatCount(
     unitCount,
     "unidade com ocupação simulada",
     "unidades com ocupação simulada",
-  );
+  )} no Brasil`;
   const announcement =
     announceCount && layer.isEnabled && response ? `${simulatedText}.` : "";
 
