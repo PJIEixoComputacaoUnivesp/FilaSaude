@@ -56,25 +56,30 @@ flowchart LR
   pessoa(["Pessoa"]) -->|"HTTPS"| caddy["Caddy"]
   caddy --> web["Web<br/>React e nginx"]
   caddy -->|"/api"| api["API<br/>NestJS"]
+  api -->|"SSE: alterações de leitos"| caddy
+  caddy -->|"SSE"| pessoa
 
   api -->|"catálogo e dados operacionais"| db[("PostgreSQL")]
   api -->|"municípios e contornos"| ibge["IBGE"]
   api -->|"posições em São Paulo"| geo["GeoSampa"]
 
-  sim["Simulador municipal"] -.->|"webhook assinado"| api
+  sim["Simulador nacional contínuo"] -->|"webhook assinado"| api
   job["Job de ingestão"] -->|"semanal"| cnes["CNES"]
   job --> db
 ```
 
-Linhas contínuas existem hoje. Linhas tracejadas são o alvo.
+O navegador carrega a ocupação por REST e recebe alterações parciais por SSE.
+O processador mantém estado atual e histórico no PostgreSQL; notificações
+`LISTEN/NOTIFY` sinalizam as unidades alteradas após o processamento.
+A decisão e seus limites estão no [ADR 0003](docs/adr/0003-occupancy-server-sent-events.md).
 
 ### Componentes
 
 | Componente | Responsabilidade | Tecnologia | Código |
 | --- | --- | --- | --- |
 | Web | Interface pública (mapa, lista, "Sobre os dados") e a página `/admin`, fora da navegação | React 19, Vite, Tailwind 4, React Router, Leaflet | [`apps/web`](apps/web) |
-| API | Integra e normaliza as fontes públicas, valida a posição das unidades, recebe webhooks e expõe REST | NestJS 12, TypeORM | [`apps/api`](apps/api) |
-| PostgreSQL | Cadastro de unidades, correções manuais e inbox de webhooks | PostgreSQL 17 | [`apps/api/src/database`](apps/api/src/database) |
+| API | Integra fontes públicas, valida posições, processa webhooks e expõe REST e SSE | NestJS 12, TypeORM | [`apps/api`](apps/api) |
+| PostgreSQL | Cadastro, correções, inbox, estado atual e histórico de leitos; notificações de alterações | PostgreSQL 17 | [`apps/api/src/database`](apps/api/src/database) |
 | Borda | HTTPS e roteamento de `/api` em produção | Caddy | [`deploy`](deploy) |
 | Infraestrutura | Droplet, IP reservado, firewall e DNS | Terraform, DigitalOcean | [`infra/terraform`](infra/terraform) |
 
@@ -97,7 +102,7 @@ Linhas contínuas existem hoje. Linhas tracejadas são o alvo.
    com o snapshot incorporado. `metadata.dataOrigin` e `metadata.isStale` dizem
    qual caso é.
 5. **Dado cadastral e dado operacional são separados.** O cadastro vem de
-   fontes públicas reais. A ocupação, quando existir, vem de outro fluxo, é
+   fontes públicas reais. A ocupação de leitos vem de outro fluxo, é
    sintética e vem identificada como tal em tela, em resposta de API e em
    demonstração.
 6. **PostgreSQL basta.** Ele guarda cadastro, correções, inbox e histórico. Um
