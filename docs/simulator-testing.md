@@ -302,11 +302,111 @@ posição do usuário. A posição deve influenciar somente as consultas e os da
 exibidos no mapa.
 
 O bloco acima é o teste nacional limitado. Para uma execução com todas as
-unidades, não basta remover `--max-units`: a API aplica limite por fonte e a
-configuração via variável de ambiente do Windows pode ficar grande quando a
-mesma lista de CNES é repetida em várias fontes. Antes do teste completo, deve
-ser definido o particionamento das fontes ou uma forma de carregar a
-configuração fora de uma única variável de ambiente.
+unidades, não basta remover `--max-units`: a API aplica limite de requisições por
+fonte. O procedimento validado usa 24 fontes sintéticas e distribui os CNES de
+forma determinística, usando a mesma regra do simulador.
+
+No terminal da API, com o PostgreSQL em execução:
+
+```powershell
+$secret = 'local-national-load-secret-32-chars'
+$seed = 'fila-saude-v1'
+$sourceCount = 24
+$sourceIds = @(
+  1..$sourceCount | ForEach-Object {
+    'occupancy-feed-{0:D3}' -f $_
+  }
+)
+
+$snapshot = Get-Content apps/api/src/units/units.snapshot.json -Raw |
+  ConvertFrom-Json
+$allCnes = @(
+  foreach ($unit in $snapshot) {
+    $id = [string]$unit.id
+    if ($id -match '^\d{7}$') { $id }
+  }
+) | Sort-Object -Unique
+
+$partitions = @{}
+foreach ($sourceId in $sourceIds) {
+  $partitions[$sourceId] = [System.Collections.Generic.List[string]]::new()
+}
+
+$sha256 = [System.Security.Cryptography.SHA256]::Create()
+foreach ($cnes in $allCnes) {
+  $bytes = [System.Text.Encoding]::UTF8.GetBytes("${seed}:$cnes")
+  $digest = $sha256.ComputeHash($bytes)
+  $hashValue = [uint32](
+    ([uint32]$digest[0] * 16777216) +
+    ([uint32]$digest[1] * 65536) +
+    ([uint32]$digest[2] * 256) +
+    [uint32]$digest[3]
+  )
+  $index = [int]($hashValue % [uint32]$sourceCount)
+  $partitions[$sourceIds[$index]].Add($cnes)
+}
+
+$sourceConfig = [ordered]@{}
+foreach ($sourceId in $sourceIds) {
+  $sourceConfig[$sourceId] = @{
+    secret = $secret
+    unitCnes = @($partitions[$sourceId])
+  }
+}
+
+$env:WEBHOOK_SOURCE_CONFIG = (
+  $sourceConfig | ConvertTo-Json -Depth 4 -Compress
+)
+
+Write-Output "CNES totais: $($allCnes.Count)"
+$partitions.GetEnumerator() |
+  Sort-Object Name |
+  ForEach-Object { Write-Output "$($_.Key): $($_.Value.Count) CNES" }
+```
+
+O total esperado é `1793`. Depois, reinicie a API para carregar a nova
+configuração:
+
+```powershell
+Ctrl+C
+pnpm --filter @filasaude/api dev
+```
+
+No terminal do simulador:
+
+```powershell
+$env:SIMULATOR_SOURCE_SECRET = 'local-national-load-secret-32-chars'
+$env:SIMULATOR_SOURCE_IDS = (
+  1..24 | ForEach-Object { 'occupancy-feed-{0:D3}' -f $_ }
+) -join ','
+
+node --experimental-strip-types apps/simulador/src/main.ts `
+  --api-url http://localhost:3000 `
+  --source-ids $env:SIMULATOR_SOURCE_IDS `
+  --scenario national `
+  --allow-load-test `
+  --duration-seconds 180 `
+  --interval-seconds 120 `
+  --concurrency 32
+```
+
+Durante a execução, acompanhe a distribuição por fonte:
+
+```powershell
+docker compose exec -T postgres psql `
+  -U filasaude `
+  -d filasaude `
+  -c "SELECT source_id, COUNT(*) AS total, MIN(received_at) AS primeiro, MAX(received_at) AS ultimo FROM occupancy_webhook_inbox WHERE source_id LIKE 'occupancy-feed-%' GROUP BY source_id ORDER BY source_id;"
+```
+
+Para comparar somente uma execução, filtre `received_at` a partir do horário de
+início do teste. Os registros das fontes `001` e `002` podem incluir dados de
+testes limitados anteriores.
+
+O teste validado produziu 2.724 eventos aceitos para 1.793 unidades, sem erros,
+sem `429` e sem retries. Os valores de latência observados foram p50 de
+13–15 ms, p95 de 22–26 ms e p99 de 28–33 ms. Esses números caracterizam apenas
+o ambiente local utilizado e não substituem uma medição de produção.
 
 ## 9. Teste automatizado contra a API
 
