@@ -33,10 +33,18 @@ export class LoadMetrics {
   private generated = 0;
   private accepted = 0;
   private rejected = 0;
+const MAX_LATENCY_SAMPLES = 10_000;
+
+export class LoadMetrics {
+  private generated = 0;
+  private accepted = 0;
+  private rejected = 0;
   private failed = 0;
   private retries = 0;
   private readonly responses = new Map<string, number>();
-  private readonly latencies: number[] = [];
+  private readonly latencies = new Array<number>(MAX_LATENCY_SAMPLES);
+  private latencyCount = 0;
+  private latencyOffset = 0;
 
   recordGenerated(): void {
     this.generated += 1;
@@ -48,17 +56,15 @@ export class LoadMetrics {
     this.failed += result.status >= 500 ? 1 : 0;
     this.retries += Math.max(0, result.attempts - 1);
     this.recordResponse(result.status.toString());
-    this.latencies.push(latencyMs);
-    if (this.latencies.length > MAX_LATENCY_SAMPLES) {
-      this.latencies.splice(0, this.latencies.length - MAX_LATENCY_SAMPLES);
-    }
+    this.latencies[this.latencyOffset] = latencyMs;
+    this.latencyOffset = (this.latencyOffset + 1) % MAX_LATENCY_SAMPLES;
+    this.latencyCount = Math.min(this.latencyCount + 1, MAX_LATENCY_SAMPLES);
   }
 
   recordError(error: unknown): void {
     if (error instanceof SnapshotTransportHttpError) {
       this.rejected += error.status >= 400 && error.status < 500 ? 1 : 0;
       this.failed += error.status >= 500 ? 1 : 0;
-      this.retries += Math.max(0, error.attempts - 1);
       this.recordResponse(error.status.toString());
       return;
     }
@@ -69,7 +75,9 @@ export class LoadMetrics {
   }
 
   snapshot(): LoadMetricsReport {
-    const latencies = [...this.latencies].sort((left, right) => left - right);
+    const latencies = this.latencies
+      .slice(0, this.latencyCount)
+      .sort((left, right) => left - right);
     return {
       generated: this.generated,
       accepted: this.accepted,
