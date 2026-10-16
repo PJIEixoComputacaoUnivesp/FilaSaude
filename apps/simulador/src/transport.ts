@@ -26,6 +26,16 @@ export interface SnapshotTransportResult {
   status: number;
 }
 
+export class SnapshotTransportHttpError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message = `Webhook rejeitado pela API com status ${status}.`) {
+    super(message);
+    this.name = 'SnapshotTransportHttpError';
+    this.status = status;
+  }
+}
+
 export async function sendSnapshot(
   snapshot: OccupancySnapshot,
   options: SnapshotTransportOptions,
@@ -82,10 +92,13 @@ export async function sendSnapshot(
 
     if (response.ok) return { attempts: attempt, status: response.status };
     if (!isRetryable(response.status)) {
-      throw new Error(`Webhook rejeitado pela API com status ${response.status}.`);
+      throw new SnapshotTransportHttpError(response.status);
     }
     if (attempt === maxAttempts) {
-      throw new Error(`Webhook não aceito após ${attempt} tentativas.`);
+      throw new SnapshotTransportHttpError(
+        response.status,
+        `Webhook não aceito após ${attempt} tentativas.`,
+      );
     }
 
     await sleep(

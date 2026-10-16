@@ -1,4 +1,7 @@
-import type { SnapshotTransportResult } from './transport.ts';
+import {
+  SnapshotTransportHttpError,
+  type SnapshotTransportResult,
+} from './transport.ts';
 
 export interface LoadReport {
   durationSeconds: number;
@@ -47,6 +50,13 @@ export class LoadMetrics {
   }
 
   recordError(error: unknown): void {
+    if (error instanceof SnapshotTransportHttpError) {
+      this.rejected += error.status >= 400 && error.status < 500 ? 1 : 0;
+      this.failed += error.status >= 500 ? 1 : 0;
+      this.recordResponse(error.status.toString());
+      return;
+    }
+
     this.failed += 1;
     const key = error instanceof Error ? 'network_error' : 'unknown_error';
     this.recordResponse(key);
