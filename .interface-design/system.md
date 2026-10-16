@@ -48,7 +48,7 @@
 
 ## Simulated occupancy
 
-- The "Ocupação simulada" layer (proposal 0001) exists only when the API
+- The "Ocupação simulada de leitos" layer (proposal 0001) exists only when the API
   answers `GET /occupancy`; it starts off and the choice lasts for the session.
   The map, the list and the unit detail share it (`OccupancyLayerProvider`).
 - Fontes nacionais alimentam a ocupação continuamente, independentemente de
@@ -56,6 +56,11 @@
   afetam apenas a visualização de cada visitante. Não há seletor público nem
   endpoint de escrita para controlar as fontes; cenários de teste ficam na CLI
   do operador.
+- Nesta entrega, "ocupação" significa leitos sintéticos, e não movimento de
+  pessoas. A legenda explica que a cor usa a soma dos ocupados dividida pela
+  soma das capacidades das categorias informadas; o detalhe discrimina cada
+  categoria. As capacidades são geradas pelo simulador e não são inventário
+  real do CNES. Espera, atendimento e conclusões ficam fora desta entrega.
 - Palette: one violet scale with the same dark ring (`occupancy-ring`
   #2E1065) for low, moderate and high, a solid gray disc for "não informada"
   and a dashed hollow gray ring for "sem confirmação recente". Never the
@@ -69,6 +74,10 @@
 - In the list the occupancy is one more field of the card, after the registry
   data, not a highlight. The map panel is capped in height and scrolls, so it
   never covers the zoom buttons.
+- SSE aplica apenas as unidades alteradas ao estado nacional; REST inicial e
+  reconexão recompõem o snapshot. O histórico acompanha os eventos da unidade,
+  sem polling. Durante falhas, preservar os dados anteriores e indicar a
+  reconexão, mantendo a expiração de confirmação. Refs #78 e #79.
 - Refreshes replace data in place: no focus change and no announcement. Only
   turning the layer on announces the count; a failed refresh with data still
   shown is a `status`, not an `alert`.

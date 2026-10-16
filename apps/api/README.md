@@ -82,7 +82,11 @@ por CNES e mantém o histórico dos eventos processados. Com
 `GET /units/:cnes/occupancy-history` oferecem consultas públicas, com fonte,
 atualização e marca explícita de simulação. O processador recebe dados nacionais
 sem depender de visitas, UF ou localização; a flag pública controla somente a
-exposição dessas consultas. Não há endpoint público para mudar os cenários.
+exposição dessas consultas. `GET /occupancy/stream` transmite via SSE somente as
+unidades alteradas, após commit, usando PostgreSQL LISTEN/NOTIFY entre instâncias.
+A reconexão refaz o snapshot REST; não há replay durável. Consulte o
+[contrato SSE](../../docs/contracts/occupancy-stream-v1.md) (issues #78 e #79).
+Não há endpoint público para mudar os cenários.
 
 ### Posição das unidades
 

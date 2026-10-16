@@ -323,10 +323,12 @@ As rotas seguem nomenclatura REST em inglês:
 - `GET /units/{cnes}/occupancy-history`: consulta o histórico recente;
 - `GET /occupancy/stream`: envia notificações SSE de atualização.
 
-O frontend usaria REST para o carregamento inicial e SSE para atualizações. Em
-uma reconexão, um identificador monotônico de stream permitiria recuperar os
-eventos possíveis; se isso não for seguro, o cliente descartaria o estado local
-e repetiria a consulta REST.
+A implementação da PR #104 usa REST para o carregamento inicial e a recuperação
+após reconexão. SSE envia somente as unidades alteradas, após commit da inbox e
+da projeção, inclusive entre instâncias da API. Não há polling de ocupação.
+Os IDs crescem no processo atual, mas não há log durável de replay: toda reconexão
+refaz o snapshot REST e aplica os deltas recebidos durante essa consulta.
+Detalhes em [contrato SSE](../contracts/occupancy-stream-v1.md), refs #78 e #79.
 
 Os contratos devem ser descritos em OpenAPI e acompanhados por exemplos de
 sucesso, duplicidade, atraso, autenticação inválida e dados sem confirmação

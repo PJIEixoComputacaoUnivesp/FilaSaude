@@ -472,8 +472,8 @@ Este roteiro confirma:
 As métricas da CLI, isoladamente, não confirmam o tempo até a ocupação atual,
 o histórico nem a atualização do navegador. A seção de integração ao final
 explica como verificar essas etapas. Ocupação usa `GET /occupancy`, separada
-do catálogo de `GET /units`; SSE e rollback de dados processados continuam
-fora do escopo.
+do catálogo de `GET /units`; rollback de dados processados continua fora do escopo.
+O stream SSE e sua recuperação são descritos no contrato abaixo.
 
 ## 11. Encerramento do ambiente
 
@@ -508,5 +508,9 @@ Para testar a apresentação local sem o PowerShell, siga a
 [skill da stack local](../.agents/skills/run-local-stack/SKILL.md).
 
 As métricas do simulador medem o aceite no webhook, não o atraso até a projeção
-ou o navegador. O processamento roda a cada 2 segundos e o site consulta a
-ocupação a cada 60 segundos enquanto a camada está visível e ligada.
+ou o navegador. O processamento roda a cada 2 segundos; os eventos SSE levam apenas as unidades
+alteradas ao site, sem polling ou novo GET nacional por atualização. A consulta
+REST completa ocorre na carga inicial e na reconexão. Valide no painel de rede
+uma conexão `occupancy/stream` ativa, eventos `occupancy.updated` e ausência de
+GETs repetidos de `occupancy`. O detalhe consulta o histórico quando seu CNES
+muda. Veja o [contrato SSE](contracts/occupancy-stream-v1.md).

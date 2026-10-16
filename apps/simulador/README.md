@@ -1,4 +1,4 @@
-# Simulador de ocupação
+# Simulador de ocupação de leitos
 
 O `@filasaude/simulador` é uma CLI para gerar snapshots sintéticos de ocupação
 e enviá-los à API por meio do webhook assinado. Ele existe para testes e
@@ -26,6 +26,18 @@ atualiza a ocupação atual e o histórico. Com `OCCUPANCY_SIMULATION_ENABLED=tr
 o site apresenta esses dados no mapa, na lista e no detalhe, sempre como simulação.
 A geração nacional continua mesmo sem visitantes. Localização, UF, busca e
 interruptor da camada alteram apenas o que cada visitante consulta e visualiza.
+
+### O que a ocupação representa
+
+Nesta entrega, o simulador produz quantidades ocupadas e capacidades fictícias
+de leitos de observação, estabilização e internação. A cor do mapa usa o total
+ocupado dividido pela capacidade total das categorias informadas; o detalhe
+mostra cada categoria. As capacidades não vêm do cadastro CNES e não representam
+o inventário real de cada unidade.
+
+Não são geradas pessoas em espera, pessoas em atendimento nem atendimentos
+concluídos, e o percentual não estima fila, espera ou capacidade de atendimento.
+Essas métricas ficam para as issues #107, #108, #109 e #110. Refs #106.
 
 ## Pré-requisitos
 

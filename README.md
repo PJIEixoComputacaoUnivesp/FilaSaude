@@ -41,7 +41,7 @@ limites orientam o produto e cada decisão de arquitetura abaixo.
 | Ingestão diária do CNES no PostgreSQL | Planejado | [#23](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/23) |
 | Processamento, estado atual e histórico de ocupação | Implementado | [#78](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/78) |
 | Simulador de ocupação municipal e nacional | Implementado; execução nacional contínua | [README do simulador](apps/simulador/README.md), [#57](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/57), [#102](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/102) |
-| Camada de ocupação simulada no mapa | Implementado | [#79](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/79) |
+| Camada de ocupação simulada de leitos no mapa | Implementado | [#79](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/79) |
 | Busca por proximidade e filtros por característica | Planejado | [#28](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/28), [#29](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/29) |
 
 A parte de ocupação segue a [proposta 0001](docs/proposals/0001-operational-occupancy-simulation.md),
@@ -138,25 +138,35 @@ aceita uma correspondência única e forte. Os critérios e as limitações est�
 [ADR 0001](docs/adr/0001-public-health-unit-data-source.md) e no
 [ADR 0002](docs/adr/0002-additional-public-data-sources.md).
 
-### Ocupação operacional (proposta em discussão)
+### Ocupação simulada de leitos
 
 ```mermaid
 flowchart LR
-  sim["Simulador municipal"] -.->|"snapshot assinado"| hook["POST /webhooks/v1/occupancy<br/>HMAC e contrato v1"]
+  sim["Simulador nacional de leitos"] -->|"snapshot assinado"| hook["POST /webhooks/v1/occupancy"]
   hook --> inbox[("Inbox")]
-  inbox -.-> worker["Processador assíncrono"]
-  worker -.-> atual[("Ocupação atual")]
-  worker -.-> hist[("Histórico")]
-  atual -.-> pub["API pública"]
-  hist -.-> pub
-  pub -.->|"REST, com SSE opcional"| mapa["Mapa"]
+  inbox --> worker["Processador assíncrono"]
+  worker --> atual[("Ocupação atual")]
+  inbox --> hist["Histórico processado"]
+  atual --> pub["API pública"]
+  hist --> pub
+  pub -->|"REST inicial + deltas SSE"| mapa["Mapa, lista e detalhe"]
 ```
 
-Hoje a API autentica a fonte, valida o contrato v1 e persiste o snapshot na
-inbox antes de responder `202 Accepted`. O processamento, o estado atual e o
-histórico ainda não existem. A atualização em tempo real por SSE é opcional na
-[#78](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/78); sem
-ela, a interface consulta por polling.
+As capacidades e quantidades ocupadas de leitos de observação, estabilização e
+internação são fictícias, geradas pelo simulador, e não vêm do cadastro CNES.
+A cor usa a soma dos ocupados dividida pela soma das capacidades das categorias
+informadas. O detalhe mostra cada categoria e identifica o total agregado.
+Isso não representa fila, tempo de espera, pessoas em atendimento ou capacidade
+de atendimento da unidade. As faixas são convenções da demonstração.
+
+A API persiste os eventos antes de responder `202 Accepted`, processa a inbox e
+publica o estado e o histórico. Com `OCCUPANCY_SIMULATION_ENABLED=true`, o site
+oferece a camada, inicialmente desligada. A geração é nacional e contínua,
+independente dos filtros do visitante. SSE envia somente as unidades alteradas;
+REST recompõe o estado na carga inicial e na reconexão. Não há polling.
+
+Refs #78, #79 e #106. Métricas futuras de espera, atendimento e conclusões são
+tratadas em #107, #108, #109 e #110.
 
 ### API
 
@@ -167,9 +177,9 @@ ela, a interface consulta por polling.
 | `GET /boundaries/brazil?detail=low\|high` | Contorno do Brasil (IBGE) para a máscara do mapa; `low` por padrão | Implementado |
 | `POST /webhooks/v1/occupancy` | Recebe um snapshot de ocupação assinado | Implementado |
 | `GET /admin/me` e `/admin/location-corrections` | Administração de posições, com `Authorization: Bearer` | Implementado |
-| `GET /units` com ocupação | Estado de ocupação, em campos opcionais que não quebram o contrato atual | Planejado (#78) |
-| `GET /units/{cnes}/occupancy-history` | Histórico recente de ocupação (a proposta parte das últimas 24 horas) | Planejado (#78) |
-| `GET /occupancy/stream` | Notificações de atualização por SSE | Opcional (#78) |
+| `GET /occupancy` | Ocupação simulada de leitos, separada do catálogo CNES | Implementado (#78) |
+| `GET /units/{cnes}/occupancy-history` | Histórico de leitos simulados das últimas 24 horas | Implementado (#78) |
+| `GET /occupancy/stream` | Unidades alteradas por SSE | Implementado (#78) |
 
 Os detalhes das rotas, dos campos e dos cabeçalhos estão em
 [`apps/api/README.md`](apps/api/README.md) e no
@@ -185,7 +195,7 @@ Brasil.
 | `unit_location_correction_events` | Histórico de cada alteração e quem a fez | Implementado |
 | `occupancy_webhook_inbox` | Snapshots recebidos, antes do processamento | Implementado |
 | `health_units` | Cadastro de unidades | Criada, ainda sem ingestão |
-| Ocupação atual e histórico | Estado e série por unidade | Planejado |
+| `occupancy_current` e inbox processada | Estado atual e histórico de leitos simulados por unidade | Implementado |
 
 As migrations são executadas de forma explícita e o `synchronize` do TypeORM
 fica desligado.
@@ -231,9 +241,9 @@ O frontend fica em `http://localhost:5173` e a API em `http://localhost:3000`
 ao iniciar, então ele precisa estar no ar.
 
 Para executar o simulador e enviar snapshots à API, consulte o
-[README do simulador](apps/simulador/README.md). Nesta etapa, a API apenas
-autentica, valida e guarda os snapshots; o processamento e a exibição da
-ocupação ainda estão planejados.
+[README do simulador](apps/simulador/README.md) e a
+[stack local](.agents/skills/run-local-stack/SKILL.md). A API processa os snapshots
+e o site mostra os leitos simulados com atualização SSE.
 
 Para subir tudo em contêineres, com o frontend em `http://localhost:8080` e a
 API acessível também por `http://localhost:8080/api`:

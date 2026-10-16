@@ -109,6 +109,11 @@ encerre a tarefa quando terminar a validação.
 
 - Aguarde os primeiros eventos; o primeiro envio de cada unidade é distribuído
   no tempo. Confira `GET /occupancy` e o histórico por CNES.
+- Confirme uma conexão `GET /occupancy/stream` com `text/event-stream`. As
+  mensagens `occupancy.updated` trazem somente as unidades alteradas. Não devem
+  ocorrer GETs nacionais repetidos depois da carga inicial; na reconexão, ocorre
+  uma nova consulta REST para reconstruir o estado. O detalhe refaz o histórico
+  apenas quando seu CNES recebe atualização.
 - Ligue a camada no site e alterne entre UFs, mapa, lista e detalhe. Dados,
   fonte, atualização e marca de simulação devem permanecer coerentes.
 - Desligue a camada ou feche o navegador e confira que os eventos continuam

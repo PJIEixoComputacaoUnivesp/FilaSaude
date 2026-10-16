@@ -9,6 +9,22 @@ estado enviado pela origem, mas pode conter somente as categorias aplicáveis ou
 informadas para aquela unidade. Uma categoria ausente não representa ocupação
 zero.
 
+## Semântica da demonstração atual
+
+Nesta entrega, `capacity` e `occupied` representam leitos sintéticos das
+categorias observação (`observation`), estabilização (`stabilization`) e internação
+(`inpatient`). Os valores e capacidades são gerados pelo simulador; não descrevem
+o inventário real de leitos das unidades cadastradas no CNES.
+
+A cor e o percentual da interface usam `soma(occupied) / soma(capacity)` das
+categorias informadas. O detalhe discrimina os valores por categoria e identifica
+o total agregado. Capacidade total zero significa não informado, nunca 0% de
+ocupação. As faixas são convenções da demonstração.
+
+O payload não informa pessoas em espera, pessoas em atendimento, atendimentos
+concluídos ou tempo de espera. Essas evoluções ficam nas issues #107, #108,
+#109 e #110; a clareza desta entrega corresponde à #106.
+
 ## Cabeçalhos
 
 | Cabeçalho | Regra |

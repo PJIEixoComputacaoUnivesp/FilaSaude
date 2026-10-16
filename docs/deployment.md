@@ -126,7 +126,7 @@ use um runner com IP fixo e atualize `ssh_allowed_cidrs`.
 
 A demonstração fica desligada por padrão. Para ligá-la, configure a variável de
 Actions `OCCUPANCY_SIMULATION_ENABLED=true` e faça um novo deploy. A API publica
-`GET /api/occupancy` e o histórico; `deploy.sh` inicia o serviço `simulator` no
+`GET /api/occupancy`, o histórico e `GET /api/occupancy/stream` por SSE; `deploy.sh` inicia o serviço `simulator` no
 perfil `simulation`, com `national` e duração `0` (execução contínua).
 
 Antes do deploy, prepare `WEBHOOK_SOURCE_CONFIG` com as fontes sintéticas e os
@@ -152,6 +152,14 @@ fonte. Revise as partições e a quantidade de fontes quando o catálogo mudar.
 - Não há seletor público nem endpoint de alteração de cenários. A posição,
   busca, UF e camada de cada visitante não alteram a produção nacional de eventos.
   Cenários de duplicidade e atraso são ferramentas de teste operadas pela CLI.
+
+O stream usa um listener PostgreSQL por instância da API, compartilhado entre
+os visitantes; considere essa conexão no orçamento de `max_connections` do banco.
+Notificações são entregues após commit e enviam apenas as unidades alteradas.
+REST completo fica para carga inicial/reconexão. O Nginx desliga buffering nessa
+rota e os heartbeats SSE mantêm o fluxo aberto. Consulte o
+[contrato SSE](contracts/occupancy-stream-v1.md), que entrega o item da #78 e o
+consumo previsto na #79.
 
 Os dados são sintéticos e identificados como simulação. O histórico de 24 horas,
 a retenção de 168 horas e a marca de atualização vencida após 20 minutos continuam
