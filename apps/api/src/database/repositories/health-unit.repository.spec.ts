@@ -34,4 +34,54 @@ describe('HealthUnitRepository', () => {
     await expect(repository.saveMany(units)).resolves.toBe(units);
     expect(save).toHaveBeenCalledWith(units);
   });
+
+  it('atomically upserts a state and deactivates units missing from it', async () => {
+    const units = [
+      Object.assign(new HealthUnitEntity(), {
+        cnesCode: '1234567',
+        state: 'SP',
+      }),
+    ];
+    const upsert = vi.fn().mockResolvedValue(undefined);
+    const update = vi.fn().mockResolvedValue({ affected: 2 });
+    const manager = { upsert, update };
+    const transaction = vi.fn(async (work) => work(manager));
+    const repository = new HealthUnitRepository({
+      manager: { transaction },
+    } as never);
+
+    await expect(repository.replaceState('SP', units)).resolves.toEqual({
+      deactivated: 2,
+    });
+
+    expect(upsert).toHaveBeenCalledWith(HealthUnitEntity, units, {
+      conflictPaths: ['cnesCode'],
+      skipUpdateIfNoValuesChanged: true,
+    });
+    expect(update).toHaveBeenCalledWith(
+      HealthUnitEntity,
+      expect.objectContaining({ state: 'SP', isActive: true }),
+      { isActive: false },
+    );
+  });
+
+  it('refuses an empty or mixed-state replacement before opening a transaction', async () => {
+    const transaction = vi.fn();
+    const repository = new HealthUnitRepository({
+      manager: { transaction },
+    } as never);
+
+    await expect(repository.replaceState('SP', [])).rejects.toThrow(
+      'empty catalog',
+    );
+    await expect(
+      repository.replaceState('SP', [
+        Object.assign(new HealthUnitEntity(), {
+          cnesCode: '1234567',
+          state: 'RJ',
+        }),
+      ]),
+    ).rejects.toThrow('another state');
+    expect(transaction).not.toHaveBeenCalled();
+  });
 });
