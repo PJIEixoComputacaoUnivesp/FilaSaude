@@ -90,6 +90,25 @@ O cenário imprime relatórios parciais por ciclo e um relatório JSON final com
 eventos gerados, respostas, retries e percentis de latência. Para permitir um
 ambiente controlado não local, use `--allow-nonlocal-target` explicitamente.
 
+Há dois modos de duração. Com um valor positivo em `--duration-seconds`, a
+execução termina automaticamente. Com `--duration-seconds 0`, o cenário
+`national` continua até receber `CTRL+C` ou `SIGTERM`:
+
+```bash
+pnpm --filter @filasaude/simulador dev \
+  --scenario national \
+  --allow-load-test \
+  --duration-seconds 0 \
+  --interval-seconds 120 \
+  --concurrency 32 \
+  --source-ids occupancy-feed-001,occupancy-feed-002
+```
+
+O modo contínuo é apropriado para soak tests, mas exige monitoramento do banco,
+pois a inbox continuará crescendo enquanto o processamento posterior não
+estiver disponível. O cancelamento aguarda as requisições em andamento e emite
+o relatório final.
+
 O runner nacional está separado da CLI para permitir futura integração com a
 aplicação. Uma página web não deve receber `SIMULATOR_SOURCE_SECRET`; a
 integração deverá acionar um serviço backend controlado ou um job autorizado,
@@ -129,7 +148,7 @@ parâmetros são:
 | `--national-event-scenario` | `SIMULATOR_NATIONAL_EVENT_SCENARIO` | `normal` | Comportamento dos eventos no `national` |
 | `--delay-seconds` | `SIMULATOR_DELAY_SECONDS` | `0` | Atraso dos timestamps no cenário `delayed` |
 | `--source-ids` | `SIMULATOR_SOURCE_IDS` | fonte única | Fontes sintéticas separadas por vírgula |
-| `--duration-seconds` | `SIMULATOR_DURATION_SECONDS` | `300` | Duração do cenário `national` |
+| `--duration-seconds` | `SIMULATOR_DURATION_SECONDS` | `300` | Duração; `0` mantém o `national` até cancelamento |
 | `--concurrency` | `SIMULATOR_CONCURRENCY` | `10` | Envios simultâneos máximos |
 | `--allow-load-test` | `SIMULATOR_ALLOW_LOAD_TEST` | `false` | Autoriza a carga nacional |
 

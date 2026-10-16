@@ -408,6 +408,32 @@ sem `429` e sem retries. Os valores de latência observados foram p50 de
 13–15 ms, p95 de 22–26 ms e p99 de 28–33 ms. Esses números caracterizam apenas
 o ambiente local utilizado e não substituem uma medição de produção.
 
+### Execução nacional contínua
+
+Para um teste sem horário final, use a mesma configuração de fontes do teste
+nacional completo e altere somente a duração:
+
+```powershell
+node --experimental-strip-types apps/simulador/src/main.ts `
+  --api-url http://localhost:3000 `
+  --source-ids $env:SIMULATOR_SOURCE_IDS `
+  --scenario national `
+  --allow-load-test `
+  --duration-seconds 0 `
+  --interval-seconds 120 `
+  --concurrency 32
+```
+
+O valor zero significa execução contínua somente para `national`. Para encerrar,
+pressione `CTRL+C` uma vez e aguarde o relatório final. O simulador interrompe
+novos agendamentos, aguarda requisições já iniciadas e encerra de forma
+graciosa.
+
+Esse modo deve ser tratado como um teste de permanência (soak test). Como o
+processamento posterior ainda depende da issue #78, os registros permanecerão
+na inbox e o banco continuará crescendo. Durante a execução, acompanhe volume,
+idade dos registros mais antigos, espaço disponível e recursos do PostgreSQL.
+
 ## 9. Teste automatizado contra a API
 
 Com a API em execução e o segredo já definido no terminal do simulador:
