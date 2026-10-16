@@ -66,6 +66,27 @@ export class SimulationState {
     };
   }
 
+  /**
+   * A new event, with its own eventId, for values the unit already had at
+   * `observedAt`: a late delivery of a real past state.
+   */
+  snapshotOf(
+    unit: SimulatorUnit,
+    categories: readonly SimulationCategory[],
+    observedAt: Date,
+  ): OccupancySnapshot {
+    const sequence = this.sequence;
+    this.sequence += 1;
+    return {
+      eventId: createEventId(this.seed, unit.id, sequence, observedAt),
+      type: SIMULATOR_SNAPSHOT_TYPE,
+      unitCnes: unit.id,
+      occurredAt: new Date(observedAt.getTime() - 1000).toISOString(),
+      observedAt: observedAt.toISOString(),
+      categories: categories.map((category) => ({ ...category })),
+    };
+  }
+
   advance(units: readonly SimulatorUnit[], cycle: number): void {
     if (!Number.isInteger(cycle) || cycle < 0) {
       throw new Error('cycle deve ser um inteiro não negativo.');

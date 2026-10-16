@@ -31,6 +31,12 @@ export interface SimulationRunnerOptions {
 }
 
 const DEFAULT_CONTROL_POLL_MS = 10_000;
+/**
+ * A new choice on the site starts a cycle early, but never sooner than this
+ * after the previous one: quick changes would otherwise go past the webhook
+ * limit of 60 requests per minute per source.
+ */
+const MIN_CYCLE_GAP_MS = 30_000;
 /** Share of the capacity a `surge` adds per cycle, up to its ceiling. */
 const SURGE_STEP = 0.1;
 const SURGE_CEILING = 0.95;
@@ -51,6 +57,11 @@ export class SimulationRunner {
   private readonly onScenarioChanged?: SimulationRunnerOptions['onScenarioChanged'];
   private scenario: SimulationScenario;
   private roles: ReadonlyMap<string, ShowcaseRole> = new Map();
+  /** Values sent per unit, kept long enough to resend one as a late event. */
+  private readonly sent = new Map<
+    string,
+    { at: number; categories: OccupancySnapshot['categories'] }[]
+  >();
 
   constructor(
     config: SimulatorConfig,
@@ -130,7 +141,13 @@ export class SimulationRunner {
       await this.sleep(chunk, signal);
       if (signal?.aborted) return;
       remaining -= chunk;
-      if (await this.followSite(signal)) return;
+      if (await this.followSite(signal)) {
+        const waited = interval - remaining;
+        if (waited < MIN_CYCLE_GAP_MS) {
+          await this.sleep(MIN_CYCLE_GAP_MS - waited, signal);
+        }
+        return;
+      }
     }
   }
 
@@ -140,7 +157,7 @@ export class SimulationRunner {
     if (this.scenario === 'outage') return true;
 
     const observedAt = this.now();
-    for (const unit of this.units) {
+    for (const [index, unit] of this.units.entries()) {
       if (signal?.aborted) return false;
       const role = this.roles.get(unit.id);
       if (role?.kind === 'intermittent' && isSilent(observedAt)) continue;
@@ -152,22 +169,22 @@ export class SimulationRunner {
         unit,
         new Date(observedAt.getTime() - this.config.delaySeconds * 1000),
       );
-      const late = () =>
-        this.state.snapshotFor(
-          unit,
-          new Date(observedAt.getTime() - LATE_EVENT_DELAY_MS),
-        );
+      // Replay only on every other unit: three requests per unit would go
+      // past the webhook rate limit with the whole sample.
+      const replays = this.scenario === 'replay' && index % 2 === 0;
       const extras: OccupancySnapshot[] = [];
       if (
         (cycle === 0 && this.scenario === 'duplicate') ||
         role?.kind === 'duplicate' ||
-        this.scenario === 'replay'
+        replays
       ) {
         extras.push(snapshot);
       }
-      if (role?.kind === 'late' || this.scenario === 'replay') {
-        extras.push(late());
+      if (role?.kind === 'late' || replays) {
+        const late = this.lateSnapshot(unit, observedAt);
+        if (late) extras.push(late);
       }
+      this.remember(unit.id, snapshot);
 
       for (const item of [snapshot, ...extras]) {
         let result: SnapshotTransportResult;
@@ -182,6 +199,34 @@ export class SimulationRunner {
       }
     }
     return true;
+  }
+
+  private remember(unitCnes: string, snapshot: OccupancySnapshot): void {
+    const at = Date.parse(snapshot.observedAt);
+    const kept = (this.sent.get(unitCnes) ?? []).filter(
+      (entry) => at - entry.at <= 2 * LATE_EVENT_DELAY_MS,
+    );
+    kept.push({ at, categories: snapshot.categories });
+    this.sent.set(unitCnes, kept);
+  }
+
+  /**
+   * A late event resends, with a new eventId, the values the unit really had
+   * about LATE_EVENT_DELAY_MS ago, so the history never shows a value at a
+   * time it did not hold. Until there is such a past value, nothing is sent.
+   */
+  private lateSnapshot(
+    unit: SimulatorUnit,
+    observedAt: Date,
+  ): OccupancySnapshot | null {
+    const target = observedAt.getTime() - LATE_EVENT_DELAY_MS;
+    const past = (this.sent.get(unit.id) ?? []).filter(
+      (entry) => entry.at <= target,
+    );
+    const entry = past[past.length - 1];
+    return entry
+      ? this.state.snapshotOf(unit, entry.categories, new Date(entry.at))
+      : null;
   }
 }
 

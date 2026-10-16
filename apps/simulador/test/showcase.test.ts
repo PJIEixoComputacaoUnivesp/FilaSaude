@@ -72,13 +72,8 @@ test('mantém faixas fixas, duplica, atrasa e silencia conforme o papel', async 
   assert.equal(duplicate.length, 2);
   assert.equal(duplicate[0].eventId, duplicate[1].eventId);
 
-  const late = byUnit('1000006');
-  assert.equal(late.length, 2);
-  assert.notEqual(late[0].eventId, late[1].eventId);
-  assert.equal(
-    Date.parse(late[0].observedAt) - Date.parse(late[1].observedAt),
-    10 * 60_000,
-  );
+  // No past value yet on the first cycle, so no late event.
+  assert.equal(byUnit('1000006').length, 1);
 
   assert.equal(byUnit('1000007').length, 1);
 });
@@ -87,4 +82,31 @@ test('a unidade intermitente volta a enviar fora da janela de silêncio', async 
   const sent = await runCycle(new Date('2026-10-15T12:10:00.000Z'));
 
   assert.equal(sent.filter((snapshot) => snapshot.unitCnes === '1000004').length, 1);
+});
+
+test('o evento atrasado reenvia um valor que a unidade teve de fato', async () => {
+  const controller = new AbortController();
+  const sent: OccupancySnapshot[] = [];
+  let now = new Date('2026-10-15T12:10:00.000Z');
+  const runner = new SimulationRunner(config, units, new SimulationState(config.seed), {
+    now: () => now,
+    sleep: async () => {
+      // The next cycle runs ten minutes later; stop after it.
+      if (now.getTime() > Date.parse('2026-10-15T12:10:00.000Z')) controller.abort();
+      now = new Date(now.getTime() + 10 * 60_000);
+    },
+    send: async (snapshot) => {
+      sent.push(snapshot);
+      return { attempts: 1, status: 202 };
+    },
+  });
+
+  await runner.run(controller.signal);
+
+  const late = sent.filter((snapshot) => snapshot.unitCnes === '1000006');
+  assert.equal(late.length, 3);
+  const [first, , delayed] = late;
+  assert.equal(delayed.observedAt, first.observedAt);
+  assert.deepEqual(delayed.categories, first.categories);
+  assert.notEqual(delayed.eventId, first.eventId);
 });

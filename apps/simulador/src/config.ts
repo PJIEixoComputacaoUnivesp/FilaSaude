@@ -39,6 +39,12 @@ export interface SimulatorConfig {
   delaySeconds: number;
   /** Follows the scenario chosen on the site (GET /occupancy/simulation). */
   followSite: boolean;
+  /**
+   * The sample is the CNES list authorized for the source in
+   * WEBHOOK_SOURCE_CONFIG: every one of them, and the ones missing from the
+   * catalog are skipped instead of stopping the simulator.
+   */
+  sampleFromSource: boolean;
 }
 
 export interface ParsedArguments {
@@ -232,9 +238,13 @@ export function loadConfig(
   const city = value('city', 'SIMULATOR_CITY') ?? null;
   let unitCnes = readUnitCnes(value('unit-cnes', 'SIMULATOR_UNIT_CNES'));
   // Without another criterion, the sample is every unit the source may update.
-  if (unitCnes.length === 0 && !municipalityCode && !city && latitude === null) {
-    unitCnes = sharedSource?.unitCnes ?? [];
-  }
+  const sampleFromSource =
+    unitCnes.length === 0 &&
+    !municipalityCode &&
+    !city &&
+    latitude === null &&
+    (sharedSource?.unitCnes.length ?? 0) > 0;
+  if (sampleFromSource) unitCnes = sharedSource!.unitCnes;
 
   return {
     apiUrl: value('api-url', 'SIMULATOR_API_URL', DEFAULT_API_URL)!,
@@ -246,7 +256,7 @@ export function loadConfig(
     latitude,
     longitude,
     radiusKm,
-    maxUnits,
+    maxUnits: sampleFromSource ? unitCnes.length : maxUnits,
     unitCnes,
     seed: value('seed', 'SIMULATOR_SEED', 'fila-saude-v1')!,
     intervalSeconds,
@@ -256,6 +266,7 @@ export function loadConfig(
     scenario,
     delaySeconds,
     followSite: value('follow-site', 'SIMULATOR_FOLLOW_SITE') === 'true',
+    sampleFromSource,
   };
 }
 

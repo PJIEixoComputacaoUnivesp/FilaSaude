@@ -75,3 +75,18 @@ test('segue o site só quando pedido explicitamente', () => {
     true,
   );
 });
+
+test('a amostra da fonte não é cortada pelo limite de unidades', () => {
+  const unitCnes = Array.from({ length: 12 }, (_, index) =>
+    String(1000000 + index),
+  );
+  const config = loadConfig([], {
+    WEBHOOK_SOURCE_CONFIG: JSON.stringify({
+      'occupancy-feed': { secret: 'shared', unitCnes },
+    }),
+  });
+
+  assert.equal(config.sampleFromSource, true);
+  assert.equal(config.unitCnes.length, 12);
+  assert.equal(config.maxUnits, 12);
+});

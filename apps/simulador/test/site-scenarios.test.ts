@@ -73,12 +73,12 @@ test('outage sends nothing', async () => {
   assert.equal((await cycles('outage', 2)).length, 0);
 });
 
-test('replay repeats each snapshot and adds a late one', async () => {
+test('replay repeats each snapshot of every other unit', async () => {
   const sent = await cycles('replay', 1);
 
-  assert.equal(sent.length, 3);
+  // No value ten minutes old yet, so only the repeat on the first cycle.
+  assert.equal(sent.length, 2);
   assert.equal(sent[0].eventId, sent[1].eventId);
-  assert.ok(Date.parse(sent[2].observedAt) < Date.parse(sent[0].observedAt));
 });
 
 test('follows the site: a new choice starts a cycle before the interval ends', async () => {
@@ -108,10 +108,11 @@ test('follows the site: a new choice starts a cycle before the interval ends', a
 
   await runner.run(controller.signal);
 
-  // One normal cycle, then the switch to outage after 20 s: no more sends.
+  // One normal cycle, then the switch to outage after 20 s, held until 30 s
+  // after the previous cycle: no more sends.
   assert.equal(sends, 1);
   assert.deepEqual(changes, ['outage']);
-  assert.deepEqual(sleeps.slice(0, 2), [10_000, 10_000]);
+  assert.deepEqual(sleeps.slice(0, 3), [10_000, 10_000, 10_000]);
   assert.equal(runner.currentScenario, 'outage');
 });
 

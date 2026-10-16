@@ -15,7 +15,22 @@ async function main(): Promise<void> {
 
   const config = loadConfig(process.argv.slice(2));
   const catalog = await fetchUnits(config.apiUrl, config.state);
-  const selected = selectUnits(catalog, config);
+  let selectionConfig = config;
+  if (config.sampleFromSource) {
+    const known = new Set(catalog.map((unit) => unit.id));
+    const missing = config.unitCnes.filter((code) => !known.has(code));
+    if (missing.length > 0) {
+      console.warn(
+        `CNES autorizados que não estão no catálogo e ficam fora da simulação: ${missing.join(', ')}.`,
+      );
+    }
+    const present = config.unitCnes.filter((code) => known.has(code));
+    if (present.length === 0) {
+      throw new Error('Nenhum CNES autorizado para a fonte está no catálogo.');
+    }
+    selectionConfig = { ...config, unitCnes: present, maxUnits: present.length };
+  }
+  const selected = selectUnits(catalog, selectionConfig);
   const state = new SimulationState(config.seed);
   const selectedCnes = new Set(selected.map((unit) => unit.id));
   for (const override of config.occupancyOverrides) {

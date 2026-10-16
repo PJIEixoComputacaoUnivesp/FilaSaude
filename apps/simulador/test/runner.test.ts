@@ -23,6 +23,7 @@ const config: SimulatorConfig = {
   scenario: 'normal',
   delaySeconds: 0,
   followSite: false,
+  sampleFromSource: false,
 };
 
 const units: SimulatorUnit[] = [
