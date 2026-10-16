@@ -258,6 +258,36 @@ O terminal exibe relatórios parciais e um relatório final. O teste mede a
 ingestão do simulador até a inbox. Processamento, estado atual e backlog
 dependem da issue #78. Não execute este cenário contra produção.
 
+O `--interval-seconds` é uma referência para a cadência de cada unidade, e não
+um ciclo em que todas enviam juntas. O simulador cria uma agenda determinística
+independente por CNES. A mesma seed reproduz a mesma agenda, enquanto unidades
+diferentes chegam em momentos diferentes.
+
+Para combinar a carga nacional com os cenários de comportamento existentes:
+
+```powershell
+# Reenvia o primeiro evento de cada unidade com o mesmo eventId
+node --experimental-strip-types apps/simulador/src/main.ts `
+  --api-url http://localhost:3000 `
+  --scenario national `
+  --national-event-scenario duplicate `
+  --allow-load-test `
+  --duration-seconds 60
+
+# Gera eventos nacionais com timestamps 10 minutos atrasados
+node --experimental-strip-types apps/simulador/src/main.ts `
+  --api-url http://localhost:3000 `
+  --scenario national `
+  --national-event-scenario delayed `
+  --delay-seconds 600 `
+  --allow-load-test `
+  --duration-seconds 60
+```
+
+Todas as unidades continuam sendo enviadas para a API, independentemente da
+posição do usuário. A posição deve influenciar somente as consultas e os dados
+exibidos no mapa.
+
 ## 9. Teste automatizado contra a API
 
 Com a API em execução e o segredo já definido no terminal do simulador:

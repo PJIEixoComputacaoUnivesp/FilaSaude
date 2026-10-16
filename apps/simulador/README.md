@@ -64,10 +64,14 @@ pnpm --filter @filasaude/simulador dev --unit-cnes 1234567,7654321 --interval-se
 
 ### Carga nacional controlada
 
+O cenário `national` cria uma agenda independente para cada unidade retornada
+por `/units?state=ALL`. O intervalo é uma referência para a cadência média por
+unidade; os eventos não são sincronizados em ciclos globais.
+
 O cenário `national` consulta todas as unidades retornadas por
-`/units?state=ALL`, distribui os envios ao longo do intervalo e encerra após a
-duração configurada. Ele exige autorização explícita e aceita somente destino
-local por padrão:
+`/units?state=ALL`, distribui os envios com agenda independente e encerra após
+a duração configurada. Ele exige autorização explícita e aceita somente
+destino local por padrão:
 
 ```bash
 pnpm --filter @filasaude/simulador dev \
@@ -91,6 +95,20 @@ aplicação. Uma página web não deve receber `SIMULATOR_SOURCE_SECRET`; a
 integração deverá acionar um serviço backend controlado ou um job autorizado,
 reutilizando o runner e suas métricas no lado servidor.
 
+O comportamento de cada evento nacional pode reutilizar os cenários existentes.
+Por padrão, os eventos são normais. Para reenviar o primeiro evento de cada
+unidade com o mesmo `eventId`, use `--national-event-scenario duplicate`. Para
+gerar timestamps atrasados, use `delayed` junto com `--delay-seconds`:
+
+```bash
+pnpm --filter @filasaude/simulador dev \
+  --scenario national \
+  --national-event-scenario delayed \
+  --delay-seconds 600 \
+  --allow-load-test \
+  --duration-seconds 300
+```
+
 Opções também podem ser informadas pelas variáveis `SIMULATOR_*`. Os principais
 parâmetros são:
 
@@ -105,9 +123,10 @@ parâmetros são:
 | `--radius-km` | `SIMULATOR_RADIUS_KM` | `25` | Raio para seleção por coordenadas |
 | `--max-units` | `SIMULATOR_MAX_UNITS` | `10` (`national`: todas) | Limite de unidades |
 | `--seed` | `SIMULATOR_SEED` | `fila-saude-v1` | Reprodutibilidade do cenário |
-| `--interval-seconds` | `SIMULATOR_INTERVAL_SECONDS` | `120` | Intervalo entre ciclos |
+| `--interval-seconds` | `SIMULATOR_INTERVAL_SECONDS` | `120` | Referência da cadência média por unidade |
 | `--set-occupied` | `SIMULATOR_SET_OCCUPIED` | — | Valores iniciais `CNES:CATEGORIA:VALOR`, separados por vírgula |
-| `--scenario` | `SIMULATOR_SCENARIO` | `normal` | Cenário `normal`, `duplicate` ou `delayed` |
+| `--scenario` | `SIMULATOR_SCENARIO` | `normal` | Cenário `normal`, `duplicate`, `delayed` ou `national` |
+| `--national-event-scenario` | `SIMULATOR_NATIONAL_EVENT_SCENARIO` | `normal` | Comportamento dos eventos no `national` |
 | `--delay-seconds` | `SIMULATOR_DELAY_SECONDS` | `0` | Atraso dos timestamps no cenário `delayed` |
 | `--source-ids` | `SIMULATOR_SOURCE_IDS` | fonte única | Fontes sintéticas separadas por vírgula |
 | `--duration-seconds` | `SIMULATOR_DURATION_SECONDS` | `300` | Duração do cenário `national` |
