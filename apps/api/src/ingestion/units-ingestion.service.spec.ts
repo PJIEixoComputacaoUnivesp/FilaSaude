@@ -157,4 +157,29 @@ describe('UnitsIngestionService', () => {
     });
     expect(replaceState).not.toHaveBeenCalled();
   });
+
+  it('preserves the state catalog when CNES reports a partial inconsistency', async () => {
+    const fetchUnits = vi
+      .fn()
+      .mockRejectedValue(
+        new Error(
+          'CNES returned an incomplete collection: 1 of 2 records are inconsistent',
+        ),
+      );
+    const { service, replaceState } = build(fetchUnits);
+
+    await expect(
+      service.run([sp], { sleep: () => Promise.resolve() }),
+    ).rejects.toMatchObject({
+      failures: [
+        {
+          state: 'SP',
+          reason:
+            'CNES returned an incomplete collection: 1 of 2 records are inconsistent',
+        },
+      ],
+    });
+    expect(fetchUnits).toHaveBeenCalledTimes(3);
+    expect(replaceState).not.toHaveBeenCalled();
+  });
 });

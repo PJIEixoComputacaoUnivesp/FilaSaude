@@ -237,9 +237,10 @@ export class CnesClient {
   }
 
   /**
-   * Normalizes each record on its own, so one inconsistent CNES record is
-   * skipped instead of failing the whole collection. Fails only when every
-   * record is invalid, which points to a source problem rather than bad data.
+   * Normalizes every record before exposing the collection. Any inconsistent
+   * record makes the collection incomplete, so the ingestion must preserve
+   * the previously persisted state catalog instead of treating that unit as
+   * absent.
    */
   private normalizeAll(
     records: readonly JsonRecord[],
@@ -264,13 +265,12 @@ export class CnesClient {
     const reasons = [...skipped]
       .map(([reason, count]) => `${reason} (${count})`)
       .join('; ');
-    if (skippedCount === records.length) {
-      throw new Error(`CNES returned no valid establishment: ${reasons}`);
-    }
-    this.logger.warn(
-      `Skipped ${skippedCount} of ${records.length} CNES records: ${reasons}`,
+    this.logger.error(
+      `Rejected incomplete CNES collection: ${skippedCount} of ${records.length} records are inconsistent: ${reasons}`,
     );
-    return units;
+    throw new Error(
+      `CNES returned an incomplete collection: ${skippedCount} of ${records.length} records are inconsistent: ${reasons}`,
+    );
   }
 
   private async fetchRecords(

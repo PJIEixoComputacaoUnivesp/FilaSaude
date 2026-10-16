@@ -113,9 +113,9 @@ describe('CnesClient', () => {
     ]);
   });
 
-  it('skips invalid records instead of failing the whole collection', async () => {
-    const warn = vi
-      .spyOn(Logger.prototype, 'warn')
+  it('rejects a partially inconsistent collection', async () => {
+    const error = vi
+      .spyOn(Logger.prototype, 'error')
       .mockImplementation(() => undefined);
     mockCnes([
       establishment(-23.55, -46.63),
@@ -123,15 +123,15 @@ describe('CnesClient', () => {
       establishment(-22.9, -43.2, { codigo_cnes: 3, codigo_municipio: 1 }),
     ]);
 
-    const units = await client.fetchUnits(null);
-
-    expect(units.map((unit) => unit.id)).toEqual(['1234567']);
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining('Skipped 2 of 3 CNES records'),
+    await expect(client.fetchUnits(null)).rejects.toThrow(
+      'CNES returned an incomplete collection: 2 of 3 records are inconsistent',
+    );
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining('Rejected incomplete CNES collection'),
     );
   });
 
-  it('skips records with invalid identifiers or source dates', async () => {
+  it('rejects records with invalid identifiers or source dates', async () => {
     mockCnes([
       establishment(-23.55, -46.63),
       establishment(-23.55, -46.63, { codigo_cnes: 12_345_678 }),
@@ -141,16 +141,16 @@ describe('CnesClient', () => {
       }),
     ]);
 
-    const units = await client.fetchUnits(parseState('SP'));
-
-    expect(units.map(({ id }) => id)).toEqual(['1234567']);
+    await expect(client.fetchUnits(parseState('SP'))).rejects.toThrow(
+      'CNES returned an incomplete collection: 2 of 3 records are inconsistent',
+    );
   });
 
   it('fails when every record is invalid', async () => {
     mockCnes([establishment(-23.55, -46.63, { codigo_uf: 99 })]);
 
     await expect(client.fetchUnits(null)).rejects.toThrow(
-      'CNES returned no valid establishment',
+      'CNES returned an incomplete collection',
     );
   });
 
