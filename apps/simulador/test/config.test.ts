@@ -15,6 +15,27 @@ test('lê configuração por argumentos e aplica valores padrão', () => {
   assert.equal(config.radiusKm, 25);
   assert.equal(config.maxUnits, 10);
   assert.equal(config.intervalSeconds, 120);
+  assert.deepEqual(config.sourceIds, ['occupancy-feed']);
+});
+
+test('configura o cenário nacional com proteção e limites padrão', () => {
+  const config = loadConfig(
+    ['--scenario', 'national', '--allow-load-test', '--source-ids', 'feed-a,feed-b'],
+    {},
+  );
+
+  assert.equal(config.scenario, 'national');
+  assert.equal(config.maxUnits, Number.MAX_SAFE_INTEGER);
+  assert.equal(config.durationSeconds, 300);
+  assert.equal(config.concurrency, 10);
+  assert.deepEqual(config.sourceIds, ['feed-a', 'feed-b']);
+});
+
+test('exige autorização para o cenário nacional', () => {
+  assert.throws(
+    () => loadConfig(['--scenario', 'national'], {}),
+    /allow-load-test/,
+  );
 });
 
 test('rejeita coordenadas incompletas', () => {

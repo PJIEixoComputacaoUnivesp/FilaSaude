@@ -8,6 +8,7 @@ import type { SimulatorUnit } from '../src/units.ts';
 const config: SimulatorConfig = {
   apiUrl: 'http://localhost:3000',
   sourceId: 'occupancy-feed',
+  sourceIds: ['occupancy-feed'],
   sourceSecret: 'test-secret',
   state: 'SP',
   municipalityCode: '3550308',
@@ -22,6 +23,11 @@ const config: SimulatorConfig = {
   occupancyOverrides: [],
   scenario: 'normal',
   delaySeconds: 0,
+  durationSeconds: 300,
+  concurrency: 10,
+  reportIntervalSeconds: 10,
+  allowLoadTest: false,
+  allowNonlocalTarget: false,
 };
 
 const units: SimulatorUnit[] = [
