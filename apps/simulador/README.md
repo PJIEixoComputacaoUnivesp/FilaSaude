@@ -39,6 +39,74 @@ Não são geradas pessoas em espera, pessoas em atendimento nem atendimentos
 concluídos, e o percentual não estima fila, espera ou capacidade de atendimento.
 Essas métricas ficam para as issues #107, #108, #109 e #110. Refs #106.
 
+### Como a seed gera a ocupação
+
+A seed é um texto usado como ponto de partida para cálculos reproduzíveis.
+A configuração em [`src/config.ts`](src/config.ts) procura primeiro `--seed`,
+depois `SIMULATOR_SEED` e, na ausência dos dois, usa `fila-saude-v1`.
+Esse nome é apenas o valor padrão; não identifica um serviço ou cadastro externo.
+
+A CLI cria um `SimulationState` com essa seed. Em
+[`src/simulation.ts`](src/simulation.ts), o estado de cada CNES é inicializado
+uma única vez por execução, com capacidades fictícias nestas faixas inclusivas:
+
+| Categoria | Código | Capacidade gerada |
+| --- | --- | --- |
+| Observação | `observation` | 20 a 60 |
+| Estabilização | `stabilization` | 4 a 12 |
+| Internação | `inpatient` | 8 a 24 |
+
+Para o CNES `5567335`, por exemplo, a capacidade de observação usa o texto
+`fila-saude-v1:5567335:observation:capacity`. A ocupação inicial usa
+`fila-saude-v1:5567335:observation:occupied` e fica entre zero e a capacidade
+gerada. `--set-occupied` pode substituir essa ocupação inicial.
+
+Cada texto passa por SHA-256. Os primeiros quatro bytes do hash são lidos como
+um inteiro sem sinal de 32 bits, em ordem big-endian. A função converte esse
+inteiro para a faixa desejada:
+
+```ts
+const digest = createHash('sha256').update(text).digest();
+const value = digest.readUInt32BE(0) / 4_294_967_296;
+const result = minimum + Math.floor(value * (maximum - minimum + 1));
+```
+
+Após o primeiro snapshot, cada atualização do estado usa
+`${seed}:${unitCnes}:${code}:${occurrence}`, com contador iniciado em `1`,
+para calcular uma variação de −2 a +2 vagas ocupadas por categoria. No runner
+local, esse contador acompanha os ciclos; no nacional, acompanha as ocorrências
+de cada unidade. Aplicando `minimum = -2` e `maximum = 2`, o cálculo fica
+`-2 + Math.floor(value * 5)`:
+
+| Valor normalizado (`value`) | Variação |
+| --- | ---: |
+| 0 até menos de 0,2 | −2 |
+| 0,2 até menos de 0,4 | −1 |
+| 0,4 até menos de 0,6 | 0 |
+| 0,6 até menos de 0,8 | +1 |
+| 0,8 até menos de 1 | +2 |
+
+Por exemplo, `value = 0.73` produz `-2 + Math.floor(0.73 * 5) = 1`.
+A ocupação resultante é limitada a zero e à capacidade da categoria, que
+permanece fixa durante a execução.
+
+O fluxo completo é: **configuração da seed → geração das capacidades e ocupações
+→ snapshots enviados por webhook → processamento na API → exibição no site**.
+A API recebe as quantidades geradas; não precisa da seed para calcular o
+percentual de ocupação. O SHA-256 usado na geração dos números é separado da
+assinatura HMAC-SHA256 que autentica o webhook.
+
+A mesma seed, o mesmo CNES, a mesma categoria e o mesmo contador produzem os
+mesmos números. Isso reproduz a sequência de ocupação, mas não os timestamps
+ou os IDs dos eventos, que também dependem do horário. Como o estado fica em
+memória, reiniciar o processo com a mesma configuração reinicia a sequência.
+No cenário nacional, a seed também determina a agenda de envios e a distribuição
+dos CNES entre fontes; veja [`src/national-scheduler.ts`](src/national-scheduler.ts)
+e [`src/national-runner.ts`](src/national-runner.ts).
+
+Essa variação não considera horário de pico, demanda real ou características
+clínicas da unidade.
+
 ## Pré-requisitos
 
 Na raiz do monorepo:
