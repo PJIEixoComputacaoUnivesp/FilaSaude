@@ -186,15 +186,17 @@ pnpm --filter @filasaude/simulador dev \
   --source-ids occupancy-feed-001,occupancy-feed-002
 ```
 
-O modo contínuo é apropriado para soak tests, mas exige monitoramento do banco,
-pois a inbox continuará crescendo enquanto o processamento posterior não
-estiver disponível. O cancelamento aguarda as requisições em andamento e emite
-o relatório final.
+O modo contínuo é apropriado para soak tests, mas exige monitoramento do banco.
+O processador da API já drena a inbox e remove eventos processados conforme a
+retenção; pendentes e falhos não são removidos por essa limpeza. Se o processador
+estiver desligado ou não acompanhar a entrada, o backlog cresce. O cancelamento
+aguarda o encerramento das tarefas em andamento, que podem ser canceladas,
+e emite o relatório final. Consulte o
+[runbook](../../docs/operations.md).
 
-O runner nacional está separado da CLI para permitir futura integração com a
-aplicação. Uma página web não deve receber `SIMULATOR_SOURCE_SECRET`; a
-integração deverá acionar um serviço backend controlado ou um job autorizado,
-reutilizando o runner e suas métricas no lado servidor.
+O runner nacional está separado da CLI, que o executa no lado servidor. A
+integração atual usa o serviço `simulator` do Compose; o site apenas consulta
+os resultados da API. Uma página web não deve receber `SIMULATOR_SOURCE_SECRET`.
 
 O comportamento de cada evento nacional pode reutilizar os cenários existentes.
 Por padrão, os eventos são normais. Para reenviar o primeiro evento de cada
@@ -239,9 +241,10 @@ parâmetros são:
 As unidades são selecionadas uma vez no início da execução e permanecem fixas.
 O estado é mantido somente em memória e é perdido ao encerrar o processo.
 
-O cenário nacional é uma carga de ingestão do cliente até a inbox. Ele não mede
-processamento, estado atual ou backlog escoado, que dependem da issue
-[#78](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/issues/78).
+As métricas do cenário nacional medem o envio do cliente até a aceitação HTTP.
+O processamento, o estado atual e o backlog são verificados separadamente na
+API e no banco, conforme o [fluxo completo](../../docs/architecture-flow.md).
+Uma resposta `202` não confirma que o evento já apareceu na tela.
 
 Exemplo de cenário com ocupação inicial controlada:
 

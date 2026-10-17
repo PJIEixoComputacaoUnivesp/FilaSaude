@@ -175,9 +175,15 @@ Os registros esperados devem conter:
 
 - `source_id` igual a `occupancy-feed`;
 - os CNES selecionados;
-- `status` igual a `pending`;
+- `status` igual a `pending` antes do processamento ou `processed` depois dele;
 - um novo `event_id` em cada snapshot;
 - horários recentes em `received_at`.
+
+Com o processador ativo, eventos podem chegar a `processed` antes da consulta;
+isso é esperado. Para testar especificamente o acúmulo na inbox, configure
+`OCCUPANCY_PROCESSOR_ENABLED=false` na API local e reinicie-a antes do envio.
+Ao terminar, reative o processador e verifique a drenagem. Não confunda
+aceitação HTTP com projeção concluída; consulte o [runbook](operations.md).
 
 ## 7. Testar um cenário controlado
 
