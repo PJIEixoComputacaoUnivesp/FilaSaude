@@ -180,8 +180,9 @@ function findOnlyMarker(page: Page) {
       ".leaflet-overlay-pane canvas",
     )) {
       const { width, height } = canvas;
-      const pixels = canvas.getContext("2d")!.getImageData(0, 0, width, height)
-        .data;
+      const pixels = canvas
+        .getContext("2d")!
+        .getImageData(0, 0, width, height).data;
       let sumX = 0;
       let sumY = 0;
       let count = 0;
@@ -204,7 +205,7 @@ function findOnlyMarker(page: Page) {
   });
 }
 
-test("no computador, o popup de uma unidade perto do norte abre para baixo", async ({
+test("mantém o popup do norte visível ao abrir e ligar a ocupação", async ({
   page,
 }) => {
   const boaVista = unit("2566206", "UPA 24H COSME E SILVA", "Boa Vista", "RR");
@@ -220,6 +221,11 @@ test("no computador, o popup de uma unidade perto do norte abre para baixo", asy
       },
     }),
   );
+  await page.route("**/api/occupancy", (route) =>
+    route.fulfill({
+      json: { data: [{ ...highOccupancy, unitCnes: boaVista.id }], metadata },
+    }),
+  );
   await page.goto("/");
   await expect(page.getByText("1 unidade no mapa.")).toBeVisible();
 
@@ -229,7 +235,9 @@ test("no computador, o popup de uma unidade perto do norte abre para baixo", asy
     .poll(async () => {
       const previous = marker;
       marker = await findOnlyMarker(page);
-      return marker !== null && JSON.stringify(marker) === JSON.stringify(previous);
+      return (
+        marker !== null && JSON.stringify(marker) === JSON.stringify(previous)
+      );
     })
     .toBe(true);
   marker = marker!;
@@ -250,6 +258,23 @@ test("no computador, o popup de uma unidade perto do norte abre para baixo", asy
   expect(box.y + box.height).toBeLessThanOrEqual(map.y + map.height);
   // The map stays put instead of trying to pan the popup into view.
   expect(await panePosition()).toBe(before);
+  const panel = page.getByRole("region", { name: "Controles do mapa" });
+  await panel.getByText("Ocupação simulada de leitos", { exact: true }).click();
+  await expect(
+    popup.getByText("Ocupação alta (90%)", { exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(async () => {
+      const box = await popup.boundingBox();
+      const map = await page.locator(".leaflet-container").boundingBox();
+      return Boolean(
+        box &&
+        map &&
+        box.y >= map.y &&
+        box.y + box.height <= map.y + map.height,
+      );
+    })
+    .toBe(true);
 });
 
 test("no computador, o popup de uma unidade no litoral leste cabe no mapa", async ({
@@ -276,7 +301,9 @@ test("no computador, o popup de uma unidade no litoral leste cabe no mapa", asyn
     .poll(async () => {
       const previous = marker;
       marker = await findOnlyMarker(page);
-      return marker !== null && JSON.stringify(marker) === JSON.stringify(previous);
+      return (
+        marker !== null && JSON.stringify(marker) === JSON.stringify(previous)
+      );
     })
     .toBe(true);
   marker = marker!;
@@ -299,6 +326,73 @@ test("no computador, o popup de uma unidade no litoral leste cabe no mapa", asyn
   expect(await panePosition()).toBe(before);
 });
 
+for (const viewport of [
+  { width: 640, height: 360 },
+  { width: 667, height: 375 },
+  { width: 844, height: 390 },
+]) {
+  test(`mantém controles e popup acessíveis em paisagem ${viewport.width}x${viewport.height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await mockApi(page);
+    await page.route("**/api/units?state=ALL", (route) =>
+      route.fulfill({ json: unitsResponse }),
+    );
+    await page.goto("/?uf=SP&unidade=1234567");
+    const panel = page.getByRole("region", { name: "Controles do mapa" });
+    const toggle = panel.getByRole("switch", {
+      name: "Ocupação simulada de leitos",
+    });
+    await panel.getByText("Leitos simulados", { exact: true }).click();
+    await expect(toggle).toBeChecked();
+    await expect(
+      panel.getByText("Leitos fictícios. Não representam filas."),
+    ).toBeVisible();
+    const open = panel.getByRole("button", {
+      name: /^Abrir filtros e legenda/,
+    });
+    await expect(open).toBeInViewport();
+    await expect(page.getByRole("contentinfo")).toBeInViewport({ ratio: 1 });
+    expect(
+      await page.evaluate(() => ({
+        horizontal: document.documentElement.scrollWidth > innerWidth,
+        vertical: document.documentElement.scrollHeight > innerHeight,
+      })),
+    ).toEqual({ horizontal: false, vertical: false });
+
+    const popup = page.locator(".leaflet-popup");
+    await expect(popup).toBeVisible();
+    await expect
+      .poll(async () => {
+        const [box, map, controls] = await Promise.all([
+          popup.boundingBox(),
+          page.locator(".leaflet-container").boundingBox(),
+          panel.boundingBox(),
+        ]);
+        return Boolean(
+          box &&
+          map &&
+          controls &&
+          box.x >= controls.x + controls.width &&
+          box.y >= map.y &&
+          box.x + box.width <= map.x + map.width &&
+          box.y + box.height <= map.y + map.height,
+        );
+      })
+      .toBe(true);
+
+    await open.click();
+    const dialog = page.getByRole("dialog", { name: "Filtros e legenda" });
+    await expect(dialog).toBeVisible();
+    await expect(
+      dialog.getByRole("button", { name: "Voltar ao mapa" }),
+    ).toBeInViewport();
+    await page.keyboard.press("Escape");
+    await expect(open).toBeFocused();
+  });
+}
+
 test("a página do mapa não rola em celular com a barra do navegador ou deitado", async ({
   page,
 }) => {
@@ -312,29 +406,29 @@ test("a página do mapa não rola em celular com a barra do navegador ou deitado
     { width: 640, height: 360 },
     { width: 667, height: 375 },
   ]) {
-  await page.setViewportSize(viewport);
-  await page.goto("/?uf=SP");
-  await expect(page.getByText("3 unidades no mapa.").first()).toBeAttached();
+    await page.setViewportSize(viewport);
+    await page.goto("/?uf=SP");
+    await expect(page.getByText("3 unidades no mapa.").first()).toBeAttached();
 
-  const toggle = page
-    .getByRole("region", { name: "Controles do mapa" })
-    .getByRole("switch", { name: "Ocupação simulada de leitos" });
-  for (const checked of [false, true]) {
-    // The layer choice lasts for the session, across the viewports.
-    if (checked !== (await toggle.isChecked())) {
-      await toggle.focus();
-      await page.keyboard.press("Space");
-      await expect(toggle).toBeChecked({ checked });
+    const toggle = page
+      .getByRole("region", { name: "Controles do mapa" })
+      .getByRole("switch", { name: "Ocupação simulada de leitos" });
+    for (const checked of [false, true]) {
+      // The layer choice lasts for the session, across the viewports.
+      if (checked !== (await toggle.isChecked())) {
+        await toggle.focus();
+        await page.keyboard.press("Space");
+        await expect(toggle).toBeChecked({ checked });
+      }
+      expect(
+        await page.evaluate(
+          () =>
+            document.documentElement.scrollHeight <=
+            document.documentElement.clientHeight,
+        ),
+      ).toBe(true);
+      await expect(page.getByRole("contentinfo")).toBeInViewport();
     }
-    expect(
-      await page.evaluate(
-        () =>
-          document.documentElement.scrollHeight <=
-          document.documentElement.clientHeight,
-      ),
-    ).toBe(true);
-    await expect(page.getByRole("contentinfo")).toBeInViewport();
-  }
   }
 });
 
@@ -379,7 +473,9 @@ for (const viewport of [
     ).toBe(true);
 
     const open = page.getByRole("button", { name: /^Abrir filtros e legenda/ });
-    await expect(open).toHaveAccessibleName("Abrir filtros e legenda: São Paulo");
+    await expect(open).toHaveAccessibleName(
+      "Abrir filtros e legenda: São Paulo",
+    );
     await open.click();
     const dialog = page.getByRole("dialog", { name: "Filtros e legenda" });
     await expect(dialog).toBeVisible();
@@ -393,7 +489,9 @@ for (const viewport of [
     await stateSelect.selectOption("ALL");
     await expect(open).toHaveAccessibleName("Abrir filtros e legenda");
     await stateSelect.selectOption("SP");
-    await expect(open).toHaveAccessibleName("Abrir filtros e legenda: São Paulo");
+    await expect(open).toHaveAccessibleName(
+      "Abrir filtros e legenda: São Paulo",
+    );
     await dialog
       .getByText("Legenda da ocupação de leitos", { exact: true })
       .click();
@@ -426,7 +524,9 @@ for (const viewport of [
       panel.getByRole("button", { name: "Legenda", exact: true }),
     ).toBeFocused();
     await panel.getByRole("button", { name: "Legenda", exact: true }).click();
-    await expect(dialog.getByText(/A cor e o percentual representam/)).toBeVisible();
+    await expect(
+      dialog.getByText(/A cor e o percentual representam/),
+    ).toBeVisible();
     await page.keyboard.press("Escape");
     expect(
       await page.evaluate(

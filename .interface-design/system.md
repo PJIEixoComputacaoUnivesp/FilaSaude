@@ -134,9 +134,14 @@
   and a negative vertical margin.
 - Full-screen views (the map) use `dvh`-based flex layouts, never
   `100vh` minus a hard-coded header height.
+- Os controles completos do mapa exigem largura de pelo menos 40rem e altura
+  de pelo menos 32rem (`map-wide`). Em telas largas com pouca altura, o painel
+  compacto fica à esquerda e libera espaço ao lado para o popup; filtros e
+  legenda continuam acessíveis pela janela modal. O mínimo de altura do mapa
+  é preservado para permitir rolagem em telas muito baixas ou com zoom.
 - Text is cut before controls on narrow screens. In the map panel the field
-  labels are screen-reader-only below `sm` (the select shows its value and the
-  field has a placeholder), and the origin line is the one-line `shortText`
+  labels are screen-reader-only outside `map-wide` (the select shows its value
+  and the field has a placeholder), and the origin line is the one-line `shortText`
   ("Cópia do CNES de 22/09/2026"); an outage keeps its full amber notice. From
   `sm` the footer is one short paragraph with the link inline; below it, the
   short line and popover described in Journey. The map's minimum height

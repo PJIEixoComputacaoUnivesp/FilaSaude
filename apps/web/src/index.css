@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* A wide screen still needs compact controls when its height is limited. */
+@custom-variant map-wide (@media (min-width: 40rem) and (min-height: 32rem));
+
+@media (min-width: 40rem) and (height < 32rem) {
+  .map-search-panel {
+    right: auto;
+    width: 18rem;
+  }
+}
+
 @theme {
   --font-sans:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,

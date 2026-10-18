@@ -168,7 +168,10 @@ async function fetchBoundary(
  * Credit for the outline. Leaflet renders attributions as HTML, so the values
  * from the response are escaped and only an http(s) link is kept.
  */
-function boundaryAttribution({ source, boundaryYear }: BoundaryResponse["metadata"]) {
+function boundaryAttribution({
+  source,
+  boundaryYear,
+}: BoundaryResponse["metadata"]) {
   const escape = (text: string) =>
     text.replace(/[&<>"']/g, (character) => `&#${character.charCodeAt(0)};`);
   const label = `IBGE ${escape(String(boundaryYear))}`;
@@ -438,7 +441,9 @@ function UnitMarker({
           {unit.serviceHours && (
             <p className="my-2 text-sm text-slate-600">{unit.serviceHours}</p>
           )}
-          {occupancy && <OccupancyBadge occupancy={occupancy} className="my-2" />}
+          {occupancy && (
+            <OccupancyBadge occupancy={occupancy} className="my-2" />
+          )}
           {unit.location.precision === "manual" &&
             unit.location.correctedAt && (
               <p className="my-2 text-xs font-medium text-amber-800">
@@ -505,14 +510,18 @@ function UnitMarkers({
 
   useLayoutEffect(() => {
     const updateLayout = () => {
-      const popupMaxWidth = Math.max(
-        192,
-        Math.min(256, map.getSize().x - fitPadding * 2 - 72),
-      );
       const mapBox = map.getContainer().getBoundingClientRect();
       const autoPanPaddingTopLeft = popupAutoPanPadding(
         map,
         overlayRef?.current,
+      );
+      // Account for a sidebar as well as the popup's margins and close button.
+      const popupMaxWidth = Math.max(
+        128,
+        Math.min(
+          256,
+          mapBox.width - autoPanPaddingTopLeft[0] - fitPadding - 72,
+        ),
       );
       // Leaflet adds about 28px of vertical chrome around popup content.
       const popupMaxHeight = Math.max(
@@ -664,7 +673,10 @@ function resetPopupPlacement(popup: L.Popup): void {
   element
     ?.querySelector<HTMLElement>(".leaflet-popup-tip-container")
     ?.style.removeProperty("margin-left");
-  if (!popup.options.offset || !L.point(popup.options.offset).equals(popupOffset)) {
+  if (
+    !popup.options.offset ||
+    !L.point(popup.options.offset).equals(popupOffset)
+  ) {
     popup.options.offset = popupOffset;
     if (popup.isOpen()) popup.update();
   }

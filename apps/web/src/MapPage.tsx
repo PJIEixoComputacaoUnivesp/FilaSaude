@@ -115,15 +115,15 @@ export function MapPage() {
       <section
         ref={panelRef}
         aria-label="Controles do mapa"
-        className="absolute left-3 right-3 top-3 z-[900] max-h-[min(22rem,calc(100%-7.5rem))] overflow-y-auto sm:max-h-[calc(100%-7.5rem)] overscroll-contain rounded-2xl border border-slate-200 bg-white p-3 sm:left-6 sm:right-auto sm:top-4 sm:w-96 sm:p-4"
+        className="map-search-panel absolute left-3 right-3 top-3 z-[900] max-h-[min(22rem,calc(100%-7.5rem))] overflow-y-auto map-wide:max-h-[calc(100%-7.5rem)] overscroll-contain rounded-2xl border border-slate-200 bg-white p-3 map-wide:left-6 map-wide:right-auto map-wide:top-4 map-wide:w-96 map-wide:p-4"
       >
         <form
           role="search"
           aria-label="Buscar no mapa"
           onSubmit={(event) => event.preventDefault()}
-          className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:grid-cols-1 sm:gap-3"
+          className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 map-wide:grid-cols-1 map-wide:gap-3"
         >
-          <div className="hidden sm:block">
+          <div className="hidden map-wide:block">
             <BrazilianStateSelect
               value={stateCode}
               onChange={setStateCode}
@@ -132,7 +132,7 @@ export function MapPage() {
             />
           </div>
           <label className="block">
-            <span className="sr-only text-xs font-semibold text-slate-800 sm:not-sr-only sm:mb-2 sm:block sm:text-sm">
+            <span className="sr-only text-xs font-semibold text-slate-800 map-wide:not-sr-only map-wide:mb-2 map-wide:block map-wide:text-sm">
               Buscar no mapa
             </span>
             <input
@@ -156,7 +156,7 @@ export function MapPage() {
                 : `Abrir filtros e legenda: ${stateName(stateCode)}`
             }
             aria-haspopup="dialog"
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-fila-blue sm:hidden"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-fila-blue map-wide:hidden"
           >
             Filtros
             {stateCode !== NationalStateCode.All && (
@@ -168,12 +168,12 @@ export function MapPage() {
         </form>
         <LiveStatus message={liveMessage} />
         {state.status === "loading" && (
-          <p className="mt-2 text-sm text-slate-700 sm:mt-3">
+          <p className="mt-2 text-sm text-slate-700 map-wide:mt-3">
             {LOADING_MESSAGE}
           </p>
         )}
         {state.status === "success" && (
-          <div className="mt-2 hidden flex-wrap items-center justify-between gap-x-3 text-xs leading-relaxed text-slate-700 sm:mt-3 sm:flex">
+          <div className="mt-2 hidden flex-wrap items-center justify-between gap-x-3 text-xs leading-relaxed text-slate-700 map-wide:mt-3 map-wide:flex">
             <p>{countText}.</p>
             <Link
               to={{ pathname: "/units", search }}
@@ -183,7 +183,7 @@ export function MapPage() {
             </Link>
             {originNotice && (
               <p
-                className={`w-full ${originNotice.isOutage ? "font-semibold text-amber-800" : "hidden sm:block"}`}
+                className={`w-full ${originNotice.isOutage ? "font-semibold text-amber-800" : "hidden map-wide:block"}`}
               >
                 {originNotice.shortText ?? originNotice.text}
               </p>
@@ -192,7 +192,7 @@ export function MapPage() {
         )}
         {originNotice?.isOutage && (
           <p
-            className="mt-2 text-xs font-semibold text-amber-800 sm:hidden"
+            className="mt-2 text-xs font-semibold text-amber-800 map-wide:hidden"
             role="status"
           >
             {originNotice.text}
@@ -200,7 +200,7 @@ export function MapPage() {
         )}
         <OccupancyControls compact onOpenLegend={() => openFilters(true)} />
         {state.status === "error" && (
-          <div className="mt-2 text-sm text-red-900 sm:mt-3" role="alert">
+          <div className="mt-2 text-sm text-red-900 map-wide:mt-3" role="alert">
             <p>{state.message}</p>
             <button
               type="button"
@@ -220,7 +220,10 @@ export function MapPage() {
         aria-labelledby={filtersTitleId}
         onClose={() => {
           setLegendOpen(false);
-          if (filtersOpenerRef.current && !filtersOpenerRef.current.isConnected) {
+          if (
+            filtersOpenerRef.current &&
+            !filtersOpenerRef.current.isConnected
+          ) {
             filtersButtonRef.current?.focus();
           }
           filtersOpenerRef.current = null;
