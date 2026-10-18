@@ -25,7 +25,13 @@ import { useSearchFilters } from "./useSearchFilters";
 import { useUnits } from "./useUnits";
 import { unitDetailLink, unitMapLink } from "./unitLinks";
 
+import { calculateDistanceKm } from "./geo";
+
 const PAGE_SIZE = 24;
+
+// Ponto de referência inicial simulado (ex: Centro da cidade)
+const USER_LOCATION = { lat: -23.5505, lon: -46.6333 };
+
 
 function DataNotice({ metadata }: { metadata: UnitsResponse["metadata"] }) {
   const notice = dataOriginNotice(metadata);
@@ -246,6 +252,9 @@ export function UnitsPage() {
   const { state, retry } = useUnits(stateCode);
   const { byUnit, simulatedFilter, setOnlySimulated } = useOccupancyLayer();
 
+  // Sort criteria state (using English literal types)
+  const [sortOrder, setSortOrder] = useState<"distance" | "default">("distance");
+
   // Sorted once per response; filtering keeps that order.
   const sortedUnits = useMemo(
     () => (state.status === "success" ? sortUnits(state.response.data) : []),
@@ -259,20 +268,42 @@ export function UnitsPage() {
       : matching;
   }, [sortedUnits, trimmedQuery, simulatedFilter]);
 
+  // Purely geographic distance sorting (no medical/clinical logic)
+  const displayUnits = useMemo(() => {
+    if (sortOrder !== "distance") return filteredUnits;
+
+    return [...filteredUnits].sort((a, b) => {
+      const latA = (a as any).latitude ?? (a as any).lat;
+      const lonA = (a as any).longitude ?? (a as any).lon ?? (a as any).lng;
+      const latB = (b as any).latitude ?? (b as any).lat;
+      const lonB = (b as any).longitude ?? (b as any).lon ?? (b as any).lng;
+
+      const distA =
+        latA !== undefined && lonA !== undefined
+          ? calculateDistanceKm(USER_LOCATION.lat, USER_LOCATION.lon, Number(latA), Number(lonA))
+          : Infinity;
+
+      const distB =
+        latB !== undefined && lonB !== undefined
+          ? calculateDistanceKm(USER_LOCATION.lat, USER_LOCATION.lon, Number(latB), Number(lonB))
+          : Infinity;
+
+      return distA - distB;
+    });
+  }, [filteredUnits, sortOrder]);
+
   const countText = formatCount(
-    filteredUnits.length,
+    displayUnits.length,
     "unidade encontrada",
     "unidades encontradas",
   );
-  // Worded differently from the visible count on purpose: the same text twice
-  // would be read twice and would match twice in a text query.
+
   const announcement = `${formatCount(
-    filteredUnits.length,
+    displayUnits.length,
     "resultado",
     "resultados",
   )} em ${stateName(stateCode)}`;
-  // One region stays mounted across loading, success and error, so a change of
-  // state is announced; the error has its own role="alert".
+
   const liveMessage =
     state.status === "loading"
       ? LOADING_MESSAGE
@@ -331,8 +362,6 @@ export function UnitsPage() {
 
       <LiveStatus message={liveMessage} />
 
-      {/* Reserves the height of a results screen so the footer does not
-          jump when the cards replace the short loading state. */}
       <div className="min-h-[60dvh]">
         {state.status === "loading" && (
           <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-700">
@@ -359,8 +388,42 @@ export function UnitsPage() {
         {state.status === "success" && (
           <div className="flex flex-col gap-4 sm:gap-6">
             <DataNotice metadata={state.response.metadata} />
-            <p className="text-sm text-slate-700">{countText}</p>
-            {filteredUnits.length === 0 ? (
+
+            {/* Banner Informativo sobre a Proximidade Geográfica */}
+            <div className="rounded-xl border-l-4 border-amber-500 bg-amber-50 p-4 text-sm text-slate-800 shadow-sm">
+              <div className="flex items-start gap-3">
+                <span aria-hidden="true" className="shrink-0 text-xl">ℹ️</span>
+                <div className="leading-relaxed">
+                  <strong className="block font-semibold text-slate-900 mb-0.5">
+                    Aviso sobre a Proximidade Geográfica:
+                  </strong>
+                  A ordenação por proximidade é apresentada <strong>estritamente como dado informativo de distância física (km)</strong>. Não constitui triagem clínica, recomendação médica ou indicação de prioridade de atendimento. Em casos de emergência, procure o serviço de saúde mais próximo ou acione o SAMU (192).
+                </div>
+              </div>
+            </div>
+
+            {/* Controle de ordenação e contagem de resultados */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-slate-700">{countText}</p>
+
+              <div className="flex items-center gap-2">
+                <label htmlFor="sort-select" className="text-sm font-semibold text-slate-700">
+                  Ordenar por:
+                </label>
+                <select
+                  id="sort-select"
+                  aria-label="Selecionar critério de ordenação das unidades"
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value as "distance" | "default")}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-800 outline-none focus:border-fila-blue focus:ring-2 focus:ring-fila-blue/20"
+                >
+                  <option value="distance">Proximidade (Km) — Informativo</option>
+                  <option value="default">Ordem padrão do CNES</option>
+                </select>
+              </div>
+            </div>
+
+            {displayUnits.length === 0 ? (
               <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-700">
                 <p>
                   {simulatedFilter
@@ -385,8 +448,6 @@ export function UnitsPage() {
                     onClick={() => {
                       setQuery("");
                       flush();
-                      // The button unmounts with the empty state; keep focus in
-                      // the page.
                       searchRef.current?.focus();
                     }}
                     className="mt-4 min-h-11 rounded-xl border border-slate-300 bg-white px-6 py-2 font-semibold text-slate-800 hover:border-fila-blue hover:text-fila-blue"
@@ -397,7 +458,7 @@ export function UnitsPage() {
               </div>
             ) : (
               <UnitResults
-                units={filteredUnits}
+                units={displayUnits}
                 occupancy={byUnit}
                 focusedUnitId={focusedUnitId}
                 search={search}
