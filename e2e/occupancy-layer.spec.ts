@@ -867,3 +867,60 @@ test("SSE atualiza o histórico da unidade mesmo quando o estado atual não muda
   expect(reads).toBeGreaterThan(beforeUpdate);
   await expect(section.getByText("Ocupação alta (90%)")).toBeVisible();
 });
+
+for (const viewport of [
+  { width: 390, height: 844 },
+  { width: 1280, height: 800 },
+]) {
+  test(`explica a busca vazia no mapa e recupera os resultados em ${viewport.width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await mockApi(page);
+    await page.route("**/api/units?state=ALL", (route) =>
+      route.fulfill({ json: unitsResponse }),
+    );
+    await page.goto("/?uf=SP&q=inexistente");
+    const panel = page.getByRole("region", { name: "Controles do mapa" });
+    await expect(
+      panel.getByText("Nenhuma unidade encontrada com os filtros atuais."),
+    ).toBeVisible();
+    await panel.getByRole("button", { name: "Limpar busca" }).click();
+    await expect(panel.getByRole("searchbox")).toBeFocused();
+    await expect(panel.getByRole("searchbox")).toHaveValue("");
+    await expect(
+      panel.getByText("Nenhuma unidade encontrada com os filtros atuais."),
+    ).toBeHidden();
+    await expect(page).toHaveURL(/\?uf=SP$/);
+    await expect(page.getByText("3 unidades no mapa.").first()).toBeAttached();
+  });
+}
+
+test("oferece a lista quando os resultados não têm coordenadas", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await page.route("**/api/units?state=ALL", (route) =>
+    route.fulfill({
+      json: {
+        ...unitsResponse,
+        data: unitsResponse.data.map((unit) => ({
+          ...unit,
+          location: { ...unit.location, latitude: null, longitude: null },
+        })),
+      },
+    }),
+  );
+  await page.goto("/?uf=SP");
+  const panel = page.getByRole("region", { name: "Controles do mapa" });
+  await expect(
+    panel.getByText("As unidades encontradas não têm localização informada."),
+  ).toBeVisible();
+  await panel
+    .getByRole("link", { name: "Consultar unidades na lista" })
+    .click();
+  await expect(page).toHaveURL(/\/units\?uf=SP$/);
+  await expect(page.getByRole("article")).toHaveCount(3);
+});
+

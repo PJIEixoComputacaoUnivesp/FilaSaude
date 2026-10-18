@@ -34,6 +34,7 @@ export function MapPage() {
       : NationalStateCode.All;
   const { state, retry } = useUnits(requestState);
   const panelRef = useRef<HTMLElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const filtersRef = useRef<HTMLDialogElement>(null);
   const filtersButtonRef = useRef<HTMLButtonElement>(null);
   const filtersOpenerRef = useRef<HTMLElement | null>(null);
@@ -48,7 +49,7 @@ export function MapPage() {
     if (filtersRef.current) filtersRef.current.scrollTop = 0;
     filtersRef.current?.showModal();
   }
-  const { byUnit, simulatedFilter } = useOccupancyLayer();
+  const { byUnit, simulatedFilter, setOnlySimulated } = useOccupancyLayer();
 
   // The fields answer at once; filtering and redrawing the markers can lag
   // behind them, so typing stays responsive on a phone with the national list.
@@ -137,6 +138,7 @@ export function MapPage() {
             </span>
             <input
               type="search"
+              ref={searchRef}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onBlur={flush}
@@ -197,6 +199,54 @@ export function MapPage() {
           >
             {originNotice.text}
           </p>
+        )}
+        {state.status === "success" && mappableCount === 0 && (
+          <div className="mt-2 text-sm text-slate-700">
+            <p>
+              {filteredUnits.length > 0
+                ? "As unidades encontradas não têm localização informada."
+                : "Nenhuma unidade encontrada com os filtros atuais."}
+            </p>
+            {filteredUnits.length > 0 ? (
+              <Link
+                to={{ pathname: "/units", search }}
+                className="inline-flex min-h-11 items-center font-semibold text-fila-blue underline underline-offset-2"
+              >
+                Consultar unidades na lista
+              </Link>
+            ) : query.trim() !== "" ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  flush();
+                  searchRef.current?.focus();
+                }}
+                className="min-h-11 font-semibold text-fila-blue underline underline-offset-2"
+              >
+                Limpar busca
+              </button>
+            ) : simulatedFilter ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setOnlySimulated(false);
+                  searchRef.current?.focus();
+                }}
+                className="min-h-11 font-semibold text-fila-blue underline underline-offset-2"
+              >
+                Mostrar todas as unidades
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => openFilters()}
+                className="min-h-11 font-semibold text-fila-blue underline underline-offset-2"
+              >
+                Alterar filtros
+              </button>
+            )}
+          </div>
         )}
         <OccupancyControls compact onOpenLegend={() => openFilters(true)} />
         {state.status === "error" && (
