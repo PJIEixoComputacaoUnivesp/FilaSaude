@@ -924,3 +924,48 @@ test("oferece a lista quando os resultados não têm coordenadas", async ({
   await expect(page.getByRole("article")).toHaveCount(3);
 });
 
+test("mostra todos os valores por categoria sem arrastar em 320px", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 740 });
+  await mockApi(page);
+  await page.goto("/units?uf=SP");
+  await page
+    .getByText("Ocupação simulada de leitos", { exact: true })
+    .first()
+    .click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "UPA Vila Mariana" })
+    .getByRole("link", { name: /Ver detalhes/ })
+    .click();
+  const section = page.getByRole("region", {
+    name: "Ocupação simulada de leitos",
+  });
+  const category = section
+    .getByRole("heading", { name: "Observação", exact: true })
+    .locator("..");
+  await category.scrollIntoViewIfNeeded();
+  await expect(category.getByText("18", { exact: true })).toBeVisible();
+  await expect(category.getByText("20", { exact: true })).toBeVisible();
+  await expect(category.getByText("90%", { exact: true })).toBeVisible();
+  expect(
+    await category.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      return [...element.querySelectorAll("dt,dd")].every((field) => {
+        const fieldBox = field.getBoundingClientRect();
+        return fieldBox.left >= box.left && fieldBox.right <= box.right;
+      });
+    }),
+  ).toBe(true);
+  await expect(
+    section
+      .getByRole("heading", { name: "Total das categorias", exact: true })
+      .locator(".."),
+  ).toContainText("27");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});

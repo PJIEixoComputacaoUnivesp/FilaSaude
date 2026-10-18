@@ -181,65 +181,115 @@ function CategoryTable({
       ? `${Math.round((occupied / capacity) * 100)}%`
       : "Não informado";
 
+  const categoryRows = [
+    ...occupancy.categories.map((category) => ({
+      label: CATEGORY_LABELS[category.code],
+      occupied: category.occupied,
+      capacity: category.capacity,
+    })),
+    {
+      label: "Total das categorias",
+      occupied: totalOccupied,
+      capacity: totalCapacity,
+    },
+  ];
+
   return (
-    <div className="mt-4 overflow-x-auto sm:max-w-lg">
-      <table className="w-full min-w-[18rem] text-left text-sm text-slate-700">
-        <caption className="mb-2 text-left text-sm font-semibold text-slate-900">
+    <div className="mt-4 sm:max-w-lg">
+      <div className="sm:hidden">
+        <p className="mb-2 text-sm font-semibold text-slate-900">
           Último envio por categoria, às {formatTime(occupancy.observedAt)}
           {isStale && " (sem confirmação recente)"}
-        </caption>
-        <thead>
-          <tr className="border-b border-slate-200 text-slate-900">
-            <th scope="col" className="py-2 pr-4 font-semibold">
-              Categoria
-            </th>
-            <th scope="col" className="py-2 pr-4 text-right font-semibold">
-              Leitos ocupados
-            </th>
-            <th scope="col" className="py-2 pr-4 text-right font-semibold">
-              Leitos simulados
-            </th>
-            <th scope="col" className="py-2 text-right font-semibold">
-              Percentual
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {occupancy.categories.map((category) => (
-            <tr key={category.code} className="border-b border-slate-100">
-              <th scope="row" className="py-2 pr-4 font-medium">
-                {CATEGORY_LABELS[category.code]}
+        </p>
+        <div className="divide-y divide-slate-200 rounded-xl border border-slate-200 px-3">
+          {categoryRows.map((category) => (
+            <div key={category.label} className="py-3">
+              <h3 className="text-sm font-semibold text-slate-900">
+                {category.label}
+              </h3>
+              <dl className="mt-2 grid grid-cols-3 gap-2 text-sm text-slate-700">
+                <div>
+                  <dt className="text-xs">Ocupados</dt>
+                  <dd className="mt-1 font-semibold tabular-nums text-slate-900">
+                    {category.occupied}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs">Simulados</dt>
+                  <dd className="mt-1 font-semibold tabular-nums text-slate-900">
+                    {category.capacity}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs">Percentual</dt>
+                  <dd className="mt-1 font-semibold tabular-nums text-slate-900">
+                    {percent(category.occupied, category.capacity)}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="hidden overflow-x-auto sm:block">
+        <table className="w-full min-w-[18rem] text-left text-sm text-slate-700">
+          <caption className="mb-2 text-left text-sm font-semibold text-slate-900">
+            Último envio por categoria, às {formatTime(occupancy.observedAt)}
+            {isStale && " (sem confirmação recente)"}
+          </caption>
+          <thead>
+            <tr className="border-b border-slate-200 text-slate-900">
+              <th scope="col" className="py-2 pr-4 font-semibold">
+                Categoria
+              </th>
+              <th scope="col" className="py-2 pr-4 text-right font-semibold">
+                Leitos ocupados
+              </th>
+              <th scope="col" className="py-2 pr-4 text-right font-semibold">
+                Leitos simulados
+              </th>
+              <th scope="col" className="py-2 text-right font-semibold">
+                Percentual
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {occupancy.categories.map((category) => (
+              <tr key={category.code} className="border-b border-slate-100">
+                <th scope="row" className="py-2 pr-4 font-medium">
+                  {CATEGORY_LABELS[category.code]}
+                </th>
+                <td className="py-2 pr-4 text-right tabular-nums">
+                  {category.occupied}
+                </td>
+                <td className="py-2 pr-4 text-right tabular-nums">
+                  {category.capacity}
+                </td>
+                <td className="py-2 text-right tabular-nums">
+                  {percent(category.occupied, category.capacity)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          {/* The level is computed on this total, not on each category. */}
+          <tfoot>
+            <tr className="border-t-2 border-slate-300 font-semibold text-slate-900">
+              <th scope="row" className="py-2 pr-4">
+                Total das categorias
               </th>
               <td className="py-2 pr-4 text-right tabular-nums">
-                {category.occupied}
+                {totalOccupied}
               </td>
               <td className="py-2 pr-4 text-right tabular-nums">
-                {category.capacity}
+                {totalCapacity}
               </td>
               <td className="py-2 text-right tabular-nums">
-                {percent(category.occupied, category.capacity)}
+                {percent(totalOccupied, totalCapacity)}
               </td>
             </tr>
-          ))}
-        </tbody>
-        {/* The level is computed on this total, not on each category. */}
-        <tfoot>
-          <tr className="border-t-2 border-slate-300 font-semibold text-slate-900">
-            <th scope="row" className="py-2 pr-4">
-              Total das categorias
-            </th>
-            <td className="py-2 pr-4 text-right tabular-nums">
-              {totalOccupied}
-            </td>
-            <td className="py-2 pr-4 text-right tabular-nums">
-              {totalCapacity}
-            </td>
-            <td className="py-2 text-right tabular-nums">
-              {percent(totalOccupied, totalCapacity)}
-            </td>
-          </tr>
-        </tfoot>
-      </table>
+          </tfoot>
+        </table>
+      </div>
     </div>
   );
 }

@@ -160,6 +160,9 @@
   durante a rolagem; Escape fecha a janela e o foco retorna ao acionador.
   Preservar a área segura inferior do dispositivo e alvos de toque de 44 px.
 - Text fields are 16px or larger, and placeholders are `slate-500` or darker.
+- No detalhe, os leitos por categoria usam blocos com rótulos e valores abaixo
+  de `sm`; a tabela completa permanece em telas maiores. Ocupados, capacidade
+  simulada e percentual ficam visíveis juntos sem rolagem horizontal.
 
 ## Initial patterns
 
