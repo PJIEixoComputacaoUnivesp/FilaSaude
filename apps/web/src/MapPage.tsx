@@ -116,7 +116,7 @@ export function MapPage() {
       <section
         ref={panelRef}
         aria-label="Controles do mapa"
-        className="map-search-panel absolute left-3 right-3 top-3 z-[900] max-h-[min(22rem,calc(100%-7.5rem))] overflow-y-auto map-wide:max-h-[calc(100%-7.5rem)] overscroll-contain rounded-2xl border border-slate-200 bg-white p-3 map-wide:left-6 map-wide:right-auto map-wide:top-4 map-wide:w-96 map-wide:p-4"
+        className="map-search-panel absolute left-3 right-3 top-3 z-[900] max-h-[min(22rem,calc(100%-7.5rem))] overflow-y-auto map-wide:max-h-[calc(100%-7.5rem)] overscroll-contain rounded-2xl border border-slate-200 bg-white p-3 map-wide:left-6 map-wide:right-auto map-wide:top-4 map-wide:w-72 map-wide:md:w-96 map-wide:p-4"
       >
         <form
           role="search"

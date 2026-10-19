@@ -1033,3 +1033,39 @@ test("as ações do detalhe mobile ficam visíveis junto do título", async ({
     page.getByRole("heading", { name: "UPA Vila Mariana", exact: true }),
   ).toBeFocused();
 });
+
+for (const width of [640, 680, 768]) {
+  test(`mantém o conteúdo do popup longe do botão de fechar em ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await mockApi(page);
+    await page.goto("/?uf=SP&unidade=1234567");
+    const popup = page.locator(".leaflet-popup");
+    await expect(popup).toBeVisible();
+    await expect
+      .poll(async () => {
+        const [box, content, body, close, panel] = await Promise.all([
+          popup.boundingBox(),
+          popup.locator(".leaflet-popup-content").boundingBox(),
+          popup.locator(".leaflet-popup-content > div").boundingBox(),
+          popup.locator(".leaflet-popup-close-button").boundingBox(),
+          page.getByRole("region", { name: "Controles do mapa" }).boundingBox(),
+        ]);
+        return Boolean(
+          box &&
+          content &&
+          body &&
+          close &&
+          panel &&
+          box.x >= panel.x + panel.width &&
+          box.x + box.width <= width &&
+          body.x + body.width <= content.x + content.width &&
+          body.x + body.width <= close.x,
+        );
+      })
+      .toBe(true);
+    await popup.getByRole("button", { name: "Fechar detalhes da unidade" }).click();
+    await expect(popup).toBeHidden();
+  });
+}
