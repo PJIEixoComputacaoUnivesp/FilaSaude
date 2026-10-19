@@ -332,7 +332,10 @@ function UnitMarker({
   const map = useMap();
   const markerRef = useRef<L.CircleMarker>(null);
   const popupHeadingRef = useRef<HTMLElement>(null);
+  const stopFollowingPopupRef = useRef<(() => void) | null>(null);
   const isSimulated = occupancy !== undefined;
+
+  useEffect(() => () => stopFollowingPopupRef.current?.(), []);
 
   // Canvas paints in the order layers were added; a unit of the simulation is
   // brought to the front, so a neutral marker never covers it.
@@ -390,21 +393,25 @@ function UnitMarker({
       radius={occupancy ? radius + 3 : radius}
       renderer={renderer}
       eventHandlers={{
-        popupclose: (event) => resetPopupPlacement(event.popup),
-        popupopen: () => {
+        popupclose: (event) => {
+          stopFollowingPopupRef.current?.();
+          stopFollowingPopupRef.current = null;
+          resetPopupPlacement(event.popup);
+        },
+        popupopen: (event) => {
           // React renders the content after this event, so measure next frame.
           window.requestAnimationFrame(() => {
-            placePopupWhereItFits(
-              map,
-              markerRef.current?.getPopup(),
-              overlayRef?.current,
-            );
-            keepPopupClearOfOverlay(
-              map,
-              markerRef.current?.getPopup(),
-              overlayRef?.current,
-            );
+            const popup = event.popup;
+            if (!popup.isOpen()) return;
+            placePopupWhereItFits(map, popup, overlayRef?.current);
+            keepPopupClearOfOverlay(map, popup, overlayRef?.current);
             if (selected) popupHeadingRef.current?.focus();
+            stopFollowingPopupRef.current?.();
+            stopFollowingPopupRef.current = followPopupSize(
+              map,
+              popup,
+              overlayRef?.current,
+            );
           });
         },
       }}
@@ -680,6 +687,46 @@ function resetPopupPlacement(popup: L.Popup): void {
     popup.options.offset = popupOffset;
     if (popup.isOpen()) popup.update();
   }
+}
+
+/**
+ * Places an open popup again when its content, the map or the panel change
+ * size (a phone turned sideways, the occupancy layer adding lines). The map is
+ * not moved here: panning on every resize fought the pan limit, as Leaflet's
+ * auto pan did. Returns a function that stops following.
+ */
+function followPopupSize(
+  map: L.Map,
+  popup: L.Popup,
+  overlay: HTMLElement | null | undefined,
+): () => void {
+  const sizes = new Map<Element, string>();
+  let frame: number | undefined;
+  const observer = new ResizeObserver((entries) => {
+    let changed = false;
+    for (const entry of entries) {
+      const size = `${entry.contentRect.width}x${entry.contentRect.height}`;
+      // The first report is the size the popup was just placed with.
+      if (sizes.has(entry.target) && sizes.get(entry.target) !== size) {
+        changed = true;
+      }
+      sizes.set(entry.target, size);
+    }
+    if (!changed || frame !== undefined) return;
+    // Leaflet updates the map size for a window resize on the next frame.
+    frame = window.requestAnimationFrame(() => {
+      frame = undefined;
+      placePopupWhereItFits(map, popup, overlay);
+    });
+  });
+  const content = popup.getElement()?.querySelector(".leaflet-popup-content");
+  for (const element of [content, map.getContainer(), overlay]) {
+    if (element) observer.observe(element);
+  }
+  return () => {
+    observer.disconnect();
+    if (frame !== undefined) window.cancelAnimationFrame(frame);
+  };
 }
 
 /** Leaflet's automatic pan does not account reliably for an HTML overlay. */

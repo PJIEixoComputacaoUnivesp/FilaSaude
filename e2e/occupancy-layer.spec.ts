@@ -393,6 +393,40 @@ for (const viewport of [
   });
 }
 
+test("reposiciona o popup aberto ao girar o celular", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await page.route("**/api/units?state=ALL", (route) =>
+    route.fulfill({ json: unitsResponse }),
+  );
+  await page.goto("/?uf=SP&unidade=1234567");
+  const popup = page.locator(".leaflet-popup");
+  await expect(popup).toBeVisible();
+  // Let the selection finish framing the unit before turning the phone.
+  await page.waitForTimeout(600);
+
+  await page.setViewportSize({ width: 667, height: 375 });
+  const panel = page.getByRole("region", { name: "Controles do mapa" });
+  await expect
+    .poll(async () => {
+      const [box, map, controls] = await Promise.all([
+        popup.boundingBox(),
+        page.locator(".leaflet-container").boundingBox(),
+        panel.boundingBox(),
+      ]);
+      return Boolean(
+        box &&
+        map &&
+        controls &&
+        box.x >= controls.x + controls.width &&
+        box.y >= map.y &&
+        box.x + box.width <= map.x + map.width &&
+        box.y + box.height <= map.y + map.height,
+      );
+    })
+    .toBe(true);
+});
+
 test("a página do mapa não rola em celular com a barra do navegador ou deitado", async ({
   page,
 }) => {
