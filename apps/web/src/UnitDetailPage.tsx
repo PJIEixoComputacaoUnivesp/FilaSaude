@@ -54,6 +54,29 @@ export function UnitDetailPage() {
       </h1>
       <LiveStatus message={liveMessage} />
 
+      {state.status === "success" && unit && (
+        <nav
+          aria-label="Navegação da unidade"
+          className="mt-4 flex flex-wrap gap-x-5 gap-y-2"
+        >
+          <Link
+            to={unitListLink(unit.id, search)}
+            className="inline-flex min-h-11 items-center font-semibold text-fila-blue underline underline-offset-2"
+          >
+            Voltar à lista
+          </Link>
+          {hasLocation(unit) && (
+            <Link
+              to={unitMapLink(unit.id, search)}
+              className="inline-flex min-h-11 items-center font-semibold text-fila-blue underline underline-offset-2"
+            >
+              Ver no mapa
+              <span className="sr-only">: {unit.name}</span>
+            </Link>
+          )}
+        </nav>
+      )}
+
       {state.status === "loading" && (
         <p className="mt-6 rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-700">
           {LOADING_MESSAGE}
@@ -124,14 +147,6 @@ export function UnitDetailPage() {
                 {unit.serviceHours ?? "Não informado na fonte pública"}
               </dd>
             </div>
-            <div>
-              <dt className="font-semibold text-slate-900">Tipo de unidade</dt>
-              <dd className="mt-1">{unit.unitType}</dd>
-            </div>
-            <div>
-              <dt className="font-semibold text-slate-900">Código CNES</dt>
-              <dd className="mt-1">{unit.id}</dd>
-            </div>
             <div className="sm:col-span-2">
               <dt className="font-semibold text-slate-900">
                 Localização no mapa
@@ -148,27 +163,6 @@ export function UnitDetailPage() {
             sources={unit.sources}
             className="mt-6 space-y-2 border-t border-slate-100 pt-5 text-sm leading-relaxed text-slate-600"
           />
-
-          <nav
-            aria-label="Navegação da unidade"
-            className="mt-6 flex flex-wrap gap-x-5 gap-y-2 border-t border-slate-100 pt-4"
-          >
-            <Link
-              to={unitListLink(unit.id, search)}
-              className="inline-flex min-h-11 items-center font-semibold text-fila-blue underline underline-offset-2"
-            >
-              Voltar à lista
-            </Link>
-            {hasLocation(unit) && (
-              <Link
-                to={unitMapLink(unit.id, search)}
-                className="inline-flex min-h-11 items-center font-semibold text-fila-blue underline underline-offset-2"
-              >
-                Ver no mapa
-                <span className="sr-only">: {unit.name}</span>
-              </Link>
-            )}
-          </nav>
         </article>
       )}
     </div>

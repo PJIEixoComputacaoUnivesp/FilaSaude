@@ -1006,3 +1006,30 @@ test("a lista mobile mostra resultados e permite expandir filtros secundários",
   await expect(simulated).toBeHidden();
   await expect(page.getByRole("article")).toHaveCount(2);
 });
+
+test("as ações do detalhe mobile ficam visíveis junto do título", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await page.goto("/units?uf=SP");
+  await page
+    .getByText("Ocupação simulada de leitos", { exact: true })
+    .first()
+    .click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "UPA Vila Mariana" })
+    .getByRole("link", { name: /Ver detalhes/ })
+    .click();
+  const nav = page.getByRole("navigation", { name: "Navegação da unidade" });
+  await expect(
+    nav.getByRole("link", { name: "Voltar à lista" }),
+  ).toBeInViewport();
+  await expect(nav.getByRole("link", { name: /Ver no mapa/ })).toBeInViewport();
+  await nav.getByRole("link", { name: "Voltar à lista" }).click();
+  await expect(page).toHaveURL(/\/units\?uf=SP#unit-1234567$/);
+  await expect(
+    page.getByRole("heading", { name: "UPA Vila Mariana", exact: true }),
+  ).toBeFocused();
+});

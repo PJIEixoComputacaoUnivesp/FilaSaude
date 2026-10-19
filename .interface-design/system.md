@@ -26,6 +26,9 @@
   throws after 100 `replaceState` calls in 30 seconds. The URL is followed only
   when something else changes it (a link, Voltar); reading the page's own writes
   back drops characters while typing.
+- No detalhe, “Voltar à lista” e “Ver no mapa” ficam junto ao título, antes
+  dos dados e do histórico. Tipo e código CNES aparecem uma vez no cabeçalho
+  do registro.
 - Every unit has a stable detail route at `/units/:cnes`. Cards link to that
   detail and to a selected marker on the map. The marker popup links back to
   the same card, preserving the live UF and text filters; a target beyond the
