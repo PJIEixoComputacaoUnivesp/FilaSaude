@@ -160,6 +160,9 @@
   durante a rolagem; Escape fecha a janela e o foco retorna ao acionador.
   Preservar a área segura inferior do dispositivo e alvos de toque de 44 px.
 - Text fields are 16px or larger, and placeholders are `slate-500` or darker.
+- Na lista mobile, os controles secundários da simulação ficam em “Filtros e
+  legenda”, recolhidos por padrão. O interruptor e o aviso de dados fictícios
+  ficam visíveis; o acionador indica quando há filtro ativo.
 - No detalhe, os leitos por categoria usam blocos com rótulos e valores abaixo
   de `sm`; a tabela completa permanece em telas maiores. Ocupados, capacidade
   simulada e percentual ficam visíveis juntos sem rolagem horizontal.

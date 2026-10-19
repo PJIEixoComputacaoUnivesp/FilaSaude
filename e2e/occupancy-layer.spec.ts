@@ -969,3 +969,40 @@ test("mostra todos os valores por categoria sem arrastar em 320px", async ({
     ),
   ).toBe(true);
 });
+
+test("a lista mobile mostra resultados e permite expandir filtros secundários", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await page.goto("/units?uf=SP");
+  await page
+    .getByText("Ocupação simulada de leitos", { exact: true })
+    .first()
+    .click();
+  const expand = page.getByRole("button", {
+    name: /^Filtros e legenda/,
+  });
+  await expect(expand).toHaveAttribute("aria-expanded", "false");
+  await expect(
+    page.getByText("Leitos fictícios. Não representam filas."),
+  ).toBeVisible();
+  const simulated = page.getByRole("checkbox", {
+    name: "Mostrar só unidades com ocupação simulada de leitos",
+  });
+  await expect(simulated).toBeHidden();
+  await expect(
+    page.getByRole("article").first().getByRole("heading"),
+  ).toBeInViewport();
+  await expand.click();
+  await expect(expand).toHaveAttribute("aria-expanded", "true");
+  await simulated.check();
+  await expect(page.getByRole("article")).toHaveCount(2);
+  await expand.click();
+  await expect(expand).toHaveAccessibleName(
+    "Filtros e legenda (1 filtro ativo)",
+  );
+  await expect(expand).toBeFocused();
+  await expect(simulated).toBeHidden();
+  await expect(page.getByRole("article")).toHaveCount(2);
+});

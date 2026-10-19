@@ -99,7 +99,9 @@ function UnitCard({
             as a highlight of the units in the simulation. */}
         {occupancy && (
           <div>
-            <dt className="font-semibold text-slate-900">Ocupação simulada de leitos</dt>
+            <dt className="font-semibold text-slate-900">
+              Ocupação simulada de leitos
+            </dt>
             <dd className="mt-1">
               <OccupancyBadge occupancy={occupancy} />
             </dd>
@@ -326,7 +328,7 @@ export function UnitsPage() {
       </form>
 
       <div className="mb-6 max-w-3xl empty:hidden md:mb-8">
-        <OccupancyControls />
+        <OccupancyControls collapsible />
       </div>
 
       <LiveStatus message={liveMessage} />
