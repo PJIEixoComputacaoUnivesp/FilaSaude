@@ -730,13 +730,15 @@ function FitUnits({
   return null;
 }
 
-// A target shape distinguishes the person's position from health-unit discs,
-// even when the occupancy layer is off or colors cannot be distinguished.
+// A dot with a halo distinguishes the person's position from the flat
+// health-unit discs, also by shape and shadow, not only by color (fila-cyan,
+// see index.css).
+const userLocationColor = "#00a5e3";
 const userLocationIcon = L.divIcon({
   className: "user-location-marker",
   html: '<span aria-hidden="true"></span>',
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
 });
 
 function UserLocation({
@@ -825,8 +827,8 @@ function UserLocation({
         center={[latitude, longitude]}
         radius={accuracy}
         pathOptions={{
-          color: markerColor,
-          fillOpacity: 0.08,
+          color: userLocationColor,
+          fillOpacity: 0.1,
           weight: 1,
           interactive: false,
         }}

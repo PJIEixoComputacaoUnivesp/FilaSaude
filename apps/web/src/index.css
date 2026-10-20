@@ -140,18 +140,51 @@
   font-family: var(--font-sans);
 }
 
-.user-location-marker {
-  border: 3px solid white;
-  border-radius: 50%;
-  background: var(--color-fila-blue);
-  box-shadow: 0 0 0 2px var(--color-fila-blue);
+/* "You are here": a cyan dot with a halo, distinct from the flat blue, violet
+   and gray unit discs. The white ring and the shadow keep it readable on any
+   tile. Keep the color in step with userLocationColor in UnitsMap.tsx. */
+/* Leaflet's own `.leaflet-marker-icon { display: block }` loads later. */
+.leaflet-marker-icon.user-location-marker {
   display: grid;
   place-items: center;
 }
 
-.user-location-marker span {
-  width: 10px;
-  height: 10px;
-  border: 2px solid white;
+.user-location-marker::before {
+  content: "";
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
+  background: color-mix(in srgb, var(--color-fila-cyan) 30%, transparent);
+  animation: user-location-pulse 2s ease-out infinite;
+}
+
+.user-location-marker span {
+  grid-area: 1 / 1;
+  width: 16px;
+  height: 16px;
+  border: 3px solid white;
+  border-radius: 50%;
+  background: var(--color-fila-cyan);
+  box-shadow:
+    0 0 0 1px rgb(15 23 42 / 0.35),
+    0 1px 4px rgb(15 23 42 / 0.4);
+}
+
+@keyframes user-location-pulse {
+  from {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .user-location-marker::before {
+    animation: none;
+    transform: scale(0.75);
+  }
 }
