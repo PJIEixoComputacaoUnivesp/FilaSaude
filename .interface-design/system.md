@@ -153,11 +153,13 @@
 
 ## Initial patterns
 
-- Geolocation requires an explicit action in a separate control at the bottom
-  of the map, preserving the search panel's height on mobile. Use a target to
-  distinguish the person from unit discs, with accuracy in text and a circle
-  on the map. Preserve filters and keep the position only in page memory, with
-  actions to cancel, update and remove it.
+- Geolocation is requested when the map opens, with no button to ask for it.
+  A refusal is silent and final. Status lives in a separate control at the
+  bottom of the map, shown only while locating, after a failure (with a retry
+  when one can help) or with a position, preserving the search panel's height
+  on mobile. Use a target to distinguish the person from unit discs, with
+  accuracy in text and a circle on the map. Preserve filters and keep the
+  position only in page memory, with actions to cancel and remove it.
 
 - Product status: compact bordered pill with explicit text.
 - Safety notice: amber-tinted surface with a strong left border and direct label

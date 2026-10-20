@@ -10,11 +10,17 @@ type LocationState =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "success"; position: UserPosition }
-  | { status: "error"; message: string };
+  /** `canRetry` is false when asking again would fail the same way. */
+  | { status: "error"; message: string; canRetry: boolean };
 
 const timeoutMessage =
   "A localização demorou para responder. Tente novamente em um local com melhor sinal.";
 
+/**
+ * Asks for the position as soon as the map opens, so the person answers the
+ * browser's prompt once instead of looking for a button. A refusal is final:
+ * the map stays national and nothing asks again.
+ */
 export function useGeolocation() {
   const [state, setState] = useState<LocationState>({ status: "idle" });
   // getCurrentPosition cannot be cancelled. Ignore callbacks after removal,
@@ -29,7 +35,15 @@ export function useGeolocation() {
     clearTimeout(timer.current);
   }
 
-  useEffect(() => cancel, []);
+  // Only on mount: a new map page is a new visit to the map. Deferred so
+  // React's development double mount asks only once.
+  useEffect(() => {
+    const start = setTimeout(locate);
+    return () => {
+      clearTimeout(start);
+      cancel();
+    };
+  }, []);
 
   function locate() {
     if (pending.current) return;
@@ -38,6 +52,7 @@ export function useGeolocation() {
       setState({
         status: "error",
         message: "Para usar a localização, acesse o site por HTTPS.",
+        canRetry: false,
       });
       return;
     }
@@ -46,6 +61,7 @@ export function useGeolocation() {
         status: "error",
         message:
           "Este navegador não oferece localização. Você pode buscar por cidade ou unidade.",
+        canRetry: false,
       });
       return;
     }
@@ -60,7 +76,8 @@ export function useGeolocation() {
     };
     // Also bounds time waiting for a permission prompt left unanswered.
     timer.current = setTimeout(
-      () => finish({ status: "error", message: timeoutMessage }),
+      () =>
+        finish({ status: "error", message: timeoutMessage, canRetry: true }),
       20_000,
     );
 
@@ -82,6 +99,7 @@ export function useGeolocation() {
               status: "error",
               message:
                 "Sua posição está fora da área exibida no mapa ou não é válida. Busque por cidade ou unidade.",
+              canRetry: false,
             });
             return;
           }
@@ -91,22 +109,27 @@ export function useGeolocation() {
           });
         },
         ({ code }) =>
-          finish({
-            status: "error",
-            message:
-              code === 1
-                ? "Permissão de localização negada. Para tentar novamente, permita o acesso nas configurações do navegador."
-                : code === 3
-                  ? timeoutMessage
-                  : "Não foi possível obter sua localização. Verifique a localização do dispositivo e tente novamente.",
-          }),
+          finish(
+            // PERMISSION_DENIED: the person said no, so the map just goes on.
+            code === 1
+              ? { status: "idle" }
+              : {
+                  status: "error",
+                  message:
+                    code === 3
+                      ? timeoutMessage
+                      : "Não foi possível obter sua localização. Verifique a localização do dispositivo e tente novamente.",
+                  canRetry: true,
+                },
+          ),
         { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
       );
     } catch {
       finish({
         status: "error",
         message:
-          "Não foi possível acessar a localização. Verifique as permissões do navegador e tente novamente.",
+          "Não foi possível acessar a localização. Verifique as permissões do navegador.",
+        canRetry: false,
       });
     }
   }

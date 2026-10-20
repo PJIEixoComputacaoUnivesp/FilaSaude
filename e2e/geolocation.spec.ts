@@ -63,7 +63,7 @@ for (const viewport of [
   { width: 667, height: 375 },
   { width: 1280, height: 800 },
 ]) {
-  test(`localiza, enquadra e remove a posição em ${viewport.width}×${viewport.height}`, async ({
+  test(`localiza ao abrir, enquadra e remove a posição em ${viewport.width}×${viewport.height}`, async ({
     page,
     context,
   }, testInfo) => {
@@ -77,10 +77,6 @@ for (const viewport of [
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/?uf=SP&q=Centro");
     const marker = page.locator(".user-location-marker");
-    await expect(marker).toHaveCount(0);
-    await page
-      .getByRole("button", { name: "Usar minha localização", exact: true })
-      .click();
     await expect(
       page.getByRole("status").filter({ hasText: "Precisão aproximada: 80 m" }),
     ).toBeVisible();
@@ -114,8 +110,11 @@ for (const viewport of [
     await page.getByRole("button", { name: "Remover localização" }).click();
     await expect(marker).toHaveCount(0);
     await expect(
-      page.getByRole("button", { name: "Usar minha localização", exact: true }),
-    ).toBeVisible();
+      page.getByRole("region", { name: "Sua localização", exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { level: 1, name: /Mapa das unidades/ }),
+    ).toBeFocused();
   });
 }
 
@@ -167,54 +166,60 @@ async function mockLocation(
   }, mode);
 }
 
-for (const [mode, message] of [
-  [1, "Permissão de localização negada"],
-  [2, "Não foi possível obter sua localização"],
-  [3, "A localização demorou para responder"],
-  [4, "Sua posição está fora da área exibida"],
-  ["unsupported", "Este navegador não oferece localização"],
-  ["insecure", "Para usar a localização, acesse o site por HTTPS"],
-  ["throw", "Não foi possível acessar a localização"],
+test("recusar a permissão não mostra aviso nem pede de novo", async ({
+  page,
+}) => {
+  await mockLocation(page, 1);
+  await page.goto("/");
+  await expect.poll(() => page.evaluate("window.locationRequests")).toBe(1);
+  await expect(
+    page.getByRole("region", { name: "Sua localização", exact: true }),
+  ).toHaveCount(0);
+  await expect(page.locator(".user-location-marker")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /localização/ })).toHaveCount(0);
+});
+
+for (const [mode, message, canRetry] of [
+  [2, "Não foi possível obter sua localização", true],
+  [3, "A localização demorou para responder", true],
+  [4, "Sua posição está fora da área exibida", false],
+  ["unsupported", "Este navegador não oferece localização", false],
+  ["insecure", "Para usar a localização, acesse o site por HTTPS", false],
+  ["throw", "Não foi possível acessar a localização", false],
 ] as const) {
-  test(`informa falha de localização: ${mode}`, async ({ page }) => {
+  test(`informa falha de localização ao abrir: ${mode}`, async ({ page }) => {
     await mockLocation(page, mode);
     await page.goto("/");
-    const button = page.getByRole("button", {
-      name: "Usar minha localização",
-      exact: true,
-    });
-    await button.click();
     await expect(
       page.getByRole("status").filter({ hasText: message }),
     ).toBeVisible();
-    await expect(button).toBeFocused();
-    await expect(button).not.toHaveAttribute("aria-disabled", "true");
+    await expect(
+      page.getByRole("button", { name: "Tentar novamente" }),
+    ).toHaveCount(canRetry ? 1 : 0);
     await expect(page.locator(".user-location-marker")).toHaveCount(0);
+    await page.getByRole("button", { name: "Fechar" }).click();
+    await expect(
+      page.getByRole("region", { name: "Sua localização", exact: true }),
+    ).toHaveCount(0);
   });
 }
 
-test("solicita apenas ao clicar, bloqueia duplicatas e ignora resposta após cancelar", async ({
+test("solicita uma vez ao abrir e ignora a resposta após cancelar", async ({
   page,
 }) => {
   await mockLocation(page, "pending");
   await page.goto("/");
-  await expect.poll(() => page.evaluate("window.locationRequests")).toBe(0);
-  await page
-    .getByRole("button", { name: "Usar minha localização", exact: true })
-    .click();
-  const loading = page.getByRole("button", { name: "Obtendo localização…" });
-  await expect(loading).toHaveAttribute("aria-disabled", "true");
-  await loading.click({ force: true });
-  expect(await page.evaluate("window.locationRequests")).toBe(1);
+  await expect.poll(() => page.evaluate("window.locationRequests")).toBe(1);
+  await expect(
+    page.getByRole("status").filter({ hasText: "Obtendo sua localização" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Cancelar localização" }).click();
   await page.evaluate("window.completeLocation()");
   await expect(page.locator(".user-location-marker")).toHaveCount(0);
-  await page
-    .getByRole("button", { name: "Usar minha localização", exact: true })
-    .click();
-  await page.evaluate("window.completeLocation()");
-  await expect(page.locator(".user-location-marker")).toBeVisible();
-  expect(await page.evaluate("window.locationRequests")).toBe(2);
+  await expect(
+    page.getByRole("region", { name: "Sua localização", exact: true }),
+  ).toHaveCount(0);
+  expect(await page.evaluate("window.locationRequests")).toBe(1);
 });
 
 test("encerra uma solicitação sem resposta e permite nova tentativa", async ({
@@ -223,23 +228,19 @@ test("encerra uma solicitação sem resposta e permite nova tentativa", async ({
   await mockLocation(page, "pending");
   await page.clock.install();
   await page.goto("/");
-  await page
-    .getByRole("button", { name: "Usar minha localização", exact: true })
-    .click();
   await page.clock.fastForward(20_001);
   await expect(
     page.getByRole("status").filter({ hasText: "A localização demorou" }),
   ).toBeVisible();
   await page.evaluate("window.completeLocation()");
   await expect(page.locator(".user-location-marker")).toHaveCount(0);
-  await page
-    .getByRole("button", { name: "Usar minha localização", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Tentar novamente" }).click();
   await page.evaluate("window.completeLocation()");
   await expect(page.locator(".user-location-marker")).toBeVisible();
+  expect(await page.evaluate("window.locationRequests")).toBe(2);
   await page.reload();
   await expect(page.locator(".user-location-marker")).toHaveCount(0);
-  expect(await page.evaluate("window.locationRequests")).toBe(0);
+  await expect.poll(() => page.evaluate("window.locationRequests")).toBe(1);
 });
 
 test("mantém a posição visível após a resposta tardia do catálogo e a rotação", async ({
@@ -262,12 +263,6 @@ test("mantém a posição visível após a resposta tardia do catálogo e a rota
     await route.fallback();
   });
   await page.goto("/?uf=SP");
-  const locate = page.getByRole("button", {
-    name: "Usar minha localização",
-    exact: true,
-  });
-  await locate.focus();
-  await page.keyboard.press("Enter");
   const marker = page.locator(".user-location-marker");
   await expect(marker).toBeVisible();
   releaseCatalog();
