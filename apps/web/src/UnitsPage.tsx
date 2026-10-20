@@ -416,7 +416,7 @@ export function UnitsPage() {
         onSubmit={(event) => event.preventDefault()}
         // Around the person, the state and the radius sit side by side, so the
         // first result is not pushed below the fold.
-        className={`mb-6 grid max-w-3xl gap-4 md:mb-8 ${nearbyEnabled ? "min-[22rem]:grid-cols-[minmax(0,1fr)_8.5rem] lg:grid-cols-[14rem_10rem_minmax(0,1fr)]" : "sm:grid-cols-[14rem_1fr]"}`}
+        className={`mb-6 grid max-w-3xl gap-4 md:mb-8 ${nearbyEnabled ? "items-end min-[22rem]:grid-cols-[minmax(0,1fr)_8.5rem] lg:grid-cols-[14rem_10rem_minmax(0,1fr)]" : "sm:grid-cols-[14rem_1fr]"}`}
       >
         <div className="contents">
           <BrazilianStateSelect

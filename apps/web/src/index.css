@@ -14,6 +14,8 @@
 
   .map-location-panel {
     max-height: calc(100% - 3.5rem);
+    /* Never reaches the search panel's column, whatever the font width. */
+    max-width: calc(100% - 21rem);
   }
 }
 
