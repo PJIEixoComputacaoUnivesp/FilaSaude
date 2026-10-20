@@ -572,3 +572,63 @@ test("trata /units/ com barra final como a lista e grava a busca na URL", async 
   await expect(page.getByText("1 unidade encontrada")).toBeVisible();
   await expect(page).toHaveURL(/\?uf=SP&q=Osasco$/);
 });
+
+test("Como chegar abre o Google Maps no destino, sem a origem", async ({
+  page,
+}) => {
+  await openUnitsPage(page);
+  await page
+    .getByRole("article")
+    .filter({ hasText: "UPA Vila Mariana" })
+    .getByRole("link", { name: /Ver no mapa\s*: UPA Vila Mariana/ })
+    .click();
+  const fromPopup = page
+    .locator(".leaflet-popup")
+    .getByRole("link", { name: /^Como chegar\s*: UPA Vila Mariana/ });
+  await expect(fromPopup).toHaveAttribute(
+    "href",
+    "https://www.google.com/maps/dir/?api=1&destination=-23.596%2C-46.643",
+  );
+  await expect(fromPopup).toHaveAttribute("target", "_blank");
+  await expect(fromPopup).toHaveAccessibleName(
+    /^Como chegar\s*: UPA Vila Mariana, abre o Google Maps em nova aba$/,
+  );
+
+  await page
+    .locator(".leaflet-popup")
+    .getByRole("link", { name: /Ver detalhes\s*: UPA Vila Mariana/ })
+    .click();
+  const nav = page.getByRole("navigation", { name: "Navegação da unidade" });
+  await expect(
+    nav.getByRole("link", { name: /^Como chegar\s*: UPA Vila Mariana/ }),
+  ).toHaveAttribute("href", /destination=-23\.596%2C-46\.643$/);
+});
+
+test.describe("no Android", () => {
+  test.use({
+    userAgent:
+      "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36",
+  });
+
+  test("Como chegar usa geo: para o app de mapas escolhido", async ({
+    page,
+  }) => {
+    await openUnitsPage(page);
+    await page
+      .getByRole("article")
+      .filter({ hasText: "UPA Vila Mariana" })
+      .getByRole("link", { name: /Ver detalhes\s*: UPA Vila Mariana/ })
+      .click();
+    const link = page
+      .getByRole("navigation", { name: "Navegação da unidade" })
+      .getByRole("link", { name: /^Como chegar\s*: UPA Vila Mariana/ });
+    await expect(link).toHaveAttribute(
+      "href",
+      "geo:-23.596,-46.643?q=-23.596,-46.643(UPA%20Vila%20Mariana)",
+    );
+    await expect(link).not.toHaveAttribute("target", /.+/);
+    await expect(link).toHaveAccessibleName(
+      /^Como chegar\s*: UPA Vila Mariana, abre o aplicativo de mapas$/,
+    );
+  });
+});
