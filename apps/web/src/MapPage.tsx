@@ -247,9 +247,10 @@ export function MapPage() {
 
   // The map's floor follows the height, not the width: a short screen (a phone
   // held sideways, a browser bar) fills the space left, and only a very short
-  // one (zoomed in) scrolls instead of crushing the map.
+  // one (zoomed in) scrolls instead of crushing the map. Narrow and zoomed in,
+  // the floor is taller, so the search and location panels never overlap.
   return (
-    <div className="relative min-h-56 w-full flex-1 [@media(min-height:40rem)]:min-h-[28rem]">
+    <div className="relative min-h-80 w-full flex-1 sm:min-h-56 sm:[@media(min-height:40rem)]:min-h-[28rem]">
       <h1
         ref={(element) => {
           titleRef.current = element;
@@ -266,7 +267,7 @@ export function MapPage() {
       <section
         ref={panelRef}
         aria-label="Controles do mapa"
-        className="map-search-panel absolute left-3 right-3 top-3 z-[900] max-h-[min(22rem,calc(100%-7.5rem))] overflow-y-auto map-wide:max-h-[calc(100%-7.5rem)] overscroll-contain rounded-2xl border border-slate-200 bg-white p-3 map-wide:left-6 map-wide:right-auto map-wide:top-4 map-wide:w-72 map-wide:md:w-96 map-wide:p-4"
+        className="map-search-panel absolute left-3 right-3 top-3 z-[900] max-h-[min(22rem,calc(100%-7.5rem))] overflow-y-auto map-wide:max-h-[calc(100%-8.5rem)] overscroll-contain rounded-2xl border border-slate-200 bg-white p-3 map-wide:left-6 map-wide:right-auto map-wide:top-4 map-wide:w-72 map-wide:md:w-96 map-wide:p-4"
       >
         <form
           role="search"
@@ -437,7 +438,8 @@ export function MapPage() {
             )}
           </div>
         )}
-        <OccupancyControls compact onOpenLegend={() => openFilters(true)} />
+        {/* Before the layer controls, so the retry stays in view on a short
+            panel. */}
         {state.status === "error" && (
           <div className="mt-2 text-sm text-red-900 map-wide:mt-3" role="alert">
             <p>{state.message}</p>
@@ -450,6 +452,7 @@ export function MapPage() {
             </button>
           </div>
         )}
+        <OccupancyControls compact onOpenLegend={() => openFilters(true)} />
       </section>
 
       {/* Always mounted, apart from the panel, so each change is announced
@@ -466,7 +469,7 @@ export function MapPage() {
           ref={locationPanelRef}
           aria-label="Sua localização"
           aria-describedby={locationDescriptionId}
-          className={`absolute bottom-10 right-3 z-[900] max-h-[45%] ${isPopupOpen ? "invisible map-wide:visible" : ""} max-w-[calc(100%-5.5rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 sm:right-6 sm:max-w-72`}
+          className={`map-location-panel absolute bottom-10 right-3 z-[900] max-h-[45%] ${isPopupOpen ? "invisible map-wide:visible" : ""} max-w-[calc(100%-5.5rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 sm:right-6 sm:max-w-sm`}
         >
           <p id={locationDescriptionId} className="sr-only">
             Sua posição fica apenas nesta aba.
@@ -478,22 +481,25 @@ export function MapPage() {
                 Sua localização (±{" "}
                 {formatAccuracy(location.state.position.accuracy)} m)
               </p>
-              <button
-                type="button"
-                aria-label="Atualizar localização"
-                onClick={location.locate}
-                className="min-h-11 rounded-lg px-2 text-sm font-semibold text-fila-blue underline underline-offset-2"
-              >
-                Atualizar
-              </button>
-              <button
-                type="button"
-                aria-label="Remover localização"
-                onClick={removeLocation}
-                className="min-h-11 rounded-lg px-2 text-sm font-semibold text-slate-700 underline underline-offset-2"
-              >
-                Remover
-              </button>
+              {/* The actions wrap together, never one per line. */}
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  aria-label="Atualizar localização"
+                  onClick={location.locate}
+                  className="min-h-11 rounded-lg px-2 text-sm font-semibold text-fila-blue underline underline-offset-2"
+                >
+                  Atualizar
+                </button>
+                <button
+                  type="button"
+                  aria-label="Remover localização"
+                  onClick={removeLocation}
+                  className="min-h-11 rounded-lg px-2 text-sm font-semibold text-slate-700 underline underline-offset-2"
+                >
+                  Remover
+                </button>
+              </div>
             </div>
           ) : (
             <>

@@ -1161,3 +1161,101 @@ for (const viewport of [
     });
   }
 }
+
+for (const viewport of [
+  { width: 320, height: 284 },
+  { width: 667, height: 375 },
+  { width: 844, height: 390 },
+]) {
+  test(`com a camada e a posição, os painéis não se cortam em ${viewport.width}×${viewport.height}`, async ({
+    page,
+    context,
+  }) => {
+    await page.setViewportSize(viewport);
+    await context.setGeolocation({
+      latitude: -23.56,
+      longitude: -46.64,
+      accuracy: 50,
+    });
+    await context.grantPermissions(["geolocation"]);
+    await mockApi(page);
+    await page.route("**/api/units?state=ALL", (route) =>
+      route.fulfill({ json: unitsResponse }),
+    );
+    await page.goto("/?uf=SP");
+    const panel = page.getByRole("region", { name: "Controles do mapa" });
+    const location = page.getByRole("region", {
+      name: "Sua localização",
+      exact: true,
+    });
+    await panel.getByText("Leitos simulados", { exact: true }).click();
+    await expect(location.getByRole("button", { name: "Remover localização" })).toBeVisible();
+    // The notice is required while the layer is on: never cut by the panel.
+    await expect(
+      panel.getByText("Leitos fictícios. Não representam filas."),
+    ).toBeInViewport({ ratio: 1 });
+    await expect
+      .poll(() =>
+        panel.evaluate(
+          (element) => element.scrollHeight <= element.clientHeight + 1,
+        ),
+      )
+      .toBe(true);
+    const [a, b] = (await Promise.all([
+      panel.boundingBox(),
+      location.boundingBox(),
+    ]))!;
+    const overlaps =
+      a!.x < b!.x + b!.width &&
+      b!.x < a!.x + a!.width &&
+      a!.y < b!.y + b!.height &&
+      b!.y < a!.y + a!.height;
+    expect(overlaps).toBe(false);
+  });
+}
+
+for (const width of [390, 667, 1280]) {
+  test(`as ações da posição marcada ficam numa só linha em ${width}px`, async ({
+    page,
+    context,
+  }) => {
+    await page.setViewportSize({ width, height: width === 667 ? 375 : 800 });
+    await context.setGeolocation({
+      latitude: -23.56,
+      longitude: -46.64,
+      accuracy: 50,
+    });
+    await context.grantPermissions(["geolocation"]);
+    await mockApi(page);
+    await page.route("**/api/units?state=ALL", (route) =>
+      route.fulfill({ json: unitsResponse }),
+    );
+    await page.goto("/?uf=SP");
+    const location = page.getByRole("region", {
+      name: "Sua localização",
+      exact: true,
+    });
+    await expect(location.getByRole("button", { name: "Remover localização" })).toBeVisible();
+    // The text and, at most, one row with both actions.
+    expect((await location.boundingBox())!.height).toBeLessThanOrEqual(84);
+  });
+}
+
+test("o erro do catálogo deixa a nova tentativa visível em paisagem", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 667, height: 375 });
+  await mockOccupancyStream(page);
+  await page.route("**/api/units?**", (route) =>
+    route.fulfill({ status: 503, body: "" }),
+  );
+  await page.goto("/");
+  const panel = page.getByRole("region", { name: "Controles do mapa" });
+  const retry = panel.getByRole("button", { name: "Tentar novamente" });
+  await expect(retry).toBeVisible();
+  const [box, button] = await Promise.all([
+    panel.boundingBox(),
+    retry.boundingBox(),
+  ]);
+  expect(button!.y + button!.height).toBeLessThanOrEqual(box!.y + box!.height);
+});
