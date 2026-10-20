@@ -153,6 +153,12 @@
 
 ## Initial patterns
 
+- A localização da pessoa é uma ação explícita em um controle separado na parte
+  inferior do mapa, preservando a altura do painel de busca no celular. Use um
+  alvo para distinguir a pessoa dos discos das unidades, com precisão em texto
+  e círculo no mapa. Preserve os filtros e mantenha a posição apenas na memória
+  da página, com opções de cancelar, atualizar e remover.
+
 - Product status: compact bordered pill with explicit text.
 - Safety notice: amber-tinted surface with a strong left border and direct label
   where it needs emphasis; a short plain footer paragraph elsewhere.

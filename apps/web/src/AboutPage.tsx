@@ -60,6 +60,24 @@ export function AboutPage() {
         </p>
       </section>
 
+      <section className="flex flex-col gap-3" aria-labelledby="sobre-localizacao">
+        <h2 id="sobre-localizacao" className="text-xl font-bold text-slate-900">
+          Sua localização no mapa
+        </h2>
+        <p className="text-base leading-relaxed text-slate-700">
+          Ao tocar em “Usar minha localização”, o navegador solicita sua permissão
+          e obtém uma posição aproximada por GPS ou outras fontes do dispositivo.
+          O alvo indica sua posição e o círculo mostra a precisão informada pelo
+          navegador. A posição fica apenas na memória desta página, pode ser
+          removida e não é enviada à API do FilaSaúde nem incluída na URL.
+        </p>
+        <p className="text-base leading-relaxed text-slate-700">
+          O mapa carrega imagens do OpenStreetMap conforme a área visualizada.
+          A localização exige conexão segura e pode falhar ou ser imprecisa.
+          Você pode continuar consultando por cidade ou unidade.
+        </p>
+      </section>
+
       <section className="flex flex-col gap-3" aria-labelledby="sobre-limites">
         <h2 id="sobre-limites" className="text-xl font-bold text-slate-900">
           O que o FilaSaúde não faz
