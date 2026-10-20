@@ -473,7 +473,8 @@ function UnitMarker({
             Ver detalhes
             <span className="sr-only">: {unit.name}</span>
           </Link>
-          <p className="mb-2 text-sm text-slate-600">
+          {/* Leaflet's own paragraph margin would leave a gap under the link. */}
+          <p className="mt-0! mb-2 text-sm text-slate-600">
             {formatAddress(unit.address)}
           </p>
           <PopupDistance unit={unit} />
