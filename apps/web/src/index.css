@@ -139,3 +139,19 @@
 .leaflet-container {
   font-family: var(--font-sans);
 }
+
+.user-location-marker {
+  border: 3px solid white;
+  border-radius: 50%;
+  background: var(--color-fila-blue);
+  box-shadow: 0 0 0 2px var(--color-fila-blue);
+  display: grid;
+  place-items: center;
+}
+
+.user-location-marker span {
+  width: 10px;
+  height: 10px;
+  border: 2px solid white;
+  border-radius: 50%;
+}

@@ -12,6 +12,8 @@ import "leaflet/dist/leaflet.css";
 import { Link } from "react-router-dom";
 import {
   CircleMarker,
+  Circle,
+  Marker,
   MapContainer,
   Popup,
   TileLayer,
@@ -21,6 +23,7 @@ import {
 } from "react-leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
 import { MapFocusRing } from "./MapFocusRing";
+import type { UserPosition } from "./useGeolocation";
 import { OccupancyBadge } from "./OccupancyBadge";
 import {
   occupancyStatus,
@@ -169,7 +172,10 @@ async function fetchBoundary(
  * Credit for the outline. Leaflet renders attributions as HTML, so the values
  * from the response are escaped and only an http(s) link is kept.
  */
-function boundaryAttribution({ source, boundaryYear }: BoundaryResponse["metadata"]) {
+function boundaryAttribution({
+  source,
+  boundaryYear,
+}: BoundaryResponse["metadata"]) {
   const escape = (text: string) =>
     text.replace(/[&<>"']/g, (character) => `&#${character.charCodeAt(0)};`);
   const label = `IBGE ${escape(String(boundaryYear))}`;
@@ -292,6 +298,8 @@ function BrazilBorderLayer({ onSettled }: { onSettled: () => void }) {
 }
 
 interface UnitsMapProps {
+  userPosition?: UserPosition;
+  locationPanelRef?: RefObject<HTMLElement | null>;
   units: HealthUnit[];
   className?: string;
   selectedUnitId?: string;
@@ -429,7 +437,9 @@ function UnitMarker({
           {unit.serviceHours && (
             <p className="my-2 text-sm text-slate-600">{unit.serviceHours}</p>
           )}
-          {occupancy && <OccupancyBadge occupancy={occupancy} className="my-2" />}
+          {occupancy && (
+            <OccupancyBadge occupancy={occupancy} className="my-2" />
+          )}
           {unit.location.precision === "manual" &&
             unit.location.correctedAt && (
               <p className="my-2 text-xs font-medium text-amber-800">
@@ -633,15 +643,19 @@ function FitUnits({
   units,
   overlayRef,
   hasSelection,
+  userPosition,
 }: {
   units: HealthUnit[];
   overlayRef?: RefObject<HTMLElement | null>;
   /** A selected unit frames the map itself (see UnitMarker). */
   hasSelection: boolean;
+  userPosition?: UserPosition;
 }) {
   const map = useMap();
 
   useEffect(() => {
+    // Late catalog responses and overlay resizing must not undo a GPS view.
+    if (userPosition) return;
     const coordinates = units
       .filter(hasLocation)
       .map(
@@ -698,9 +712,98 @@ function FitUnits({
       observer.disconnect();
       map.off("moveend", remember);
     };
-  }, [map, overlayRef, units, hasSelection]);
+  }, [map, overlayRef, units, hasSelection, userPosition]);
 
   return null;
+}
+
+// A target shape distinguishes the person's position from health-unit discs,
+// even when the occupancy layer is off or colors cannot be distinguished.
+const userLocationIcon = L.divIcon({
+  className: "user-location-marker",
+  html: '<span aria-hidden="true"></span>',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+});
+
+function UserLocation({
+  position,
+  overlayRef,
+  locationPanelRef,
+}: {
+  position: UserPosition;
+  overlayRef?: RefObject<HTMLElement | null>;
+  locationPanelRef?: RefObject<HTMLElement | null>;
+}) {
+  const map = useMap();
+  const { latitude, longitude, accuracy } = position;
+  useEffect(() => {
+    map.closePopup();
+    const bounds = L.latLng(latitude, longitude).toBounds(
+      Math.max(accuracy * 2, 100),
+    );
+    const fit = () => {
+      const mapBox = map.getContainer().getBoundingClientRect();
+      const locationBox = locationPanelRef?.current?.getBoundingClientRect();
+      map.fitBounds(bounds, {
+        ...overlayPadding(map, overlayRef?.current),
+        paddingBottomRight: [
+          fitPadding,
+          locationBox
+            ? mapBox.bottom - locationBox.top + fitPadding
+            : fitPadding,
+        ],
+        maxZoom: 16,
+        animate: false,
+      });
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(map.getContainer());
+    if (overlayRef?.current) observer.observe(overlayRef.current);
+    if (locationPanelRef?.current) observer.observe(locationPanelRef.current);
+    // After a deliberate map move, resizing should preserve that view.
+    map.once("dragstart zoomstart", stopFollowing);
+    function stopFollowing() {
+      observer.disconnect();
+    }
+    return () => {
+      observer.disconnect();
+      map.off("dragstart zoomstart", stopFollowing);
+    };
+  }, [
+    map,
+    latitude,
+    longitude,
+    accuracy,
+    overlayRef,
+    locationPanelRef,
+    position,
+  ]);
+
+  return (
+    <>
+      <Circle
+        center={[latitude, longitude]}
+        radius={accuracy}
+        pathOptions={{
+          color: markerColor,
+          fillOpacity: 0.08,
+          weight: 1,
+          interactive: false,
+        }}
+      />
+      <Marker
+        position={[latitude, longitude]}
+        icon={userLocationIcon}
+        title="Sua localização aproximada"
+        alt="Sua localização aproximada"
+        keyboard={false}
+        interactive={false}
+        zIndexOffset={1000}
+      />
+    </>
+  );
 }
 
 /**
@@ -803,6 +906,8 @@ function EnforceCountryZoom() {
 }
 
 export function UnitsMap({
+  userPosition,
+  locationPanelRef,
   units,
   className = "",
   overlayRef,
@@ -856,6 +961,7 @@ export function UnitsMap({
         zoomOutTitle="Afastar o mapa"
       />
       <FitUnits
+        userPosition={userPosition}
         units={unitsToFit}
         overlayRef={overlayRef}
         hasSelection={selectedUnitId !== undefined}
@@ -869,6 +975,13 @@ export function UnitsMap({
         overlayRef={overlayRef}
         listSearch={listSearch}
       />
+      {userPosition && (
+        <UserLocation
+          position={userPosition}
+          overlayRef={overlayRef}
+          locationPanelRef={locationPanelRef}
+        />
+      )}
     </MapContainer>
   );
 }

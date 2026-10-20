@@ -17,10 +17,15 @@ import { useOccupancyLayer } from "./useOccupancyLayer";
 import { useSearchFilters } from "./useSearchFilters";
 import { useUnits } from "./useUnits";
 import { SELECTED_UNIT_PARAM } from "./unitLinks";
+import { useGeolocation } from "./useGeolocation";
 
 const title = "Mapa das unidades de pronto atendimento";
 
 export function MapPage() {
+  const location = useGeolocation();
+  const locationDescriptionId = useId();
+  const locationButtonRef = useRef<HTMLButtonElement>(null);
+  const locationPanelRef = useRef<HTMLElement>(null);
   const headingRef = usePageHeading(title);
   const { stateCode, query, setStateCode, setQuery, flush, search } =
     useSearchFilters();
@@ -210,6 +215,63 @@ export function MapPage() {
         )}
       </section>
 
+      <section
+        ref={locationPanelRef}
+        aria-label="Sua localização"
+        className="absolute bottom-10 right-3 z-[900] max-h-[45%] max-w-[calc(100%-5.5rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 sm:right-6 sm:max-w-72"
+      >
+        <div className="flex flex-wrap items-center gap-x-3">
+          <button
+            ref={locationButtonRef}
+            type="button"
+            onClick={location.locate}
+            aria-disabled={location.state.status === "loading"}
+            aria-describedby={locationDescriptionId}
+            className="min-h-11 rounded-lg px-2 text-sm font-semibold text-fila-blue hover:bg-slate-100 aria-disabled:opacity-60"
+          >
+            {location.state.status === "loading"
+              ? "Obtendo localização…"
+              : location.state.status === "success"
+                ? "Atualizar minha localização"
+                : "Usar minha localização"}
+          </button>
+          {(location.state.status === "success" ||
+            location.state.status === "loading") && (
+            <button
+              type="button"
+              onClick={() => {
+                location.clear();
+                locationButtonRef.current?.focus();
+              }}
+              className="min-h-11 rounded-lg px-2 text-sm font-semibold text-slate-700 underline underline-offset-2"
+            >
+              {location.state.status === "loading"
+                ? "Cancelar localização"
+                : "Remover localização"}
+            </button>
+          )}
+        </div>
+        <p
+          id={locationDescriptionId}
+          className="text-xs leading-relaxed text-slate-600"
+        >
+          Sua posição fica apenas nesta página.
+        </p>
+        <p
+          role="status"
+          aria-atomic="true"
+          className="text-xs leading-relaxed text-slate-700"
+        >
+          {location.state.status === "success"
+            ? `Sua localização está marcada com um alvo. Precisão aproximada: ${Math.ceil(location.state.position.accuracy).toLocaleString("pt-BR")} m.`
+            : location.state.status === "error"
+              ? location.state.message
+              : location.state.status === "loading"
+                ? "Aguardando a localização. Se solicitado, permita o acesso no navegador."
+                : ""}
+        </p>
+      </section>
+
       {/* The mobile toolbar never expands when the layer is enabled. Longer
           controls live in an explicit modal, with native focus management. */}
       <dialog
@@ -217,7 +279,10 @@ export function MapPage() {
         aria-labelledby={filtersTitleId}
         onClose={() => {
           setLegendOpen(false);
-          if (filtersOpenerRef.current && !filtersOpenerRef.current.isConnected) {
+          if (
+            filtersOpenerRef.current &&
+            !filtersOpenerRef.current.isConnected
+          ) {
             filtersButtonRef.current?.focus();
           }
           filtersOpenerRef.current = null;
@@ -255,6 +320,12 @@ export function MapPage() {
       </dialog>
 
       <UnitsMap
+        locationPanelRef={locationPanelRef}
+        userPosition={
+          location.state.status === "success"
+            ? location.state.position
+            : undefined
+        }
         units={filteredUnits}
         selectedUnitId={selectedUnitId}
         listSearch={search}
