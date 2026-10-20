@@ -75,6 +75,8 @@ export function MapPage() {
   const filtersOpenerRef = useRef<HTMLElement | null>(null);
   const filtersTitleId = useId();
   const [isLegendOpen, setLegendOpen] = useState(false);
+  // Below map-wide the location panel would cover an open popup.
+  const [isPopupOpen, setPopupOpen] = useState(false);
   function openFilters(showLegend = false) {
     filtersOpenerRef.current =
       document.activeElement instanceof HTMLElement
@@ -464,7 +466,7 @@ export function MapPage() {
           ref={locationPanelRef}
           aria-label="Sua localização"
           aria-describedby={locationDescriptionId}
-          className="absolute bottom-10 right-3 z-[900] max-h-[45%] max-w-[calc(100%-5.5rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 sm:right-6 sm:max-w-72"
+          className={`absolute bottom-10 right-3 z-[900] max-h-[45%] ${isPopupOpen ? "invisible map-wide:visible" : ""} max-w-[calc(100%-5.5rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 sm:right-6 sm:max-w-72`}
         >
           <p id={locationDescriptionId} className="sr-only">
             Sua posição fica apenas nesta aba.
@@ -614,6 +616,7 @@ export function MapPage() {
         occupancy={byUnit}
         isCountryWide={isCountryWide}
         overlayRef={panelRef}
+        onPopupOpenChange={setPopupOpen}
         className="absolute inset-0"
       />
     </div>

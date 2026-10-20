@@ -315,6 +315,8 @@ interface UnitsMapProps {
   overlayRef?: RefObject<HTMLElement | null>;
   /** Simulated occupancy by CNES; empty while the layer is off. */
   occupancy?: ReadonlyMap<string, UnitOccupancy>;
+  /** Called when a unit's popup opens or closes. */
+  onPopupOpenChange?: (open: boolean) => void;
 }
 
 function UnitMarker({
@@ -324,6 +326,7 @@ function UnitMarker({
   renderer,
   selected,
   overlayRef,
+  locationPanelRef,
   linkSearch,
   autoPanPaddingTopLeft,
   popupMaxWidth,
@@ -335,6 +338,7 @@ function UnitMarker({
   renderer: L.Renderer;
   selected: boolean;
   overlayRef?: RefObject<HTMLElement | null>;
+  locationPanelRef?: RefObject<HTMLElement | null>;
   linkSearch: string;
   autoPanPaddingTopLeft: [number, number];
   popupMaxWidth: number;
@@ -362,7 +366,12 @@ function UnitMarker({
     let stopSettling: number | undefined;
     const keepSelectedPopupVisible = () => {
       window.requestAnimationFrame(() =>
-        keepPopupClearOfOverlay(map, marker.getPopup(), overlayRef?.current),
+        keepPopupClearOfOverlay(
+          map,
+          marker.getPopup(),
+          overlayRef?.current,
+          locationPanelRef?.current,
+        ),
       );
     };
     const openPopup = () => {
@@ -379,7 +388,7 @@ function UnitMarker({
     };
     map.once("moveend", openPopup);
     map.fitBounds([[unit.location.latitude!, unit.location.longitude!]], {
-      ...overlayPadding(map, overlayRef?.current),
+      ...overlayPadding(map, overlayRef?.current, locationPanelRef?.current),
       maxZoom: 15,
       animate: map.options.zoomAnimation !== false,
     });
@@ -394,7 +403,7 @@ function UnitMarker({
       map.off("moveend", openPopup);
       map.off("moveend", keepSelectedPopupVisible);
     };
-  }, [map, overlayRef, selected, unit]);
+  }, [map, overlayRef, locationPanelRef, selected, unit]);
 
   return (
     <CircleMarker
@@ -414,14 +423,17 @@ function UnitMarker({
           window.requestAnimationFrame(() => {
             const popup = event.popup;
             if (!popup.isOpen()) return;
-            placePopupWhereItFits(map, popup, overlayRef?.current);
-            keepPopupClearOfOverlay(map, popup, overlayRef?.current);
+            const overlay = overlayRef?.current;
+            const locationPanel = locationPanelRef?.current;
+            placePopupWhereItFits(map, popup, overlay, locationPanel);
+            keepPopupClearOfOverlay(map, popup, overlay, locationPanel);
             if (selected) popupHeadingRef.current?.focus();
             stopFollowingPopupRef.current?.();
             stopFollowingPopupRef.current = followPopupSize(
               map,
               popup,
-              overlayRef?.current,
+              overlay,
+              locationPanel,
             );
           });
         },
@@ -449,11 +461,19 @@ function UnitMarker({
           <strong
             ref={popupHeadingRef}
             tabIndex={selected ? -1 : undefined}
-            className="text-sm text-slate-900 focus:outline-none"
+            className="block text-sm text-slate-900 focus:outline-none"
           >
             {unit.name}
           </strong>
-          <p className="my-2 text-sm text-slate-600">
+          {/* Right under the name: on a short screen the rest scrolls. */}
+          <Link
+            to={unitDetailLink(unit.id, linkSearch)}
+            className="inline-flex min-h-11 items-center font-semibold text-fila-blue underline underline-offset-2"
+          >
+            Ver detalhes
+            <span className="sr-only">: {unit.name}</span>
+          </Link>
+          <p className="mb-2 text-sm text-slate-600">
             {formatAddress(unit.address)}
           </p>
           <PopupDistance unit={unit} />
@@ -490,13 +510,6 @@ function UnitMarker({
             sources={unit.sources}
             className="mb-0 space-y-1 text-xs text-slate-500"
           />
-          <Link
-            to={unitDetailLink(unit.id, linkSearch)}
-            className="mt-2 inline-flex min-h-11 items-center font-semibold text-fila-blue underline underline-offset-2"
-          >
-            Ver detalhes
-            <span className="sr-only">: {unit.name}</span>
-          </Link>
         </div>
       </Popup>
     </CircleMarker>
@@ -521,6 +534,7 @@ function UnitMarkers({
   renderer,
   selectedUnitId,
   overlayRef,
+  locationPanelRef,
   linkSearch,
 }: {
   units: HealthUnit[];
@@ -529,6 +543,7 @@ function UnitMarkers({
   renderer: L.Renderer;
   selectedUnitId?: string;
   overlayRef?: RefObject<HTMLElement | null>;
+  locationPanelRef?: RefObject<HTMLElement | null>;
   linkSearch: string;
 }) {
   const map = useMap();
@@ -553,12 +568,13 @@ function UnitMarkers({
           mapBox.width - autoPanPaddingTopLeft[0] - fitPadding - 72,
         ),
       );
-      // Leaflet adds about 28px of vertical chrome around popup content.
+      // Leaflet adds about 28px of vertical chrome around popup content. The
+      // zoom buttons and the attribution stay below it.
       const popupMaxHeight = Math.max(
         128,
         Math.min(
           448,
-          mapBox.height - autoPanPaddingTopLeft[1] - fitPadding - 28,
+          mapBox.height - autoPanPaddingTopLeft[1] - bottomPadding(map) - 28,
         ),
       );
       // This state mirrors the current DOM geometry of the responsive panel.
@@ -591,6 +607,7 @@ function UnitMarkers({
       renderer={renderer}
       selected={unit.id === selectedUnitId}
       overlayRef={overlayRef}
+      locationPanelRef={locationPanelRef}
       linkSearch={linkSearch}
       autoPanPaddingTopLeft={layout.autoPanPaddingTopLeft}
       popupMaxWidth={layout.popupMaxWidth}
@@ -599,10 +616,14 @@ function UnitMarkers({
   ));
 }
 
-/** Map padding that keeps fitted points clear of an overlay panel. */
+/**
+ * Map padding that keeps fitted points clear of an overlay panel and, while
+ * enough of the map is left, of the location panel at the bottom.
+ */
 function overlayPadding(
   map: L.Map,
   overlay: HTMLElement | null | undefined,
+  locationPanel?: HTMLElement | null,
 ): L.FitBoundsOptions {
   const padding: L.FitBoundsOptions = {
     padding: [fitPadding, fitPadding],
@@ -618,12 +639,42 @@ function overlayPadding(
     box.width > mapBox.width * 0.6
       ? [fitPadding, box.bottom - mapBox.top + fitPadding]
       : [box.right - mapBox.left + fitPadding, fitPadding];
+  const bottom = bottomPadding(map, locationPanel);
 
   return {
     paddingTopLeft: topLeft,
-    paddingBottomRight: [fitPadding, fitPadding],
+    paddingBottomRight: [
+      fitPadding,
+      mapBox.height - topLeft[1] - bottom >= 40 ? bottom : fitPadding,
+    ],
     maxZoom: 13,
   };
+}
+
+/**
+ * Room at the bottom of the map taken by Leaflet's controls (zoom buttons,
+ * attribution) and, when it shows, the location panel. Popups paint under
+ * them: the popup pane lives inside the map pane, below the controls.
+ */
+function bottomPadding(
+  map: L.Map,
+  locationPanel?: HTMLElement | null,
+): number {
+  const mapBox = map.getContainer().getBoundingClientRect();
+  const elements = [
+    ...map
+      .getContainer()
+      .querySelectorAll<HTMLElement>(".leaflet-bottom .leaflet-control"),
+  ];
+  if (locationPanel && getComputedStyle(locationPanel).visibility !== "hidden") {
+    elements.push(locationPanel);
+  }
+  let top = mapBox.bottom - fitPadding;
+  for (const element of elements) {
+    const box = element.getBoundingClientRect();
+    if (box.height > 0) top = Math.min(top, box.top - 8);
+  }
+  return mapBox.bottom - top;
 }
 
 /** Keeps an opened popup clear of the search panel and viewport edges. */
@@ -658,6 +709,7 @@ function placePopupWhereItFits(
   map: L.Map,
   popup: L.Popup | undefined,
   overlay: HTMLElement | null | undefined,
+  locationPanel?: HTMLElement | null,
 ): void {
   const element = popup?.getElement();
   if (!popup?.isOpen() || !element) return;
@@ -666,10 +718,11 @@ function placePopupWhereItFits(
   const [leftPadding, topPadding] = popupAutoPanPadding(map, overlay);
   const anchorY = map.latLngToContainerPoint(popup.getLatLng()!).y;
   const roomAbove = anchorY - popupGap - topPadding;
-  const roomBelow = map.getSize().y - fitPadding - anchorY - popupGap;
+  const roomBelow =
+    map.getSize().y - bottomPadding(map, locationPanel) - anchorY - popupGap;
   element.classList.toggle(
     "leaflet-popup-below",
-    element.offsetHeight > roomAbove && roomBelow > roomAbove,
+    element.offsetHeight > roomAbove && roomBelow >= roomAbove,
   );
 
   const mapBox = map.getContainer().getBoundingClientRect();
@@ -714,14 +767,16 @@ function resetPopupPlacement(popup: L.Popup): void {
 
 /**
  * Places an open popup again when its content, the map or the panel change
- * size (a phone turned sideways, the occupancy layer adding lines). The map is
- * not moved here: panning on every resize fought the pan limit, as Leaflet's
- * auto pan did. Returns a function that stops following.
+ * size (a phone turned sideways, the occupancy layer adding lines), and pans
+ * only as far as needed to keep it clear of the panels: a popup that grew
+ * after opening hid its name under the search panel or the header. Returns a
+ * function that stops following.
  */
 function followPopupSize(
   map: L.Map,
   popup: L.Popup,
   overlay: HTMLElement | null | undefined,
+  locationPanel?: HTMLElement | null,
 ): () => void {
   const sizes = new Map<Element, string>();
   let frame: number | undefined;
@@ -739,7 +794,8 @@ function followPopupSize(
     // Leaflet updates the map size for a window resize on the next frame.
     frame = window.requestAnimationFrame(() => {
       frame = undefined;
-      placePopupWhereItFits(map, popup, overlay);
+      placePopupWhereItFits(map, popup, overlay, locationPanel);
+      keepPopupClearOfOverlay(map, popup, overlay, locationPanel);
     });
   });
   const content = popup.getElement()?.querySelector(".leaflet-popup-content");
@@ -757,6 +813,7 @@ function keepPopupClearOfOverlay(
   map: L.Map,
   popup: L.Popup | undefined,
   overlay: HTMLElement | null | undefined,
+  locationPanel?: HTMLElement | null,
 ): void {
   if (!popup?.isOpen()) return;
   const element = popup?.getElement();
@@ -769,7 +826,7 @@ function keepPopupClearOfOverlay(
     left: mapBox.left + leftPadding,
     top: mapBox.top + topPadding,
     right: mapBox.right - fitPadding,
-    bottom: mapBox.bottom - fitPadding,
+    bottom: mapBox.bottom - bottomPadding(map, locationPanel),
   };
   const moveX =
     popupBox.left < safe.left
@@ -777,11 +834,13 @@ function keepPopupClearOfOverlay(
       : popupBox.right > safe.right
         ? safe.right - popupBox.right
         : 0;
+  // The top (name and "Ver detalhes") wins when the popup is taller than the
+  // free area; its content scrolls.
   const moveY =
     popupBox.top < safe.top
       ? safe.top - popupBox.top
       : popupBox.bottom > safe.bottom
-        ? safe.bottom - popupBox.bottom
+        ? -Math.min(popupBox.bottom - safe.bottom, popupBox.top - safe.top)
         : 0;
 
   if (moveX !== 0 || moveY !== 0) {
@@ -792,12 +851,14 @@ function keepPopupClearOfOverlay(
 function FitUnits({
   units,
   overlayRef,
+  locationPanelRef,
   hasSelection,
   framesUserPosition,
   filterKey,
 }: {
   units: HealthUnit[];
   overlayRef?: RefObject<HTMLElement | null>;
+  locationPanelRef?: RefObject<HTMLElement | null>;
   /** A selected unit frames the map itself (see UnitMarker). */
   hasSelection: boolean;
   /** The person's position is known and inside the filtered area. */
@@ -842,7 +903,11 @@ function FitUnits({
       map.once("moveend", remember);
       if (coordinates.length > 0) {
         map.fitBounds(coordinates, {
-          ...overlayPadding(map, overlayRef?.current),
+          ...overlayPadding(
+            map,
+            overlayRef?.current,
+            locationPanelRef?.current,
+          ),
           ...noMotion,
         });
       } else {
@@ -874,7 +939,15 @@ function FitUnits({
       observer.disconnect();
       map.off("moveend", remember);
     };
-  }, [map, overlayRef, units, hasSelection, framesUserPosition, filterKey]);
+  }, [
+    map,
+    overlayRef,
+    locationPanelRef,
+    units,
+    hasSelection,
+    framesUserPosition,
+    filterKey,
+  ]);
 
   return null;
 }
@@ -1020,6 +1093,18 @@ function UserLocation({
  * named as a supplement and points to the list, which has the same data. Also
  * replaces the English strings and the flag that Leaflet adds by default.
  */
+function PopupOpenListener({
+  onChange,
+}: {
+  onChange?: (open: boolean) => void;
+}) {
+  useMapEvents({
+    popupopen: () => onChange?.(true),
+    popupclose: () => onChange?.(false),
+  });
+  return null;
+}
+
 function MapLocalization() {
   const map = useMap();
 
@@ -1171,6 +1256,7 @@ export function UnitsMap({
   selectedUnitId,
   linkSearch = "",
   occupancy = noOccupancy,
+  onPopupOpenChange,
 }: UnitsMapProps) {
   // Stable between renders: FitUnits re-fits the map whenever this changes.
   const unitsWithLocation = useMemo(() => units.filter(hasLocation), [units]);
@@ -1209,6 +1295,7 @@ export function UnitsMap({
       {isBaseReady && <BrazilTileLayer />}
       <BrazilBorderLayer onSettled={showBase} />
       <MapLocalization />
+      <PopupOpenListener onChange={onPopupOpenChange} />
       <MapFocusRing />
       <EnforceCountryZoom />
       <KeepCountryClearOfOverlay overlayRef={overlayRef} />
@@ -1222,6 +1309,7 @@ export function UnitsMap({
         filterKey={filterKey}
         units={unitsToFit}
         overlayRef={overlayRef}
+        locationPanelRef={locationPanelRef}
         hasSelection={selectedUnitId !== undefined}
       />
       <UnitMarkers
@@ -1231,6 +1319,7 @@ export function UnitsMap({
         renderer={renderer}
         selectedUnitId={selectedUnitId}
         overlayRef={overlayRef}
+        locationPanelRef={locationPanelRef}
         linkSearch={linkSearch}
       />
       {userPosition && (

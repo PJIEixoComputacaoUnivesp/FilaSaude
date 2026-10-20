@@ -1103,3 +1103,61 @@ for (const width of [640, 680, 768]) {
     await expect(popup).toBeHidden();
   });
 }
+
+for (const viewport of [
+  { width: 320, height: 568 },
+  { width: 390, height: 844 },
+  { width: 667, height: 375 },
+  { width: 844, height: 390 },
+]) {
+  for (const reducedMotion of ["reduce", "no-preference"] as const) {
+    test(`o popup aberto com a posição fica livre dos painéis em ${viewport.width}×${viewport.height} (${reducedMotion})`, async ({
+      page,
+      context,
+    }) => {
+      await page.setViewportSize(viewport);
+      await page.emulateMedia({ reducedMotion });
+      await context.setGeolocation({
+        latitude: -23.56,
+        longitude: -46.64,
+        accuracy: 50,
+      });
+      await context.grantPermissions(["geolocation"]);
+      await mockApi(page);
+      await page.goto("/?uf=SP&unidade=1234567");
+      const popup = page.locator(".leaflet-popup");
+      await expect(popup).toBeVisible();
+      // Below map-wide the location panel gives way to the open popup.
+      await expect(
+        page.getByRole("region", { name: "Sua localização", exact: true }),
+      ).toBeHidden();
+      const targets = [
+        popup.locator(".leaflet-popup-content strong"),
+        popup.getByRole("link", { name: /Ver detalhes/ }),
+        popup.getByRole("button", { name: "Fechar detalhes da unidade" }),
+      ];
+      await expect
+        .poll(async () => {
+          for (const target of targets) {
+            const box = await target.boundingBox();
+            if (!box) return false;
+            const onTop = await page.evaluate(
+              ({ x, y }) =>
+                document.elementFromPoint(x, y)?.closest(".leaflet-popup") !==
+                null,
+              { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+            );
+            if (!onTop) return false;
+          }
+          return true;
+        })
+        .toBe(true);
+      await popup
+        .getByRole("button", { name: "Fechar detalhes da unidade" })
+        .click();
+      await expect(
+        page.getByRole("region", { name: "Sua localização", exact: true }),
+      ).toBeVisible();
+    });
+  }
+}
