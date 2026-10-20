@@ -33,7 +33,11 @@ function Header() {
   return (
     <header className="relative z-[1000] border-b border-slate-200 bg-white">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-2 sm:gap-4 sm:px-6 md:py-3">
-        <Link to="/" aria-label="FilaSaúde — página inicial">
+        <Link
+          to="/"
+          aria-label="FilaSaúde — página inicial"
+          className="inline-flex min-h-11 items-center"
+        >
           <Logo className="h-8 w-auto sm:h-9" />
         </Link>
 

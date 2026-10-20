@@ -328,3 +328,79 @@ test("o popup da unidade no mapa mostra a distância", async ({
     "Distância de você: ≈ 16 km em linha reta",
   );
 });
+
+test("sem posição por tempo esgotado, a lista diz o motivo", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "geolocation", {
+      value: {
+        getCurrentPosition(_: PositionCallback, error: PositionErrorCallback) {
+          error({ code: 3 } as GeolocationPositionError);
+        },
+      },
+    });
+  });
+  await page.goto("/units");
+  await expect(
+    page.getByText(/A localização demorou para responder/),
+  ).toBeVisible();
+});
+
+test("ao redor de você no celular, estado e raio lado a lado e o primeiro resultado à vista", async ({
+  page,
+  context,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await context.setGeolocation({
+    latitude: -23.5505,
+    longitude: -46.6333,
+    accuracy: 50,
+  });
+  await context.grantPermissions(["geolocation"]);
+  await page.goto("/units");
+  const stateSelect = page.getByRole("combobox", { name: "Estado" });
+  await stateSelect.selectOption("NEARBY");
+  const radius = page.getByRole("combobox", { name: "Distância" });
+  await expect(radius).toBeVisible();
+  const [a, b] = await Promise.all([
+    stateSelect.boundingBox(),
+    radius.boundingBox(),
+  ]);
+  expect(Math.abs(a!.y - b!.y)).toBeLessThan(2);
+  await page
+    .getByRole("combobox", { name: "Ordenar por" })
+    .selectOption("distance");
+  const first = page.getByRole("article").first();
+  expect((await first.boundingBox())!.y).toBeLessThan(844);
+});
+
+test("no detalhe com distância, os dados preenchem duas colunas", async ({
+  page,
+  context,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await context.setGeolocation({
+    latitude: -23.5505,
+    longitude: -46.6333,
+    accuracy: 50,
+  });
+  await context.grantPermissions(["geolocation"]);
+  await page.goto("/units");
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Pronto Atendimento Central" })
+    .getByRole("link", { name: /Ver detalhes/ })
+    .click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Pronto Atendimento Central" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("term").filter({ hasText: "Distância de você" }),
+  ).toBeVisible();
+  const [hours, position] = await Promise.all([
+    page.getByText("Horário informado", { exact: true }).boundingBox(),
+    page.getByText("Localização no mapa", { exact: true }).boundingBox(),
+  ]);
+  expect(Math.abs(hours!.y - position!.y)).toBeLessThan(2);
+});

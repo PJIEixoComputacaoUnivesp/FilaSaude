@@ -414,9 +414,11 @@ export function UnitsPage() {
         role="search"
         aria-label="Buscar unidades"
         onSubmit={(event) => event.preventDefault()}
-        className="mb-6 grid max-w-3xl gap-4 sm:grid-cols-[14rem_1fr] md:mb-8"
+        // Around the person, the state and the radius sit side by side, so the
+        // first result is not pushed below the fold.
+        className={`mb-6 grid max-w-3xl gap-4 md:mb-8 ${nearbyEnabled ? "min-[22rem]:grid-cols-[minmax(0,1fr)_8.5rem] lg:grid-cols-[14rem_10rem_minmax(0,1fr)]" : "sm:grid-cols-[14rem_1fr]"}`}
       >
-        <div className="grid gap-4">
+        <div className="contents">
           <BrazilianStateSelect
             value={stateCode}
             onChange={setStateCode}
@@ -434,7 +436,9 @@ export function UnitsPage() {
             />
           )}
         </div>
-        <label className="block">
+        <label
+          className={`block ${nearbyEnabled ? "min-[22rem]:col-span-2 lg:col-span-1" : ""}`}
+        >
           <span className="mb-2 block text-sm font-semibold text-slate-800">
             Buscar por unidade, cidade ou bairro
           </span>
@@ -539,9 +543,7 @@ export function UnitsPage() {
                       }
                       className="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 focus-visible:border-fila-blue"
                     >
-                      <option value="default">
-                        Ordem alfabética (estado, cidade, nome)
-                      </option>
+                      <option value="default">Ordem alfabética</option>
                       <option value="distance">
                         Distância de você (em linha reta)
                       </option>
@@ -562,6 +564,11 @@ export function UnitsPage() {
                 <p className="text-xs leading-relaxed text-slate-600 sm:max-w-xs sm:text-right">
                   Localização não permitida. Para ordenar por distância,
                   permita o acesso nas configurações do navegador.
+                </p>
+              )}
+              {location.state.status === "error" && (
+                <p className="text-xs leading-relaxed text-slate-600 sm:max-w-xs sm:text-right">
+                  {location.state.message}
                 </p>
               )}
             </div>

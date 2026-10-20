@@ -112,14 +112,14 @@ export function OccupancyControls({
           first thing every visitor sees and must leave room for the map. */}
       <p
         id={hintId}
-        className={`text-xs leading-relaxed text-slate-700 ${compact ? (layer.isEnabled ? "sr-only map-wide:not-sr-only" : "sr-only") : collapsible ? "sr-only sm:not-sr-only" : ""}`}
+        className={`text-xs leading-relaxed text-slate-700 ${compact ? (layer.isEnabled ? "sr-only map-wide:not-sr-only" : "sr-only") : collapsible ? "sr-only map-wide:not-sr-only" : ""}`}
       >
         {SIMULATION_NOTICE}
       </p>
       {((compact && layer.isEnabled) || collapsible) && (
         <p
           aria-hidden={collapsible ? true : undefined}
-          className={`text-xs leading-relaxed text-slate-700 ${collapsible ? "sm:hidden" : "map-wide:hidden"}`}
+          className="text-xs leading-relaxed text-slate-700 map-wide:hidden"
         >
           Leitos fictícios. Não representam filas.
         </p>
@@ -132,7 +132,7 @@ export function OccupancyControls({
           onClick={() => setExpanded((expanded) => !expanded)}
           aria-expanded={isExpanded}
           aria-controls={secondaryId}
-          className="mt-1 min-h-11 text-sm font-semibold text-fila-blue underline underline-offset-2 sm:hidden"
+          className="mt-1 min-h-11 text-sm font-semibold text-fila-blue underline underline-offset-2 map-wide:hidden"
         >
           Filtros e legenda{layer.onlySimulated ? " (1 filtro ativo)" : ""}
         </button>
@@ -140,7 +140,7 @@ export function OccupancyControls({
       {layer.isEnabled && (
         <div
           id={secondaryId}
-          className={`mt-2 space-y-1 ${compact ? "hidden map-wide:block" : collapsible && !isExpanded ? "hidden sm:block" : ""}`}
+          className={`mt-2 space-y-1 ${compact ? "hidden map-wide:block" : collapsible && !isExpanded ? "hidden map-wide:block" : ""}`}
         >
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-700">
             <SimulationPill />

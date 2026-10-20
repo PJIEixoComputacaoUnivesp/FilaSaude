@@ -162,7 +162,8 @@ export function UnitDetailPage() {
                 {unit.serviceHours ?? "Não informado na fonte pública"}
               </dd>
             </div>
-            <div className="sm:col-span-2">
+            {/* With the distance, the four items fill two columns. */}
+            <div className={distance ? undefined : "sm:col-span-2"}>
               <dt className="font-semibold text-slate-900">
                 Localização no mapa
               </dt>
