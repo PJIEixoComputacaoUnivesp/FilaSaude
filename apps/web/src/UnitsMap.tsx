@@ -24,6 +24,7 @@ import {
 import type { LatLngBoundsExpression } from "leaflet";
 import { MapFocusRing } from "./MapFocusRing";
 import type { UserPosition } from "./useUserLocation";
+import { useUnitDistance } from "./useUnitDistance";
 import { OccupancyBadge } from "./OccupancyBadge";
 import {
   occupancyStatus,
@@ -438,6 +439,7 @@ function UnitMarker({
           <p className="my-2 text-sm text-slate-600">
             {formatAddress(unit.address)}
           </p>
+          <PopupDistance unit={unit} />
           {unit.serviceHours && (
             <p className="my-2 text-sm text-slate-600">{unit.serviceHours}</p>
           )}
@@ -482,6 +484,17 @@ function UnitMarker({
       </Popup>
     </CircleMarker>
   );
+}
+
+/**
+ * Its own component: only an open popup reads the person's position, so a
+ * new reading does not redraw every marker.
+ */
+function PopupDistance({ unit }: { unit: HealthUnit }) {
+  const distance = useUnitDistance(unit);
+  return distance ? (
+    <p className="my-2 text-sm text-slate-600">Distância de você: {distance}</p>
+  ) : null;
 }
 
 function UnitMarkers({
