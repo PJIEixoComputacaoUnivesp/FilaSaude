@@ -3,12 +3,16 @@ import { Link, useLocation } from "react-router-dom";
 import { BrazilianStateSelect } from "./BrazilianStateSelect";
 import { NationalStateCode, stateName } from "./brazilianStates";
 import {
+  availableSearchRadiiKm,
   distanceOrigin,
   distancesFrom,
+  filterUnitsWithinRadius,
   formatUnitDistance,
+  initialSearchRadiusKm,
   sortByDistance,
   type Coordinate,
 } from "./geo";
+import { NearbyRadiusSelect } from "./NearbyRadiusSelect";
 import { LiveStatus } from "./LiveStatus";
 import { OccupancyBadge } from "./OccupancyBadge";
 import { OccupancyControls } from "./OccupancyControls";
@@ -258,12 +262,23 @@ const title = "Unidades de pronto atendimento";
 
 export function UnitsPage() {
   const headingRef = usePageHeading(title);
-  const { stateCode, query, setStateCode, setQuery, flush, search } =
-    useSearchFilters();
+  const {
+    stateCode,
+    query,
+    setStateCode,
+    setQuery,
+    flush,
+    search,
+    nearbyEnabled,
+    nearbyRadiusKm,
+    setNearbyEnabled,
+    setNearbyRadiusKm,
+  } = useSearchFilters();
   const { hash } = useLocation();
   const focusedUnitId = /^#unit-(\d+)$/.exec(hash)?.[1];
   const searchRef = useRef<HTMLInputElement>(null);
-  const { state, retry } = useUnits(stateCode);
+  const requestState = nearbyEnabled ? NationalStateCode.All : stateCode;
+  const { state, retry } = useUnits(requestState);
   const { byUnit, simulatedFilter, setOnlySimulated } = useOccupancyLayer();
   const location = useUserLocation();
   const sortId = useId();
@@ -273,6 +288,9 @@ export function UnitsPage() {
   // it is being read. Removing the position goes back to the default order.
   const [sortOrigin, setSortOrigin] = useState<Coordinate | null>(null);
   const currentOrigin = distanceOrigin(location.state);
+  useEffect(() => {
+    if (nearbyEnabled && !currentOrigin) setNearbyEnabled(false);
+  }, [nearbyEnabled, currentOrigin, setNearbyEnabled]);
   const activeOrigin = currentOrigin ? sortOrigin : null;
   // While sorted, the distances shown are the ones the order was made from.
   const shownOrigin = activeOrigin ?? currentOrigin;
@@ -282,37 +300,85 @@ export function UnitsPage() {
     () => (state.status === "success" ? sortUnits(state.response.data) : []),
     [state],
   );
+  const initialRadiusKm = useMemo(
+    () =>
+      currentOrigin && state.status === "success"
+        ? initialSearchRadiusKm(
+            currentOrigin,
+            location.state.status === "success"
+              ? location.state.position.accuracy
+              : 0,
+            sortedUnits,
+          )
+        : null,
+    [currentOrigin, location.state, sortedUnits, state.status],
+  );
+  const activeRadiusKm = nearbyEnabled
+    ? (nearbyRadiusKm ?? initialRadiusKm)
+    : null;
+  useEffect(() => {
+    if (nearbyEnabled && nearbyRadiusKm === null && initialRadiusKm !== null) {
+      setNearbyRadiusKm(initialRadiusKm);
+    }
+  }, [nearbyEnabled, nearbyRadiusKm, initialRadiusKm, setNearbyRadiusKm]);
   const trimmedQuery = query.trim();
-  const filteredUnits = useMemo(() => {
-    const matching = filterUnits(sortedUnits, trimmedQuery);
+  const distances = useMemo(
+    () => (currentOrigin ? distancesFrom(currentOrigin, sortedUnits) : null),
+    [currentOrigin, sortedUnits],
+  );
+  const unitsWithinRadius = useMemo(
+    () =>
+      nearbyEnabled && activeRadiusKm !== null && distances
+        ? filterUnitsWithinRadius(sortedUnits, distances, activeRadiusKm)
+        : sortedUnits,
+    [nearbyEnabled, activeRadiusKm, distances, sortedUnits],
+  );
+  const matchingUnits = useMemo(() => {
+    const matching = filterUnits(unitsWithinRadius, trimmedQuery);
     return simulatedFilter
       ? matching.filter((unit) => simulatedFilter.has(unit.id))
       : matching;
-  }, [sortedUnits, trimmedQuery, simulatedFilter]);
-  const distances = useMemo(
+  }, [unitsWithinRadius, trimmedQuery, simulatedFilter]);
+  const shownDistances = useMemo(
     () => (shownOrigin ? distancesFrom(shownOrigin, sortedUnits) : null),
     [shownOrigin, sortedUnits],
   );
   const shownUnits = useMemo(
     () =>
-      activeOrigin && distances
-        ? sortByDistance(filteredUnits, distances)
-        : filteredUnits,
-    [activeOrigin, distances, filteredUnits],
+      activeOrigin && shownDistances
+        ? sortByDistance(matchingUnits, shownDistances)
+        : matchingUnits,
+    [activeOrigin, shownDistances, matchingUnits],
   );
+  const availableRadii = useMemo(
+    () =>
+      currentOrigin && state.status === "success"
+        ? availableSearchRadiiKm(
+            currentOrigin,
+            location.state.status === "success"
+              ? location.state.position.accuracy
+              : 0,
+            sortedUnits,
+          )
+        : [],
+    [currentOrigin, location.state, sortedUnits, state.status],
+  );
+  const unitsAtRadius = unitsWithinRadius.length;
 
-  const countText = formatCount(
-    shownUnits.length,
-    "unidade encontrada",
-    "unidades encontradas",
-  );
+  const countText = nearbyEnabled && activeRadiusKm !== null
+    ? `${formatCount(shownUnits.length, "unidade", "unidades")} a até ${activeRadiusKm} km de você, em linha reta`
+    : formatCount(
+        shownUnits.length,
+        "unidade encontrada",
+        "unidades encontradas",
+      );
   // Worded differently from the visible count on purpose: the same text twice
   // would be read twice and would match twice in a text query.
   const announcement = `${formatCount(
     shownUnits.length,
     "resultado",
     "resultados",
-  )} em ${stateName(stateCode)}${activeOrigin ? ", ordenados por distância" : ""}`;
+  )} ${nearbyEnabled && activeRadiusKm !== null ? `dentro de ${activeRadiusKm} km de você` : `em ${stateName(stateCode)}`}${activeOrigin ? ", ordenados por distância" : ""}`;
   // One region stays mounted across loading, success and error, so a change of
   // state is announced; the error has its own role="alert".
   const liveMessage =
@@ -344,11 +410,23 @@ export function UnitsPage() {
         onSubmit={(event) => event.preventDefault()}
         className="mb-6 grid max-w-3xl gap-4 sm:grid-cols-[14rem_1fr] md:mb-8"
       >
-        <BrazilianStateSelect
-          value={stateCode}
-          onChange={setStateCode}
-          allOptionLabel={stateName(NationalStateCode.All)}
-        />
+        <div className="grid gap-4">
+          <BrazilianStateSelect
+            value={stateCode}
+            onChange={setStateCode}
+            allOptionLabel={stateName(NationalStateCode.All)}
+            nearbySelected={nearbyEnabled}
+            canSelectNearby={currentOrigin !== null}
+            onSelectNearby={() => setNearbyEnabled(true)}
+          />
+          {nearbyEnabled && activeRadiusKm !== null && (
+            <NearbyRadiusSelect
+              radiusKm={activeRadiusKm}
+              options={availableRadii}
+              onChange={setNearbyRadiusKm}
+            />
+          )}
+        </div>
         <label className="block">
           <span className="mb-2 block text-sm font-semibold text-slate-800">
             Buscar por unidade, cidade ou bairro
@@ -366,6 +444,33 @@ export function UnitsPage() {
           />
         </label>
       </form>
+
+      {nearbyEnabled &&
+        activeRadiusKm !== null &&
+        (activeRadiusKm >= 100 || unitsAtRadius < 3) && (
+          <div
+            className="mb-5 max-w-3xl space-y-2 text-sm text-slate-700"
+            role="status"
+          >
+            <p>
+              O catálogo reúne UPAs e prontos-socorros do CNES. A ausência de
+              unidades nesta lista não indica ausência de atendimento na região.
+            </p>
+            {activeRadiusKm === 500 && unitsAtRadius < 3 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setNearbyEnabled(false);
+                  setStateCode(NationalStateCode.All);
+                  searchRef.current?.focus();
+                }}
+                className="min-h-11 font-semibold text-fila-blue underline underline-offset-2"
+              >
+                Mostrar todo o Brasil
+              </button>
+            )}
+          </div>
+        )}
 
       <div className="mb-6 max-w-3xl empty:hidden md:mb-8">
         <OccupancyControls />
@@ -402,13 +507,13 @@ export function UnitsPage() {
           <div className="flex flex-col gap-4 sm:gap-6">
             <DataNotice metadata={state.response.metadata} />
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <p className="text-sm text-slate-700">{countText}</p>
+                <p className="text-sm text-slate-700">{countText}</p>
               {currentOrigin && (
                 <div className="flex flex-col gap-1 sm:items-end">
-                  <div className="flex items-center gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
                     <label
                       htmlFor={sortId}
-                      className="text-sm font-semibold text-slate-800"
+                      className="shrink-0 whitespace-nowrap text-sm font-semibold text-slate-800"
                     >
                       Ordenar por
                     </label>
@@ -425,7 +530,7 @@ export function UnitsPage() {
                             : null,
                         )
                       }
-                      className="min-h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 focus-visible:border-fila-blue"
+                      className="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 focus-visible:border-fila-blue"
                     >
                       <option value="default">
                         Ordem alfabética (estado, cidade, nome)
@@ -458,8 +563,25 @@ export function UnitsPage() {
                 <p>
                   {simulatedFilter
                     ? "Nenhuma unidade com ocupação simulada de leitos corresponde a este filtro."
-                    : "Nenhuma unidade corresponde à busca. Tente outro nome, cidade ou bairro."}
+                    : nearbyEnabled && activeRadiusKm !== null
+                      ? query.trim()
+                        ? `Nenhuma unidade com “${query.trim()}” a até ${activeRadiusKm} km de você.`
+                        : `Nenhuma unidade do catálogo a até ${activeRadiusKm} km de você.`
+                      : "Nenhuma unidade corresponde à busca. Tente outro nome, cidade ou bairro."}
                 </p>
+                {nearbyEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNearbyEnabled(false);
+                      setStateCode(NationalStateCode.All);
+                      searchRef.current?.focus();
+                    }}
+                    className="mt-4 min-h-11 rounded-xl border border-slate-300 bg-white px-6 py-2 font-semibold text-slate-800 hover:border-fila-blue hover:text-fila-blue"
+                  >
+                    Buscar em todo o Brasil
+                  </button>
+                )}
                 {simulatedFilter && (
                   <button
                     type="button"
@@ -492,7 +614,7 @@ export function UnitsPage() {
               <UnitResults
                 units={shownUnits}
                 occupancy={byUnit}
-                distances={distances}
+                    distances={shownDistances}
                 focusedUnitId={focusedUnitId}
                 search={search}
               />

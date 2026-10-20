@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateDistanceKm,
+  availableSearchRadiiKm,
   distancesFrom,
+  filterUnitsWithinRadius,
   formatDistanceKm,
+  initialSearchRadiusKm,
   sortByDistance,
 } from "./geo";
 import type { HealthUnit } from "./units";
@@ -85,5 +88,41 @@ describe("sortByDistance", () => {
     const units = [unit("far", -22.9, -43.17), unit("near", -23.56, -46.65)];
     sortByDistance(units, distancesFrom(saoPauloCenter, units));
     expect(units.map(({ id }) => id)).toEqual(["far", "near"]);
+  });
+});
+
+describe("search radii", () => {
+  const origin = { latitude: 0, longitude: 0 };
+
+  it("starts at the first radius with three units in a sparse region", () => {
+    const units = [
+      unit("one", 0, 0.5),
+      unit("two", 0, 1),
+      unit("three", 0, 1.5),
+    ];
+    expect(initialSearchRadiusKm(origin, 1_000, units)).toBe(250);
+    expect(availableSearchRadiiKm(origin, 1_000, units)).toEqual([100, 250]);
+  });
+
+  it("never starts below GPS accuracy and caps sparse coverage at 500 km", () => {
+    expect(
+      initialSearchRadiusKm(origin, 42_000, [unit("near", 0, 0.1)]),
+    ).toBe(500);
+    expect(
+      availableSearchRadiiKm(origin, 42_000, [unit("near", 0, 0.1)]),
+    ).toEqual([50]);
+  });
+
+  it("filters by straight-line distance and leaves the source list intact", () => {
+    const units = [
+      unit("outside", 0, 0.2),
+      unit("inside", 0, 0.05),
+      unit("unknown", null, null),
+    ];
+    const distances = distancesFrom(origin, units);
+    expect(filterUnitsWithinRadius(units, distances, 10).map(({ id }) => id)).toEqual([
+      "inside",
+    ]);
+    expect(units.map(({ id }) => id)).toEqual(["outside", "inside", "unknown"]);
   });
 });

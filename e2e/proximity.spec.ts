@@ -6,6 +6,8 @@ function unit(
   latitude: number | null,
   longitude: number | null,
   precision: "source" | "municipality" = "source",
+  state = "SP",
+  city = "São Paulo",
 ) {
   return {
     id,
@@ -16,8 +18,8 @@ function unit(
       number: null,
       district: null,
       postalCode: null,
-      city: "São Paulo",
-      state: "SP",
+      city,
+      state,
     },
     location: {
       latitude,
@@ -46,6 +48,7 @@ const units = [
   unit("1000002", "Pronto Atendimento Central", -23.552, -46.634),
   unit("1000003", "UPA Sem Coordenadas", null, null),
   unit("1000004", "UPA Município", -23.6, -46.6, "municipality"),
+  unit("1000005", "UPA em outra UF", -23.0, -46.7, "source", "MG", "Extrema"),
 ];
 
 test.beforeEach(async ({ page }) => {
@@ -84,7 +87,7 @@ test("ordena por distância da posição real só quando a pessoa escolhe", asyn
   });
   await context.grantPermissions(["geolocation"]);
   await page.goto("/units");
-  await expect(page.getByRole("article")).toHaveCount(4);
+  await expect(page.getByRole("article")).toHaveCount(5);
   const sort = page.getByRole("combobox", { name: "Ordenar por" });
   await expect(sort).toHaveValue("default");
   const card = (name: string) =>
@@ -95,6 +98,7 @@ test("ordena por distância da posição real só quando a pessoa escolhe", asyn
     "menos de 0,5 km em linha reta",
   );
   expect(await cardNames(page)).toEqual([
+    "UPA em outra UF",
     "AMA Distante",
     "Pronto Atendimento Central",
     "UPA Município",
@@ -106,6 +110,7 @@ test("ordena por distância da posição real só quando a pessoa escolhe", asyn
     "Pronto Atendimento Central",
     "UPA Município",
     "AMA Distante",
+    "UPA em outra UF",
     "UPA Sem Coordenadas",
   ]);
   await expect(card("UPA Município")).toContainText(
@@ -136,12 +141,13 @@ test("ordena por distância da posição real só quando a pessoa escolhe", asyn
   await page.getByRole("link", { name: "Mapa", exact: true }).click();
   await page.getByRole("button", { name: "Remover localização" }).click();
   await page.getByRole("link", { name: "Lista", exact: true }).click();
-  await expect(page.getByRole("article")).toHaveCount(4);
+  await expect(page.getByRole("article")).toHaveCount(5);
   await expect(sort).toHaveCount(0);
   await expect(page.getByText("Distância de você", { exact: true })).toHaveCount(
     0,
   );
   expect(await cardNames(page)).toEqual([
+    "UPA em outra UF",
     "AMA Distante",
     "Pronto Atendimento Central",
     "UPA Município",
@@ -170,6 +176,65 @@ test("sem permissão, explica como liberar e não oferece a distância", async (
   await expect(page.getByRole("combobox", { name: "Ordenar por" })).toHaveCount(
     0,
   );
+});
+
+test("filtra por raio adaptativo, cruza UFs e compartilha o modo com o mapa", async ({
+  page,
+  context,
+}) => {
+  await context.setGeolocation({
+    latitude: -23.5505,
+    longitude: -46.6333,
+    accuracy: 50,
+  });
+  await context.grantPermissions(["geolocation"]);
+  await page.goto("/units");
+
+  await page.getByRole("combobox", { name: "Estado" }).selectOption("NEARBY");
+  const radius = page.getByRole("combobox", { name: "Distância de você" });
+  await expect(radius).toHaveValue("25");
+  await expect(page.getByRole("article")).toHaveCount(3);
+  await expect(page.getByText("UPA em outra UF")).toHaveCount(0);
+
+  await radius.selectOption("100");
+  await expect(page.getByRole("article")).toHaveCount(4);
+  await expect(
+    page.getByRole("article").filter({ hasText: "UPA em outra UF" }),
+  ).toBeVisible();
+  await expect(page).not.toHaveURL(/(?:latitude|longitude|radius|nearby)=/);
+
+  await page.getByRole("link", { name: "Mapa", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "Estado" })).toHaveValue(
+    "NEARBY",
+  );
+  await expect(
+    page.getByRole("combobox", { name: "Distância de você" }),
+  ).toHaveValue("100");
+  await page.getByRole("searchbox", { name: "Buscar no mapa" }).fill("Rio Branco");
+  await page.getByRole("button", { name: "Buscar em todo o Brasil" }).click();
+  await expect(page.getByRole("combobox", { name: "Estado" })).toHaveValue("ALL");
+  await expect(page).toHaveURL(/q=Rio\+Branco/);
+});
+
+test("um raio com poucos resultados oferece a busca nacional sem apagar o texto", async ({
+  page,
+  context,
+}) => {
+  await context.setGeolocation({
+    latitude: -23.5505,
+    longitude: -46.6333,
+    accuracy: 50,
+  });
+  await context.grantPermissions(["geolocation"]);
+  await page.goto("/units");
+  await page.getByRole("combobox", { name: "Estado" }).selectOption("NEARBY");
+  await page.getByRole("searchbox", { name: "Buscar por unidade, cidade ou bairro" }).fill("Extrema");
+  await expect(page.getByRole("article")).toHaveCount(0);
+  await expect(page.getByText(/Nenhuma unidade com “Extrema” a até/)).toBeVisible();
+  await page.getByRole("button", { name: "Buscar em todo o Brasil" }).click();
+  await expect(page.getByRole("article")).toHaveCount(1);
+  await expect(page.getByRole("searchbox", { name: "Buscar por unidade, cidade ou bairro" })).toHaveValue("Extrema");
+  await expect(page).toHaveURL(/q=Extrema/);
 });
 
 test("uma posição muito imprecisa não ordena a lista", async ({

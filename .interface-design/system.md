@@ -169,6 +169,14 @@
   18px, distinct from unit discs by size and shape; its halo pulses twice on
   arrival and rests. Accuracy in text and as a circle on the map. Preserve
   filters and keep the position only in tab memory.
+- "Ao redor de você" is an explicit, session-only area filter shared by the
+  map and list. Its initial straight-line radius is the smallest available
+  step that contains three positioned units, never smaller than the reported
+  location accuracy, and at most 500 km. Offer only steps that add units; at
+  the cap, show available results and an explicit action to show all of Brazil.
+  Draw the selected radius on the map and filter its markers to the same area
+  as the list. Keep this mode and radius out of the URL and never send the
+  person's coordinates to the API.
 
 - Product status: compact bordered pill with explicit text.
 - Safety notice: amber-tinted surface with a strong left border and direct label

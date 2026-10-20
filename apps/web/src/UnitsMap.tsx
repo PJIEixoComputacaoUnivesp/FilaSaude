@@ -300,6 +300,7 @@ function BrazilBorderLayer({ onSettled }: { onSettled: () => void }) {
 
 interface UnitsMapProps {
   userPosition?: UserPosition;
+  nearbyRadiusKm?: number;
   locationPanelRef?: RefObject<HTMLElement | null>;
   /** Changes when the person changes the filters (see FitUnits). */
   filterKey?: string;
@@ -759,12 +760,14 @@ const userLocationIcon = L.divIcon({
 
 function UserLocation({
   position,
+  nearbyRadiusKm,
   overlayRef,
   locationPanelRef,
   hasSelection,
   frame,
 }: {
   position: UserPosition;
+  nearbyRadiusKm?: number;
   /** False when the person is outside the filtered area: only drawn. */
   frame: boolean;
   /** A selected unit keeps the view; the position is only drawn. */
@@ -781,7 +784,7 @@ function UserLocation({
     if (!frame || !following.current) return;
     map.closePopup();
     const bounds = L.latLng(latitude, longitude).toBounds(
-      Math.max(accuracy * 2, 100),
+      Math.max(accuracy * 2, (nearbyRadiusKm ?? 0) * 2_000, 100),
     );
     let isFitting = false;
     const fit = () => {
@@ -836,6 +839,7 @@ function UserLocation({
     latitude,
     longitude,
     accuracy,
+    nearbyRadiusKm,
     overlayRef,
     locationPanelRef,
     frame,
@@ -843,6 +847,19 @@ function UserLocation({
 
   return (
     <>
+      {nearbyRadiusKm !== undefined && (
+        <Circle
+          center={[latitude, longitude]}
+          radius={nearbyRadiusKm * 1_000}
+          pathOptions={{
+            color: "#1266cc",
+            dashArray: "6 6",
+            fillOpacity: 0.025,
+            weight: 2,
+            interactive: false,
+          }}
+        />
+      )}
       <Circle
         center={[latitude, longitude]}
         radius={accuracy}
@@ -967,6 +984,7 @@ function EnforceCountryZoom() {
 
 export function UnitsMap({
   userPosition,
+  nearbyRadiusKm,
   locationPanelRef,
   filterKey = "",
   isPositionInArea = true,
@@ -1041,6 +1059,7 @@ export function UnitsMap({
       {userPosition && (
         <UserLocation
           position={userPosition}
+          nearbyRadiusKm={nearbyRadiusKm}
           overlayRef={overlayRef}
           locationPanelRef={locationPanelRef}
           hasSelection={selectedUnitId !== undefined}

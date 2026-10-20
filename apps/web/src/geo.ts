@@ -9,6 +9,8 @@ export interface Coordinate {
 /** A position less precise than this would give distances made of noise. */
 export const MAX_DISTANCE_ACCURACY_M = 5_000;
 
+export const SEARCH_RADIUS_STEPS_KM = [5, 10, 25, 50, 100, 250, 500] as const;
+
 const earthRadiusKm = 6371;
 const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
 
@@ -49,6 +51,56 @@ export function distancesFrom(
       }),
     ]),
   );
+}
+
+/**
+ * Chooses the first search radius that contains at least three units, while
+ * never using a radius smaller than the reported location accuracy. Sparse
+ * regions expand to the maximum radius and keep their available results.
+ */
+export function initialSearchRadiusKm(
+  origin: Coordinate,
+  accuracyM: number,
+  units: HealthUnit[],
+): number {
+  const minimumKm = Math.max(5, Math.ceil(accuracyM / 1000));
+  const distances = distancesFrom(origin, units);
+  return (
+    SEARCH_RADIUS_STEPS_KM.find(
+      (radius) =>
+        radius >= minimumKm &&
+        [...distances.values()].filter((distance) => distance <= radius).length >= 3,
+    ) ?? SEARCH_RADIUS_STEPS_KM.at(-1)!
+  );
+}
+
+/** Radius steps that add at least one positioned unit as they expand. */
+export function availableSearchRadiiKm(
+  origin: Coordinate,
+  accuracyM: number,
+  units: HealthUnit[],
+): number[] {
+  const minimumKm = Math.max(5, Math.ceil(accuracyM / 1000));
+  const distances = distancesFrom(origin, units);
+  let previousCount = 0;
+  const options: number[] = [];
+  for (const radius of SEARCH_RADIUS_STEPS_KM) {
+    if (radius < minimumKm) continue;
+    const count = [...distances.values()].filter((distance) => distance <= radius).length;
+    const addsUnits = count !== previousCount;
+    previousCount = count;
+    if (addsUnits) options.push(radius);
+  }
+  return options;
+}
+
+/** Keeps only units whose known coordinates fall within a straight-line radius. */
+export function filterUnitsWithinRadius(
+  units: HealthUnit[],
+  distances: ReadonlyMap<string, number>,
+  radiusKm: number,
+): HealthUnit[] {
+  return units.filter((unit) => (distances.get(unit.id) ?? Infinity) <= radiusKm);
 }
 
 /**
