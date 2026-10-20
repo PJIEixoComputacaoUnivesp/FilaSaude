@@ -167,13 +167,21 @@
 - O painel “Sua localização” mantém “Atualizar” e “Remover” juntos na mesma
   linha. Remover a posição é anunciado, inclusive quando desativa “Ao redor de
   você”; quando a opção está indisponível, o campo Estado diz o motivo.
+- Quando o enquadramento da posição não mostra nenhuma unidade, o painel “Sua
+  localização” diz “Nenhuma unidade nesta parte do mapa.” e oferece “Mostrar
+  unidades ao redor de você”, sem destacar nem ordenar unidade alguma.
+- Fora de `map-wide`, o painel do mapa resume o aviso do catálogo em uma linha;
+  o texto completo fica na folha de filtros. A mensagem de vazio vem antes da
+  ação que a resolve. Em `map-wide`, um painel mais alto que o mapa rola e
+  mostra sombra na borda onde há mais conteúdo.
 - No celular, UF, contagem, filtro de unidades simuladas, procedência e legenda
   ficam em uma janela modal aberta por “Filtros”. O atalho “Legenda” junto do
   interruptor abre a explicação expandida. A folha tem altura fixa, então
   “Voltar ao mapa” não muda de lugar quando o conteúdo muda, e permanece
   visível durante a rolagem; Escape ou um toque no fundo fecha a janela e o
   foco retorna ao acionador. O selo do botão “Filtros” fica abaixo da palavra,
-  para não estreitar a busca.
+  para não estreitar a busca. A partir de `sm`, a folha vira um cartão estreito no
+  canto inferior esquerdo.
   Preservar a área segura inferior do dispositivo e alvos de toque de 44 px.
 - Text fields are 16px or larger, and placeholders are `slate-500` or darker.
 - Na lista, fora de `map-wide` (celular em retrato ou paisagem), os controles
