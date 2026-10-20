@@ -169,6 +169,10 @@
   18px, distinct from unit discs by size and shape; its halo pulses twice on
   arrival and rests. Accuracy in text and as a circle on the map. Preserve
   filters and keep the position only in tab memory.
+- Once settled, offer "Atualizar" alongside "Remover". While refreshing,
+  keep the previous marker, accuracy and nearby filter until a new reading
+  arrives; cancellation or failure clears the position. Explicit removal
+  also ignores late callbacks.
 - "Ao redor de você" is an explicit, session-only area filter shared by the
   map and list. Its initial straight-line radius is the smallest available
   step that contains three positioned units, never smaller than the reported

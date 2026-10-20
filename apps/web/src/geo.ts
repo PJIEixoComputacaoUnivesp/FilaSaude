@@ -120,9 +120,14 @@ export function sortByDistance(
 
 /** The person's position, when precise enough to measure distances from. */
 export function distanceOrigin(state: LocationState): Coordinate | null {
-  return state.status === "success" &&
-    state.position.accuracy <= MAX_DISTANCE_ACCURACY_M
-    ? state.position
+  const position =
+    state.status === "success"
+      ? state.position
+      : state.status === "loading"
+        ? state.previous
+        : undefined;
+  return position && position.accuracy <= MAX_DISTANCE_ACCURACY_M
+    ? position
     : null;
 }
 

@@ -13,7 +13,8 @@ export type LocationState =
   | { status: "denied" }
   /** The person removed or dismissed it; not asked again in this visit. */
   | { status: "removed" }
-  | { status: "loading" }
+  /** Keep the last position visible while a new reading is pending. */
+  | { status: "loading"; previous?: UserPosition }
   /** `refining` while the precise reading may still improve the position. */
   | { status: "success"; position: UserPosition; refining: boolean }
   /** `canRetry` is false when asking again would fail the same way. */

@@ -183,7 +183,15 @@ export function UserLocationProvider({ children }: { children: ReactNode }) {
         options,
       );
 
-    setState({ status: "loading" });
+    setState((previous) => ({
+      status: "loading",
+      previous:
+        previous.status === "success"
+          ? previous.position
+          : previous.status === "loading"
+            ? previous.previous
+            : undefined,
+    }));
     // Also bounds time waiting for a permission prompt left unanswered. Only
     // says so: a position that still arrives (a late "Permitir") replaces it.
     timer.current = setTimeout(() => {

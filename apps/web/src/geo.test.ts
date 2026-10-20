@@ -3,6 +3,7 @@ import {
   calculateDistanceKm,
   availableSearchRadiiKm,
   distancesFrom,
+  distanceOrigin,
   filterUnitsWithinRadius,
   formatDistanceKm,
   initialSearchRadiusKm,
@@ -41,6 +42,23 @@ function unit(
 }
 
 const saoPauloCenter = { latitude: -23.5505, longitude: -46.6333 };
+
+describe("distanceOrigin", () => {
+  it("keeps a precise previous position usable during refresh", () => {
+    const previous = { ...saoPauloCenter, accuracy: 80 };
+    expect(distanceOrigin({ status: "loading", previous })).toBe(previous);
+    expect(distanceOrigin({ status: "loading" })).toBeNull();
+    expect(distanceOrigin({ status: "removed" })).toBeNull();
+    expect(distanceOrigin({ status: "denied" })).toBeNull();
+  });
+
+  it("does not use an imprecise previous position for distances", () => {
+    expect(distanceOrigin({
+      status: "loading",
+      previous: { ...saoPauloCenter, accuracy: 6_000 },
+    })).toBeNull();
+  });
+});
 
 describe("calculateDistanceKm", () => {
   it("is zero for the same point", () => {

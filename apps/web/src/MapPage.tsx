@@ -181,7 +181,11 @@ export function MapPage() {
     simulatedFilter === null;
 
   const userPosition =
-    location.state.status === "success" ? location.state.position : undefined;
+    location.state.status === "success"
+      ? location.state.position
+      : location.state.status === "loading"
+        ? location.state.previous
+        : undefined;
   // The person's position frames the map only where the filtered units are
   // (with a margin of about 25 km), so a UF far away still shows its units.
   // Before the list answers, or with no unit to show, there is nothing to
@@ -229,7 +233,9 @@ export function MapPage() {
   }
   const locationAnnouncement =
     location.state.status === "loading"
-      ? "Obtendo sua localização."
+      ? location.state.previous
+        ? "Atualizando sua localização."
+        : "Obtendo sua localização."
       : location.state.status === "error"
         ? location.state.message
         : location.state.status === "success" && !location.state.refining
@@ -419,6 +425,14 @@ export function MapPage() {
               </p>
               <button
                 type="button"
+                aria-label="Atualizar localização"
+                onClick={location.locate}
+                className="min-h-11 rounded-lg px-2 text-sm font-semibold text-fila-blue underline underline-offset-2"
+              >
+                Atualizar
+              </button>
+              <button
+                type="button"
                 aria-label="Remover localização"
                 onClick={removeLocation}
                 className="min-h-11 rounded-lg px-2 text-sm font-semibold text-slate-700 underline underline-offset-2"
@@ -433,7 +447,9 @@ export function MapPage() {
                   ? `Sua localização está marcada no mapa. Precisão aproximada: ${formatAccuracy(location.state.position.accuracy)} m. Ajustando a precisão…`
                   : location.state.status === "error"
                     ? location.state.message
-                    : "Obtendo sua localização para mostrar sua posição no mapa. Se o navegador perguntar, escolha Permitir."}
+                    : location.state.status === "loading" && location.state.previous
+                      ? "Atualizando sua localização. A posição anterior permanece no mapa até a nova leitura."
+                      : "Obtendo sua localização para mostrar sua posição no mapa. Se o navegador perguntar, escolha Permitir."}
               </p>
               <div className="flex flex-wrap items-center gap-x-3">
                 {location.state.status === "error" &&

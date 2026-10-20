@@ -136,7 +136,11 @@ async function mockLocation(
     const state = window as unknown as {
       locationRequests: number;
       completeLocation: () => void;
-      readings: { success: PositionCallback; options?: PositionOptions }[];
+      readings: {
+        success: PositionCallback;
+        error: PositionErrorCallback;
+        options?: PositionOptions;
+      }[];
       mockMode: typeof mode;
       permission: EventTarget & { state: string };
     };
@@ -157,7 +161,7 @@ async function mockLocation(
           options?: PositionOptions,
         ) {
           state.locationRequests += 1;
-          state.readings.push({ success, options });
+          state.readings.push({ success, error, options });
           // Read on each call, so a test can change it (e.g. a permission
           // granted later).
           const mode = state.mockMode;
@@ -313,19 +317,126 @@ test("remover a posição não volta a pedir mesmo se a permissão mudar", async
   expect(await page.evaluate("window.locationRequests")).toBe(2);
 });
 
-async function resolveReading(page: Page, index: number, accuracy: number) {
+async function resolveReading(
+  page: Page,
+  index: number,
+  accuracy: number,
+  position = { latitude: -23.55, longitude: -46.63 },
+) {
   await page.evaluate(
-    ([index, accuracy]) => {
+    ({ index, accuracy, position }) => {
       const { readings } = window as unknown as {
         readings: { success: PositionCallback }[];
       };
       readings[index].success({
-        coords: { latitude: -23.55, longitude: -46.63, accuracy },
+        coords: { ...position, accuracy },
       } as GeolocationPosition);
     },
-    [index, accuracy],
+    { index, accuracy, position },
   );
 }
+
+for (const viewport of [
+  { width: 390, height: 844 },
+  { width: 1280, height: 800 },
+]) {
+  test(`preserva a posição durante atualização e ignora leituras canceladas em ${viewport.width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize(viewport);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await mockLocation(page, "pending");
+    await page.goto("/?uf=SP");
+    await expect.poll(() => page.evaluate("window.locationRequests")).toBe(2);
+    await resolveReading(page, 0, 120);
+    await resolveReading(page, 1, 80);
+    const marker = page.locator(".user-location-marker");
+    await expect(marker).toBeVisible();
+    const originalMarker = await marker.elementHandle();
+    const tileZoom = () => page.locator(".leaflet-tile-pane img").evaluateAll(
+      (tiles) => Math.max(...tiles.map((tile) => Number(
+        /\/(\d+)\/\d+\/\d+\.png/.exec(tile.getAttribute("src") ?? "")?.[1] ?? 0,
+      ))),
+    );
+    await expect.poll(tileZoom).toBeGreaterThan(12);
+
+    await page.getByRole("button", { name: "Atualizar localização" }).click();
+    await expect.poll(() => page.evaluate("window.locationRequests")).toBe(4);
+    await expect(page.getByText(/A posição anterior permanece no mapa/)).toBeVisible();
+    await expect(marker).toBeVisible();
+    expect(await originalMarker?.evaluate((element) => element.isConnected)).toBe(true);
+    await expect.poll(tileZoom).toBeGreaterThan(12);
+    await testInfo.attach(`gps-atualizacao-${viewport.width}`, {
+      body: await page.screenshot({ path: testInfo.outputPath("atualizacao.png") }),
+      contentType: "image/png",
+    });
+
+    const updated = { latitude: -23.56, longitude: -46.64 };
+    await resolveReading(page, 2, 100, updated);
+    await resolveReading(page, 3, 40, updated);
+    await expect(page.getByRole("status").filter({
+      hasText: "Localização encontrada, precisão de cerca de 40 m.",
+    })).toBeVisible();
+    expect(await originalMarker?.evaluate((element) => element.isConnected)).toBe(true);
+
+    // Updating also preserves the nearby area; cancelling clears it and
+    // the retained position, including any callbacks still in flight.
+    if (viewport.width < 640) {
+      await page.getByRole("button", { name: "Abrir filtros e legenda: São Paulo" }).click();
+    }
+    await page.getByRole("combobox", { name: "Estado" }).selectOption("NEARBY");
+    if (viewport.width < 640) {
+      await page.getByRole("button", { name: "Voltar ao mapa", exact: true }).click();
+    }
+    await page.getByRole("button", { name: "Atualizar localização" }).click();
+    await expect.poll(() => page.evaluate("window.locationRequests")).toBe(6);
+    if (viewport.width < 640) {
+      await expect(page.getByRole("button", {
+        name: "Abrir filtros e legenda: até 500 km ao redor de você",
+      })).toBeVisible();
+    } else {
+      await expect(page.getByRole("combobox", { name: "Estado" })).toHaveValue("NEARBY");
+    }
+    await page.getByRole("button", { name: "Cancelar localização" }).click();
+    await resolveReading(page, 4, 60);
+    await resolveReading(page, 5, 30);
+    await expect(marker).toHaveCount(0);
+    if (viewport.width < 640) {
+      await page.getByRole("button", { name: "Abrir filtros e legenda", exact: true }).click();
+    }
+    await expect(page.getByRole("combobox", { name: "Estado" })).toHaveValue("ALL");
+  });
+}
+
+test("limpa a posição anterior se a atualização falhar, inclusive na nova tentativa", async ({
+  page,
+}) => {
+  await mockLocation(page, "pending");
+  await page.goto("/");
+  await expect.poll(() => page.evaluate("window.locationRequests")).toBe(2);
+  await resolveReading(page, 0, 120);
+  await resolveReading(page, 1, 80);
+  await page.getByRole("button", { name: "Atualizar localização" }).click();
+  await expect.poll(() => page.evaluate("window.locationRequests")).toBe(4);
+  await expect(page.locator(".user-location-marker")).toBeVisible();
+  await page.evaluate(() => {
+    const { readings } = window as unknown as {
+      readings: { error: PositionErrorCallback }[];
+    };
+    readings[2].error({ code: 2 } as GeolocationPositionError);
+    readings[3].error({ code: 2 } as GeolocationPositionError);
+  });
+  await expect(page.getByRole("status").filter({
+    hasText: "Não foi possível obter sua localização",
+  })).toBeVisible();
+  await expect(page.locator(".user-location-marker")).toHaveCount(0);
+  await page.getByRole("button", { name: "Tentar novamente" }).click();
+  await expect.poll(() => page.evaluate("window.locationRequests")).toBe(6);
+  await expect(page.locator(".user-location-marker")).toHaveCount(0);
+  await resolveReading(page, 4, 60);
+  await resolveReading(page, 5, 30);
+  await expect(page.locator(".user-location-marker")).toBeVisible();
+});
 
 test("marca a posição rápida e depois a ajusta com a leitura precisa", async ({
   page,
