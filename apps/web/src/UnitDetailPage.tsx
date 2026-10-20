@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { NationalStateCode } from "./brazilianStates";
+import { distanceOrigin, distanceToUnit, formatUnitDistance } from "./geo";
 import { LiveStatus } from "./LiveStatus";
 import { UnitOccupancySection } from "./UnitOccupancySection";
 import { UnitSources } from "./UnitSources";
@@ -14,6 +15,7 @@ import {
 import { usePageHeading } from "./usePageHeading";
 import { useSearchFilters } from "./useSearchFilters";
 import { useUnits } from "./useUnits";
+import { useUserLocation } from "./useUserLocation";
 
 export function UnitDetailPage() {
   const { unitId = "" } = useParams();
@@ -30,6 +32,11 @@ export function UnitDetailPage() {
       ? "Unidade não encontrada"
       : (unit?.name ?? "Detalhe da unidade");
   const headingRef = usePageHeading(heading);
+  const origin = distanceOrigin(useUserLocation().state);
+  const distance =
+    unit && origin
+      ? formatUnitDistance(unit, distanceToUnit(origin, unit))
+      : null;
   const notice =
     state.status === "success"
       ? dataOriginNotice(state.response.metadata)
@@ -116,6 +123,14 @@ export function UnitDetailPage() {
               <dt className="font-semibold text-slate-900">Endereço</dt>
               <dd className="mt-1">{formatAddress(unit.address)}</dd>
             </div>
+            {distance && (
+              <div>
+                <dt className="font-semibold text-slate-900">
+                  Distância de você
+                </dt>
+                <dd className="mt-1">{distance}</dd>
+              </div>
+            )}
             <div>
               <dt className="font-semibold text-slate-900">
                 Horário informado

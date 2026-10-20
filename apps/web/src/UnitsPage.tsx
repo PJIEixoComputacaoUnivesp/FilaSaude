@@ -1,7 +1,14 @@
-import { useEffect, useMemo, useRef, useState, type Ref } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type Ref } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { BrazilianStateSelect } from "./BrazilianStateSelect";
 import { NationalStateCode, stateName } from "./brazilianStates";
+import {
+  distanceOrigin,
+  distancesFrom,
+  formatUnitDistance,
+  sortByDistance,
+  type Coordinate,
+} from "./geo";
 import { LiveStatus } from "./LiveStatus";
 import { OccupancyBadge } from "./OccupancyBadge";
 import { OccupancyControls } from "./OccupancyControls";
@@ -23,6 +30,7 @@ import { usePageHeading } from "./usePageHeading";
 import { useOccupancyLayer } from "./useOccupancyLayer";
 import { useSearchFilters } from "./useSearchFilters";
 import { useUnits } from "./useUnits";
+import { useUserLocation } from "./useUserLocation";
 import { unitDetailLink, unitMapLink } from "./unitLinks";
 
 const PAGE_SIZE = 24;
@@ -50,11 +58,14 @@ function DataNotice({ metadata }: { metadata: UnitsResponse["metadata"] }) {
 function UnitCard({
   unit,
   occupancy,
+  distances,
   headingRef,
   search,
 }: {
   unit: HealthUnit;
   occupancy?: UnitOccupancy;
+  /** Present while the person's position is known (see distanceOrigin). */
+  distances: ReadonlyMap<string, number> | null;
   headingRef?: Ref<HTMLHeadingElement>;
   search: string;
 }) {
@@ -87,6 +98,12 @@ function UnitCard({
           <dt className="font-semibold text-slate-900">Endereço</dt>
           <dd>{formatAddress(unit.address)}</dd>
         </div>
+        {distances && (
+          <div>
+            <dt className="font-semibold text-slate-900">Distância de você</dt>
+            <dd>{formatUnitDistance(unit, distances.get(unit.id))}</dd>
+          </div>
+        )}
         <div>
           <dt className="font-semibold text-slate-900">Horário informado</dt>
           <dd>{unit.serviceHours ?? "Não informado na fonte pública"}</dd>
@@ -137,11 +154,13 @@ function UnitCard({
 function UnitResults({
   units,
   occupancy,
+  distances,
   focusedUnitId,
   search,
 }: {
   units: HealthUnit[];
   occupancy: ReadonlyMap<string, UnitOccupancy>;
+  distances: ReadonlyMap<string, number> | null;
   focusedUnitId?: string;
   search: string;
 }) {
@@ -201,6 +220,7 @@ function UnitResults({
             key={unit.id}
             unit={unit}
             occupancy={occupancy.get(unit.id)}
+            distances={distances}
             search={search}
             headingRef={
               unit.id === focusedUnitId
@@ -245,6 +265,17 @@ export function UnitsPage() {
   const searchRef = useRef<HTMLInputElement>(null);
   const { state, retry } = useUnits(stateCode);
   const { byUnit, simulatedFilter, setOnlySimulated } = useOccupancyLayer();
+  const location = useUserLocation();
+  const sortId = useId();
+  const sortDescriptionId = useId();
+  // The position when the person chose to sort by distance. Kept as it was,
+  // so a more precise reading arriving later does not reorder the list while
+  // it is being read. Removing the position goes back to the default order.
+  const [sortOrigin, setSortOrigin] = useState<Coordinate | null>(null);
+  const currentOrigin = distanceOrigin(location.state);
+  const activeOrigin = currentOrigin ? sortOrigin : null;
+  // While sorted, the distances shown are the ones the order was made from.
+  const shownOrigin = activeOrigin ?? currentOrigin;
 
   // Sorted once per response; filtering keeps that order.
   const sortedUnits = useMemo(
@@ -258,19 +289,30 @@ export function UnitsPage() {
       ? matching.filter((unit) => simulatedFilter.has(unit.id))
       : matching;
   }, [sortedUnits, trimmedQuery, simulatedFilter]);
+  const distances = useMemo(
+    () => (shownOrigin ? distancesFrom(shownOrigin, sortedUnits) : null),
+    [shownOrigin, sortedUnits],
+  );
+  const shownUnits = useMemo(
+    () =>
+      activeOrigin && distances
+        ? sortByDistance(filteredUnits, distances)
+        : filteredUnits,
+    [activeOrigin, distances, filteredUnits],
+  );
 
   const countText = formatCount(
-    filteredUnits.length,
+    shownUnits.length,
     "unidade encontrada",
     "unidades encontradas",
   );
   // Worded differently from the visible count on purpose: the same text twice
   // would be read twice and would match twice in a text query.
   const announcement = `${formatCount(
-    filteredUnits.length,
+    shownUnits.length,
     "resultado",
     "resultados",
-  )} em ${stateName(stateCode)}`;
+  )} em ${stateName(stateCode)}${activeOrigin ? ", ordenados por distância" : ""}`;
   // One region stays mounted across loading, success and error, so a change of
   // state is announced; the error has its own role="alert".
   const liveMessage =
@@ -359,8 +401,59 @@ export function UnitsPage() {
         {state.status === "success" && (
           <div className="flex flex-col gap-4 sm:gap-6">
             <DataNotice metadata={state.response.metadata} />
-            <p className="text-sm text-slate-700">{countText}</p>
-            {filteredUnits.length === 0 ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <p className="text-sm text-slate-700">{countText}</p>
+              {currentOrigin && (
+                <div className="flex flex-col gap-1 sm:items-end">
+                  <div className="flex items-center gap-2">
+                    <label
+                      htmlFor={sortId}
+                      className="text-sm font-semibold text-slate-800"
+                    >
+                      Ordenar por
+                    </label>
+                    <select
+                      id={sortId}
+                      value={activeOrigin ? "distance" : "default"}
+                      aria-describedby={
+                        activeOrigin ? sortDescriptionId : undefined
+                      }
+                      onChange={(event) =>
+                        setSortOrigin(
+                          event.target.value === "distance"
+                            ? currentOrigin
+                            : null,
+                        )
+                      }
+                      className="min-h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 focus-visible:border-fila-blue"
+                    >
+                      <option value="default">
+                        Ordem alfabética (estado, cidade, nome)
+                      </option>
+                      <option value="distance">
+                        Distância de você (em linha reta)
+                      </option>
+                    </select>
+                  </div>
+                  {activeOrigin && (
+                    <p
+                      id={sortDescriptionId}
+                      className="text-xs leading-relaxed text-slate-600"
+                    >
+                      Distância em linha reta, só como informação. Não indica
+                      qual unidade procurar.
+                    </p>
+                  )}
+                </div>
+              )}
+              {location.state.status === "denied" && (
+                <p className="text-xs leading-relaxed text-slate-600 sm:max-w-xs sm:text-right">
+                  Localização não permitida. Para ordenar por distância,
+                  permita o acesso nas configurações do navegador.
+                </p>
+              )}
+            </div>
+            {shownUnits.length === 0 ? (
               <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-700">
                 <p>
                   {simulatedFilter
@@ -397,8 +490,9 @@ export function UnitsPage() {
               </div>
             ) : (
               <UnitResults
-                units={filteredUnits}
+                units={shownUnits}
                 occupancy={byUnit}
+                distances={distances}
                 focusedUnitId={focusedUnitId}
                 search={search}
               />
