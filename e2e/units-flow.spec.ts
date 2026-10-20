@@ -165,7 +165,7 @@ test("abre o detalhe da unidade em uma URL própria", async ({ page }) => {
   ).toHaveAttribute("href", "https://cnes.datasus.gov.br/");
 });
 
-test("liga o cartão ao popup do mapa e volta ao mesmo cartão", async ({
+test("liga o cartão ao popup do mapa, ao detalhe e de volta ao cartão", async ({
   page,
 }) => {
   await openUnitsPage(page);
@@ -183,13 +183,17 @@ test("liga o cartão ao popup do mapa e volta ao mesmo cartão", async ({
   await expect(
     popup.getByText("UPA Vila Mariana", { exact: true }),
   ).toBeFocused();
-  await expect(
-    popup.getByRole("link", { name: /Ver na lista\s*: UPA Vila Mariana/ }),
-  ).toBeVisible();
 
   await popup
-    .getByRole("link", { name: /Ver na lista\s*: UPA Vila Mariana/ })
+    .getByRole("link", { name: /Ver detalhes\s*: UPA Vila Mariana/ })
     .click();
+
+  await expect(page).toHaveURL(/\/units\/1234567\?uf=SP$/);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "UPA Vila Mariana" }),
+  ).toBeFocused();
+
+  await page.getByRole("link", { name: "Voltar à lista" }).click();
 
   await expect(page).toHaveURL(/\/units\?uf=SP#unit-1234567$/);
   await expect(
@@ -259,12 +263,12 @@ test("mantém o popup selecionado dentro da área útil no celular", async ({
     })
     .toBe(true);
 
-  const listLink = popup.getByRole("link", {
-    name: /Ver na lista\s*: UPA Vila Mariana/,
+  const detailLink = popup.getByRole("link", {
+    name: /Ver detalhes\s*: UPA Vila Mariana/,
   });
-  await listLink.scrollIntoViewIfNeeded();
-  await listLink.click();
-  await expect(page).toHaveURL(/\/units\?uf=SP#unit-1234567$/);
+  await detailLink.scrollIntoViewIfNeeded();
+  await detailLink.click();
+  await expect(page).toHaveURL(/\/units\/1234567\?uf=SP$/);
 });
 
 test("mostra unidade não encontrada e dado desatualizado no detalhe", async ({

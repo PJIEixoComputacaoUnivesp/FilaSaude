@@ -313,7 +313,7 @@ export function MapPage() {
       <UnitsMap
         units={filteredUnits}
         selectedUnitId={selectedUnitId}
-        listSearch={search}
+        linkSearch={search}
         occupancy={byUnit}
         isCountryWide={isCountryWide}
         overlayRef={panelRef}

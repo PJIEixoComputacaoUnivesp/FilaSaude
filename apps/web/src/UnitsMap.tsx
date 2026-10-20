@@ -27,7 +27,7 @@ import {
   type UnitOccupancy,
 } from "./occupancy";
 import { UnitSources } from "./UnitSources";
-import { unitListLink } from "./unitLinks";
+import { unitDetailLink } from "./unitLinks";
 import type { HealthUnit } from "./units";
 import {
   formatAddress,
@@ -297,7 +297,7 @@ interface UnitsMapProps {
   units: HealthUnit[];
   className?: string;
   selectedUnitId?: string;
-  listSearch?: string;
+  linkSearch?: string;
   /** When true, the map fits Brazil; otherwise fits the current unit set. */
   isCountryWide?: boolean;
   /** Element drawn over the map; fitted units are kept out from under it. */
@@ -313,7 +313,7 @@ function UnitMarker({
   renderer,
   selected,
   overlayRef,
-  listSearch,
+  linkSearch,
   autoPanPaddingTopLeft,
   popupMaxWidth,
   popupMaxHeight,
@@ -324,7 +324,7 @@ function UnitMarker({
   renderer: L.Renderer;
   selected: boolean;
   overlayRef?: RefObject<HTMLElement | null>;
-  listSearch: string;
+  linkSearch: string;
   autoPanPaddingTopLeft: [number, number];
   popupMaxWidth: number;
   popupMaxHeight: number;
@@ -479,10 +479,10 @@ function UnitMarker({
             className="mb-0 space-y-1 text-xs text-slate-500"
           />
           <Link
-            to={unitListLink(unit.id, listSearch)}
+            to={unitDetailLink(unit.id, linkSearch)}
             className="mt-2 inline-flex min-h-11 items-center font-semibold text-fila-blue underline underline-offset-2"
           >
-            Ver na lista
+            Ver detalhes
             <span className="sr-only">: {unit.name}</span>
           </Link>
         </div>
@@ -498,7 +498,7 @@ function UnitMarkers({
   renderer,
   selectedUnitId,
   overlayRef,
-  listSearch,
+  linkSearch,
 }: {
   units: HealthUnit[];
   occupancy: ReadonlyMap<string, UnitOccupancy>;
@@ -506,7 +506,7 @@ function UnitMarkers({
   renderer: L.Renderer;
   selectedUnitId?: string;
   overlayRef?: RefObject<HTMLElement | null>;
-  listSearch: string;
+  linkSearch: string;
 }) {
   const map = useMap();
   const [layout, setLayout] = useState<{
@@ -568,7 +568,7 @@ function UnitMarkers({
       renderer={renderer}
       selected={unit.id === selectedUnitId}
       overlayRef={overlayRef}
-      listSearch={listSearch}
+      linkSearch={linkSearch}
       autoPanPaddingTopLeft={layout.autoPanPaddingTopLeft}
       popupMaxWidth={layout.popupMaxWidth}
       popupMaxHeight={layout.popupMaxHeight}
@@ -989,7 +989,7 @@ export function UnitsMap({
   overlayRef,
   isCountryWide,
   selectedUnitId,
-  listSearch = "",
+  linkSearch = "",
   occupancy = noOccupancy,
 }: UnitsMapProps) {
   // Stable between renders: FitUnits re-fits the map whenever this changes.
@@ -1049,7 +1049,7 @@ export function UnitsMap({
         renderer={renderer}
         selectedUnitId={selectedUnitId}
         overlayRef={overlayRef}
-        listSearch={listSearch}
+        linkSearch={linkSearch}
       />
     </MapContainer>
   );
