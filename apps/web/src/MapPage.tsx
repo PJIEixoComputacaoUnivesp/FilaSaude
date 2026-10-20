@@ -36,6 +36,8 @@ import {
 import { NearbyRadiusSelect } from "./NearbyRadiusSelect";
 
 const title = "Mapa das unidades de pronto atendimento";
+const catalogNotice =
+  "O catálogo reúne UPAs e prontos-socorros do CNES. A ausência de unidades nesta lista não indica ausência de atendimento na região.";
 
 function formatAccuracy(meters: number) {
   return Math.ceil(meters).toLocaleString("pt-BR");
@@ -78,6 +80,7 @@ export function MapPage() {
   const [isLegendOpen, setLegendOpen] = useState(false);
   // Below map-wide the location panel would cover an open popup.
   const [isPopupOpen, setPopupOpen] = useState(false);
+  const [hasUnitsInView, setUnitsInView] = useState(true);
   function openFilters(showLegend = false) {
     filtersOpenerRef.current =
       document.activeElement instanceof HTMLElement
@@ -371,30 +374,6 @@ export function MapPage() {
             )}
           </div>
         )}
-        {nearbyEnabled && activeRadiusKm !== null &&
-          (activeRadiusKm >= 100 || unitsAtRadius < 3) && (
-            <p className="mt-2 text-xs leading-relaxed text-slate-700">
-              O catálogo reúne UPAs e prontos-socorros do CNES. A ausência de
-              unidades nesta lista não indica ausência de atendimento na região.
-            </p>
-          )}
-        {nearbyEnabled &&
-          activeRadiusKm !== null &&
-          ((activeRadiusKm === 500 && unitsAtRadius < 3) ||
-            (mappableCount === 0 && deferredQuery !== "")) && (
-            <button
-              type="button"
-              onClick={() => {
-                setNearbyEnabled(false);
-                setStateCode(NationalStateCode.All);
-              }}
-              className="mt-2 min-h-11 font-semibold text-fila-blue underline underline-offset-2"
-            >
-              {deferredQuery !== ""
-                ? "Buscar em todo o Brasil"
-                : "Mostrar todo o Brasil"}
-            </button>
-          )}
         {originNotice?.isOutage && (
           <p
             className="mt-2 text-xs font-semibold text-amber-800 map-wide:hidden"
@@ -408,7 +387,9 @@ export function MapPage() {
             <p>
               {filteredUnits.length > 0
                 ? "As unidades encontradas não têm localização informada."
-                : "Nenhuma unidade encontrada com os filtros atuais."}
+                : nearbyEnabled && activeRadiusKm !== null
+                  ? `Nenhuma unidade a até ${activeRadiusKm} km de você.`
+                  : "Nenhuma unidade encontrada com os filtros atuais."}
             </p>
             {filteredUnits.length > 0 ? (
               <Link
@@ -451,6 +432,36 @@ export function MapPage() {
             )}
           </div>
         )}
+        {/* After the empty state, so the message comes before its action. */}
+        {nearbyEnabled && activeRadiusKm !== null &&
+          (activeRadiusKm >= 100 || unitsAtRadius < 3) && (
+            // The full explanation is in the filters sheet below map-wide.
+            <p className="mt-2 text-xs leading-relaxed text-slate-700">
+              <span className="map-wide:hidden">
+                Sem unidades aqui não indica ausência de atendimento.
+              </span>
+              <span className="hidden map-wide:inline">
+                {catalogNotice}
+              </span>
+            </p>
+          )}
+        {nearbyEnabled &&
+          activeRadiusKm !== null &&
+          ((activeRadiusKm === 500 && unitsAtRadius < 3) ||
+            (mappableCount === 0 && deferredQuery !== "")) && (
+            <button
+              type="button"
+              onClick={() => {
+                setNearbyEnabled(false);
+                setStateCode(NationalStateCode.All);
+              }}
+              className="mt-2 min-h-11 font-semibold text-fila-blue underline underline-offset-2"
+            >
+              {deferredQuery !== ""
+                ? "Buscar em todo o Brasil"
+                : "Mostrar todo o Brasil"}
+            </button>
+          )}
         {/* Before the layer controls, so the retry stays in view on a short
             panel. */}
         {state.status === "error" && (
@@ -552,6 +563,29 @@ export function MapPage() {
               </div>
             </>
           )}
+          {/* The street-level view around the person may hold no unit; say
+              so, and offer the radius search, without pointing to any unit. */}
+          {location.state.status === "success" &&
+            !location.state.refining &&
+            isPositionInArea &&
+            !nearbyEnabled &&
+            !hasUnitsInView &&
+            state.status === "success" &&
+            mappableCount > 0 &&
+            currentOrigin && (
+              <div className="px-2">
+                <p className="text-sm leading-relaxed text-slate-700">
+                  Nenhuma unidade nesta parte do mapa.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setNearbyEnabled(true)}
+                  className="min-h-11 text-sm font-semibold text-fila-blue underline underline-offset-2"
+                >
+                  Mostrar unidades ao redor de você
+                </button>
+              </div>
+            )}
           {location.state.status === "success" && !isPositionInArea && (
             <p className="px-2 text-sm leading-relaxed text-slate-700">
               Você está fora da área filtrada
@@ -593,7 +627,8 @@ export function MapPage() {
         }}
         // A fixed height: the top, with "Voltar ao mapa", stays put while the
         // content changes.
-        className="fixed inset-x-0 bottom-0 top-auto m-0 h-[min(85dvh,36rem)] w-full max-w-none overflow-y-auto overscroll-contain rounded-t-2xl border border-slate-200 bg-white p-0 text-slate-900 backdrop:bg-slate-900/40"
+        // A bottom sheet on a phone; from sm, a card at the bottom left.
+        className="fixed inset-x-0 bottom-0 top-auto m-0 h-[min(85dvh,36rem)] w-full max-w-none overflow-y-auto overscroll-contain rounded-t-2xl border border-slate-200 bg-white p-0 text-slate-900 backdrop:bg-slate-900/40 sm:bottom-4 sm:left-4 sm:right-auto sm:h-[min(calc(100dvh-2rem),36rem)] sm:max-w-md sm:rounded-2xl"
       >
         <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2">
           <h2 id={filtersTitleId} className="text-base font-semibold sm:text-lg">
@@ -631,6 +666,8 @@ export function MapPage() {
           {nearbyEnabled && activeRadiusKm !== null && (
             <p className="text-sm leading-relaxed text-slate-700">
               {countText}. A lista mostra unidades até esta distância em linha reta.
+              {(activeRadiusKm >= 100 || unitsAtRadius < 3) &&
+                ` ${catalogNotice}`}
             </p>
           )}
           <OccupancyControls legendOpen={isLegendOpen} />
@@ -655,6 +692,7 @@ export function MapPage() {
         isCountryWide={isCountryWide}
         overlayRef={panelRef}
         onPopupOpenChange={setPopupOpen}
+        onUnitsInViewChange={setUnitsInView}
         className="absolute inset-0"
       />
     </div>

@@ -317,6 +317,8 @@ interface UnitsMapProps {
   occupancy?: ReadonlyMap<string, UnitOccupancy>;
   /** Called when a unit's popup opens or closes. */
   onPopupOpenChange?: (open: boolean) => void;
+  /** Called after each move with whether any unit is in the visible map. */
+  onUnitsInViewChange?: (inView: boolean) => void;
 }
 
 function UnitMarker({
@@ -1106,6 +1108,33 @@ function PopupOpenListener({
   return null;
 }
 
+function UnitsInView({
+  units,
+  onChange,
+}: {
+  units: HealthUnit[];
+  onChange?: (inView: boolean) => void;
+}) {
+  const map = useMap();
+  useEffect(() => {
+    if (!onChange) return;
+    const update = () => {
+      const bounds = map.getBounds();
+      onChange(
+        units.some((unit) =>
+          bounds.contains([unit.location.latitude!, unit.location.longitude!]),
+        ),
+      );
+    };
+    update();
+    map.on("moveend", update);
+    return () => {
+      map.off("moveend", update);
+    };
+  }, [map, units, onChange]);
+  return null;
+}
+
 function MapLocalization() {
   const map = useMap();
 
@@ -1258,6 +1287,7 @@ export function UnitsMap({
   linkSearch = "",
   occupancy = noOccupancy,
   onPopupOpenChange,
+  onUnitsInViewChange,
 }: UnitsMapProps) {
   // Stable between renders: FitUnits re-fits the map whenever this changes.
   const unitsWithLocation = useMemo(() => units.filter(hasLocation), [units]);
@@ -1297,6 +1327,7 @@ export function UnitsMap({
       <BrazilBorderLayer onSettled={showBase} />
       <MapLocalization />
       <PopupOpenListener onChange={onPopupOpenChange} />
+      <UnitsInView units={unitsWithLocation} onChange={onUnitsInViewChange} />
       <MapFocusRing />
       <EnforceCountryZoom />
       <KeepCountryClearOfOverlay overlayRef={overlayRef} />

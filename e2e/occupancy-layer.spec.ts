@@ -1118,8 +1118,8 @@ for (const viewport of [
       await page.setViewportSize(viewport);
       await page.emulateMedia({ reducedMotion });
       await context.setGeolocation({
-        latitude: -23.56,
-        longitude: -46.64,
+        latitude: -23.551,
+        longitude: -46.631,
         accuracy: 50,
       });
       await context.grantPermissions(["geolocation"]);
@@ -1173,8 +1173,8 @@ for (const viewport of [
   }) => {
     await page.setViewportSize(viewport);
     await context.setGeolocation({
-      latitude: -23.56,
-      longitude: -46.64,
+      latitude: -23.551,
+      longitude: -46.631,
       accuracy: 50,
     });
     await context.grantPermissions(["geolocation"]);
@@ -1221,8 +1221,8 @@ for (const width of [390, 667, 1280]) {
   }) => {
     await page.setViewportSize({ width, height: width === 667 ? 375 : 800 });
     await context.setGeolocation({
-      latitude: -23.56,
-      longitude: -46.64,
+      latitude: -23.551,
+      longitude: -46.631,
       accuracy: 50,
     });
     await context.grantPermissions(["geolocation"]);
