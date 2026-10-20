@@ -295,6 +295,52 @@ test("a máscara acompanha o arrasto com o mapa aproximado", async ({
   );
 });
 
+/** Screen x of Brazil's west edge: the leftmost tile, after its clip. */
+function brazilWestEdge(page: Page) {
+  return page.locator("img.leaflet-tile").evaluateAll((images) =>
+    Math.min(
+      ...images.map((img) => {
+        const clip = /inset\((.+)\)/.exec((img as HTMLElement).style.clipPath);
+        // CSS shorthand: the left inset falls back to the right, then to all.
+        const insets = clip ? clip[1].split(" ") : ["0px"];
+        const left = Number.parseFloat(insets[3] ?? insets[1] ?? insets[0]);
+        return img.getBoundingClientRect().left + left;
+      }),
+    ),
+  );
+}
+
+test("o oeste do Brasil sai de baixo do painel numa janela menor", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1024, height: 640 });
+  const tiles = await recordTiles(page);
+  await page.goto("/");
+  await expect.poll(() => tiles.length).toBeGreaterThan(0);
+  await expect(page.locator(".leaflet-zoom-anim")).toHaveCount(0);
+
+  const panel = page.getByRole("region", { name: "Controles do mapa" });
+  const panelRight = async () => {
+    const box = await panel.boundingBox();
+    return box!.x + box!.width;
+  };
+  // Zoomed out, the whole country sits beside the panel.
+  expect(await brazilWestEdge(page)).toBeGreaterThanOrEqual(await panelRight());
+
+  // Zoomed in, dragging east brings Acre out from under the panel.
+  await page.getByRole("button", { name: "Aproximar o mapa" }).click();
+  await expect(page.locator(".leaflet-zoom-anim")).toHaveCount(0);
+  for (let drag = 0; drag < 4; drag++) {
+    await page.mouse.move(600, 350);
+    await page.mouse.down();
+    await page.mouse.move(850, 350, { steps: 10 });
+    await page.mouse.up();
+  }
+  await expect
+    .poll(() => brazilWestEdge(page))
+    .toBeGreaterThanOrEqual(await panelRight());
+});
+
 test("mostra o anel de foco do mapa só para o teclado", async ({ page }) => {
   const tiles = await recordTiles(page);
   await page.goto("/");

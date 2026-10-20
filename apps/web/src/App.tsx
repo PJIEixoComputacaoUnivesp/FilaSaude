@@ -1,3 +1,4 @@
+import { useId, useRef } from "react";
 import {
   BrowserRouter,
   Link,
@@ -32,7 +33,11 @@ function Header() {
   return (
     <header className="relative z-[1000] border-b border-slate-200 bg-white">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-2 sm:gap-4 sm:px-6 md:py-3">
-        <Link to="/" aria-label="FilaSaúde — página inicial">
+        <Link
+          to="/"
+          aria-label="FilaSaúde — página inicial"
+          className="inline-flex min-h-11 items-center"
+        >
           <Logo className="h-8 w-auto sm:h-9" />
         </Link>
 
@@ -64,17 +69,84 @@ function RedirectToMap() {
   return <Navigate to={{ pathname: "/", search }} replace />;
 }
 
+const linkClass =
+  "whitespace-nowrap font-semibold text-fila-blue underline underline-offset-2";
+
+const safetyNotice = (
+  <>
+    <strong className="font-semibold text-slate-900">Informativo:</strong> não
+    faz diagnóstico, triagem nem recomendação médica. Em emergência, procure os
+    canais oficiais de atendimento.
+  </>
+);
+
+// On phones the full notice took two lines below the map. A short line stays
+// visible and the full text opens in a native popover (Escape, tapping
+// outside and moving focus away close it), so it never depends on hover.
 function Footer() {
+  const noticeId = useId();
+  const noticeRef = useRef<HTMLDivElement>(null);
+  const footerNoticeRef = useRef<HTMLDivElement>(null);
+
   return (
     <footer className="border-t border-slate-200 bg-white">
-      <p className="mx-auto max-w-7xl px-4 py-2 text-xs leading-relaxed text-slate-700 sm:px-6 md:py-3 md:text-sm">
-        <strong className="font-semibold text-slate-900">Informativo:</strong>{" "}
-        não faz diagnóstico, triagem nem recomendação médica. Em emergência,
-        procure os canais oficiais de atendimento.{" "}
-        <Link
-          to="/about"
-          className="whitespace-nowrap font-semibold text-fila-blue underline underline-offset-2"
+      <div
+        ref={footerNoticeRef}
+        onBlur={(event) => {
+          // A tap on the card's text moves focus nowhere (no relatedTarget);
+          // the popover closes itself on taps outside.
+          const next = event.relatedTarget;
+          if (next && !footerNoticeRef.current?.contains(next)) {
+            noticeRef.current?.hidePopover();
+          }
+        }}
+        className="flex items-center justify-between gap-1 px-4 sm:hidden"
+      >
+        <p className="min-w-0 text-xs text-slate-700">
+          <strong className="font-semibold text-slate-900">Informativo:</strong>{" "}
+          sem orientação médica
+        </p>
+        {/* The ring is drawn inside: the button touches the bottom of the
+            viewport and the map above it. */}
+        <button
+          type="button"
+          popoverTarget={noticeId}
+          className="-mr-2 min-h-11 shrink-0 px-2 text-xs font-semibold text-fila-blue underline underline-offset-2 focus-visible:-outline-offset-3"
         >
+          Saiba mais
+          <span className="sr-only"> sobre o aviso informativo</span>
+        </button>
+        <div
+          ref={noticeRef}
+          id={noticeId}
+          popover="auto"
+          role="note"
+          aria-label="Aviso informativo"
+          className="fixed inset-x-4 bottom-14 top-auto mx-auto my-0 max-h-[calc(100dvh-5rem)] w-auto max-w-md overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 text-sm leading-relaxed text-slate-700 backdrop:bg-transparent"
+        >
+          <p>{safetyNotice}</p>
+          <div className="mt-2 flex items-center justify-between gap-4">
+            <Link
+              to="/about"
+              onClick={() => noticeRef.current?.hidePopover()}
+              className={`inline-flex min-h-11 items-center ${linkClass}`}
+            >
+              Sobre os dados
+            </Link>
+            <button
+              type="button"
+              popoverTarget={noticeId}
+              popoverTargetAction="hide"
+              className="min-h-11 rounded-lg px-3 font-semibold text-fila-blue"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      </div>
+      <p className="mx-auto hidden max-w-7xl px-6 py-2 text-xs leading-relaxed text-slate-700 sm:block md:py-3 md:text-sm">
+        {safetyNotice}{" "}
+        <Link to="/about" className={linkClass}>
           Sobre os dados
         </Link>
       </p>

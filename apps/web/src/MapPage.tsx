@@ -31,10 +31,13 @@ import {
   distancesFrom,
   filterUnitsWithinRadius,
   initialSearchRadiusKm,
+  nearbyUnavailableReason,
 } from "./geo";
 import { NearbyRadiusSelect } from "./NearbyRadiusSelect";
 
 const title = "Mapa das unidades de pronto atendimento";
+const catalogNotice =
+  "O catálogo reúne UPAs e prontos-socorros do CNES. A ausência de unidades nesta lista não indica ausência de atendimento na região.";
 
 function formatAccuracy(meters: number) {
   return Math.ceil(meters).toLocaleString("pt-BR");
@@ -69,11 +72,15 @@ export function MapPage() {
       : NationalStateCode.All;
   const { state, retry } = useUnits(requestState);
   const panelRef = useRef<HTMLElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const filtersRef = useRef<HTMLDialogElement>(null);
   const filtersButtonRef = useRef<HTMLButtonElement>(null);
   const filtersOpenerRef = useRef<HTMLElement | null>(null);
   const filtersTitleId = useId();
   const [isLegendOpen, setLegendOpen] = useState(false);
+  // Below map-wide the location panel would cover an open popup.
+  const [isPopupOpen, setPopupOpen] = useState(false);
+  const [hasUnitsInView, setUnitsInView] = useState(true);
   function openFilters(showLegend = false) {
     filtersOpenerRef.current =
       document.activeElement instanceof HTMLElement
@@ -83,7 +90,7 @@ export function MapPage() {
     if (filtersRef.current) filtersRef.current.scrollTop = 0;
     filtersRef.current?.showModal();
   }
-  const { byUnit, simulatedFilter } = useOccupancyLayer();
+  const { byUnit, simulatedFilter, setOnlySimulated } = useOccupancyLayer();
   const currentOrigin = distanceOrigin(location.state);
   useEffect(() => {
     if (nearbyEnabled && !currentOrigin) setNearbyEnabled(false);
@@ -226,7 +233,13 @@ export function MapPage() {
         ? `${formatCount(mappableCount, "resultado", "resultados")} ${nearbyEnabled && activeRadiusKm !== null ? `dentro de ${activeRadiusKm} km de você` : `no mapa em ${stateName(deferredState)}`}`
         : "";
 
+  const [removedAnnouncement, setRemovedAnnouncement] = useState("");
   function removeLocation() {
+    setRemovedAnnouncement(
+      nearbyEnabled
+        ? "Localização removida. O filtro Ao redor de você foi desativado."
+        : "Localização removida.",
+    );
     location.clear();
     // The panel goes away with the position; keep focus on the page.
     titleRef.current?.focus();
@@ -240,10 +253,17 @@ export function MapPage() {
         ? location.state.message
         : location.state.status === "success" && !location.state.refining
           ? `Localização encontrada, precisão de cerca de ${formatAccuracy(location.state.position.accuracy)} m.`
-          : "";
+          : location.state.status === "removed"
+            ? removedAnnouncement
+            : "";
+  const nearbyHint = nearbyUnavailableReason(location.state);
 
+  // The map's floor follows the height, not the width: a short screen (a phone
+  // held sideways, a browser bar) fills the space left, and only a very short
+  // one (zoomed in) scrolls instead of crushing the map. Narrow and zoomed in,
+  // the floor is taller, so the search and location panels never overlap.
   return (
-    <div className="relative min-h-[28rem] w-full flex-1">
+    <div className="relative min-h-80 w-full flex-1 sm:min-h-56 sm:[@media(min-height:40rem)]:min-h-[28rem]">
       <h1
         ref={(element) => {
           titleRef.current = element;
@@ -260,15 +280,15 @@ export function MapPage() {
       <section
         ref={panelRef}
         aria-label="Controles do mapa"
-        className="absolute left-3 right-3 top-3 z-[900] max-h-[min(22rem,calc(100%-7.5rem))] overflow-y-auto sm:max-h-[calc(100%-7.5rem)] overscroll-contain rounded-2xl border border-slate-200 bg-white p-3 sm:left-6 sm:right-auto sm:top-4 sm:w-96 sm:p-4"
+        className="map-search-panel absolute left-3 right-3 top-3 z-[900] max-h-[min(22rem,calc(100%-7.5rem))] overflow-y-auto map-wide:max-h-[calc(100%-8.5rem)] overscroll-contain rounded-2xl border border-slate-200 bg-white p-3 map-wide:left-6 map-wide:right-auto map-wide:top-4 map-wide:w-72 map-wide:md:w-96 map-wide:p-4"
       >
         <form
           role="search"
           aria-label="Buscar no mapa"
           onSubmit={(event) => event.preventDefault()}
-          className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:grid-cols-1 sm:gap-3"
+          className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 map-wide:grid-cols-1 map-wide:gap-3"
         >
-          <div className="hidden sm:block">
+          <div className="hidden map-wide:block">
             <BrazilianStateSelect
               value={stateCode}
               onChange={setStateCode}
@@ -277,6 +297,7 @@ export function MapPage() {
               nearbySelected={nearbyEnabled}
               canSelectNearby={currentOrigin !== null}
               onSelectNearby={() => setNearbyEnabled(true)}
+              nearbyHint={nearbyHint}
             />
             {nearbyEnabled && activeRadiusKm !== null && (
               <div className="mt-2">
@@ -290,11 +311,12 @@ export function MapPage() {
             )}
           </div>
           <label className="block">
-            <span className="sr-only text-xs font-semibold text-slate-800 sm:not-sr-only sm:mb-2 sm:block sm:text-sm">
+            <span className="sr-only text-xs font-semibold text-slate-800 map-wide:not-sr-only map-wide:mb-2 map-wide:block map-wide:text-sm">
               Buscar no mapa
             </span>
             <input
               type="search"
+              ref={searchRef}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onBlur={flush}
@@ -308,15 +330,17 @@ export function MapPage() {
             ref={filtersButtonRef}
             type="button"
             onClick={() => openFilters()}
+            // Starts with the visible word, for voice control.
             aria-label={
               nearbyEnabled
-                ? `Abrir filtros e legenda: até ${activeRadiusKm ?? ""} km ao redor de você`
+                ? `Filtros e legenda: até ${activeRadiusKm ?? ""} km ao redor de você`
                 : stateCode === NationalStateCode.All
-                ? "Abrir filtros e legenda"
-                : `Abrir filtros e legenda: ${stateName(stateCode)}`
+                ? "Filtros e legenda"
+                : `Filtros e legenda: ${stateName(stateCode)}`
             }
             aria-haspopup="dialog"
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-fila-blue sm:hidden"
+            // The chip goes under the word, so the search keeps its width.
+            className="inline-flex min-h-11 flex-col items-center justify-center rounded-lg border border-slate-300 px-3 text-sm font-semibold leading-tight text-fila-blue map-wide:hidden"
           >
             Filtros
             {(nearbyEnabled || stateCode !== NationalStateCode.All) && (
@@ -328,12 +352,12 @@ export function MapPage() {
         </form>
         <LiveStatus message={liveMessage} />
         {state.status === "loading" && (
-          <p className="mt-2 text-sm text-slate-700 sm:mt-3">
+          <p className="mt-2 text-sm text-slate-700 map-wide:mt-3">
             {LOADING_MESSAGE}
           </p>
         )}
         {state.status === "success" && (
-          <div className="mt-2 hidden flex-wrap items-center justify-between gap-x-3 text-xs leading-relaxed text-slate-700 sm:mt-3 sm:flex">
+          <div className="mt-2 hidden flex-wrap items-center justify-between gap-x-3 text-xs leading-relaxed text-slate-700 map-wide:mt-3 map-wide:flex">
             <p>{countText}.</p>
             <Link
               to={{ pathname: "/units", search }}
@@ -343,18 +367,82 @@ export function MapPage() {
             </Link>
             {originNotice && (
               <p
-                className={`w-full ${originNotice.isOutage ? "font-semibold text-amber-800" : "hidden sm:block"}`}
+                className={`w-full ${originNotice.isOutage ? "font-semibold text-amber-800" : "hidden map-wide:block"}`}
               >
                 {originNotice.shortText ?? originNotice.text}
               </p>
             )}
           </div>
         )}
+        {originNotice?.isOutage && (
+          <p
+            className="mt-2 text-xs font-semibold text-amber-800 map-wide:hidden"
+            role="status"
+          >
+            {originNotice.text}
+          </p>
+        )}
+        {state.status === "success" && mappableCount === 0 && (
+          <div className="mt-2 text-sm text-slate-700">
+            <p>
+              {filteredUnits.length > 0
+                ? "As unidades encontradas não têm localização informada."
+                : nearbyEnabled && activeRadiusKm !== null
+                  ? `Nenhuma unidade a até ${activeRadiusKm} km de você.`
+                  : "Nenhuma unidade encontrada com os filtros atuais."}
+            </p>
+            {filteredUnits.length > 0 ? (
+              <Link
+                to={{ pathname: "/units", search }}
+                className="inline-flex min-h-11 items-center font-semibold text-fila-blue underline underline-offset-2"
+              >
+                Consultar unidades na lista
+              </Link>
+            ) : query.trim() !== "" ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  flush();
+                  searchRef.current?.focus();
+                }}
+                className="min-h-11 font-semibold text-fila-blue underline underline-offset-2"
+              >
+                Limpar busca
+              </button>
+            ) : simulatedFilter ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setOnlySimulated(false);
+                  searchRef.current?.focus();
+                }}
+                className="min-h-11 font-semibold text-fila-blue underline underline-offset-2"
+              >
+                Mostrar todas as unidades
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => openFilters()}
+                className="min-h-11 font-semibold text-fila-blue underline underline-offset-2"
+              >
+                Alterar filtros
+              </button>
+            )}
+          </div>
+        )}
+        {/* After the empty state, so the message comes before its action. */}
         {nearbyEnabled && activeRadiusKm !== null &&
           (activeRadiusKm >= 100 || unitsAtRadius < 3) && (
+            // The full explanation is in the filters sheet below map-wide.
             <p className="mt-2 text-xs leading-relaxed text-slate-700">
-              O catálogo reúne UPAs e prontos-socorros do CNES. A ausência de
-              unidades nesta lista não indica ausência de atendimento na região.
+              <span className="map-wide:hidden">
+                Sem unidades aqui não indica ausência de atendimento.
+              </span>
+              <span className="hidden map-wide:inline">
+                {catalogNotice}
+              </span>
             </p>
           )}
         {nearbyEnabled &&
@@ -374,17 +462,10 @@ export function MapPage() {
                 : "Mostrar todo o Brasil"}
             </button>
           )}
-        {originNotice?.isOutage && (
-          <p
-            className="mt-2 text-xs font-semibold text-amber-800 sm:hidden"
-            role="status"
-          >
-            {originNotice.text}
-          </p>
-        )}
-        <OccupancyControls compact onOpenLegend={() => openFilters(true)} />
+        {/* Before the layer controls, so the retry stays in view on a short
+            panel. */}
         {state.status === "error" && (
-          <div className="mt-2 text-sm text-red-900 sm:mt-3" role="alert">
+          <div className="mt-2 text-sm text-red-900 map-wide:mt-3" role="alert">
             <p>{state.message}</p>
             <button
               type="button"
@@ -395,6 +476,7 @@ export function MapPage() {
             </button>
           </div>
         )}
+        <OccupancyControls compact onOpenLegend={() => openFilters(true)} />
       </section>
 
       {/* Always mounted, apart from the panel, so each change is announced
@@ -411,7 +493,7 @@ export function MapPage() {
           ref={locationPanelRef}
           aria-label="Sua localização"
           aria-describedby={locationDescriptionId}
-          className="absolute bottom-10 right-3 z-[900] max-h-[45%] max-w-[calc(100%-5.5rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 sm:right-6 sm:max-w-72"
+          className={`map-location-panel absolute bottom-10 right-3 z-[900] max-h-[45%] ${isPopupOpen ? "invisible map-wide:visible" : ""} max-w-[calc(100%-5.5rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 sm:right-6 sm:max-w-sm`}
         >
           <p id={locationDescriptionId} className="sr-only">
             Sua posição fica apenas nesta aba.
@@ -423,22 +505,25 @@ export function MapPage() {
                 Sua localização (±{" "}
                 {formatAccuracy(location.state.position.accuracy)} m)
               </p>
-              <button
-                type="button"
-                aria-label="Atualizar localização"
-                onClick={location.locate}
-                className="min-h-11 rounded-lg px-2 text-sm font-semibold text-fila-blue underline underline-offset-2"
-              >
-                Atualizar
-              </button>
-              <button
-                type="button"
-                aria-label="Remover localização"
-                onClick={removeLocation}
-                className="min-h-11 rounded-lg px-2 text-sm font-semibold text-slate-700 underline underline-offset-2"
-              >
-                Remover
-              </button>
+              {/* The actions wrap together, never one per line. */}
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  aria-label="Atualizar localização"
+                  onClick={location.locate}
+                  className="min-h-11 rounded-lg px-2 text-sm font-semibold text-fila-blue underline underline-offset-2"
+                >
+                  Atualizar
+                </button>
+                <button
+                  type="button"
+                  aria-label="Remover localização"
+                  onClick={removeLocation}
+                  className="min-h-11 rounded-lg px-2 text-sm font-semibold text-slate-700 underline underline-offset-2"
+                >
+                  Remover
+                </button>
+              </div>
             </div>
           ) : (
             <>
@@ -468,7 +553,9 @@ export function MapPage() {
                   className="min-h-11 rounded-lg px-2 text-sm font-semibold text-slate-700 underline underline-offset-2"
                 >
                   {location.state.status === "loading"
-                    ? "Cancelar localização"
+                    ? location.state.previous
+                      ? "Remover localização"
+                      : "Cancelar localização"
                     : location.state.status === "success"
                       ? "Remover localização"
                       : "Fechar"}
@@ -476,6 +563,29 @@ export function MapPage() {
               </div>
             </>
           )}
+          {/* The street-level view around the person may hold no unit; say
+              so, and offer the radius search, without pointing to any unit. */}
+          {location.state.status === "success" &&
+            !location.state.refining &&
+            isPositionInArea &&
+            !nearbyEnabled &&
+            !hasUnitsInView &&
+            state.status === "success" &&
+            mappableCount > 0 &&
+            currentOrigin && (
+              <div className="px-2">
+                <p className="text-sm leading-relaxed text-slate-700">
+                  Nenhuma unidade nesta parte do mapa.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setNearbyEnabled(true)}
+                  className="min-h-11 text-sm font-semibold text-fila-blue underline underline-offset-2"
+                >
+                  Mostrar unidades ao redor de você
+                </button>
+              </div>
+            )}
           {location.state.status === "success" && !isPositionInArea && (
             <p className="px-2 text-sm leading-relaxed text-slate-700">
               Você está fora da área filtrada
@@ -492,6 +602,19 @@ export function MapPage() {
       <dialog
         ref={filtersRef}
         aria-labelledby={filtersTitleId}
+        // A tap on the backdrop (outside the sheet) goes back to the map.
+        onClick={(event) => {
+          const box = event.currentTarget.getBoundingClientRect();
+          if (
+            event.target === event.currentTarget &&
+            (event.clientY < box.top ||
+              event.clientY > box.bottom ||
+              event.clientX < box.left ||
+              event.clientX > box.right)
+          ) {
+            event.currentTarget.close();
+          }
+        }}
         onClose={() => {
           setLegendOpen(false);
           if (
@@ -502,24 +625,28 @@ export function MapPage() {
           }
           filtersOpenerRef.current = null;
         }}
-        className="fixed inset-x-0 bottom-0 top-auto m-0 max-h-[85dvh] w-full max-w-none overflow-y-auto overscroll-contain rounded-t-2xl border border-slate-200 bg-white p-0 text-slate-900 backdrop:bg-slate-900/40"
+        // A fixed height: the top, with "Voltar ao mapa", stays put while the
+        // content changes.
+        // A bottom sheet on a phone; from sm, a card at the bottom left.
+        className="fixed inset-x-0 bottom-0 top-auto m-0 h-[min(85dvh,36rem)] w-full max-w-none overflow-y-auto overscroll-contain rounded-t-2xl border border-slate-200 bg-white p-0 text-slate-900 backdrop:bg-slate-900/40 sm:bottom-4 sm:left-4 sm:right-auto sm:h-[min(calc(100dvh-2rem),36rem)] sm:max-w-md sm:rounded-2xl"
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 py-2">
-          <h2 id={filtersTitleId} className="text-lg font-semibold">
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2">
+          <h2 id={filtersTitleId} className="text-base font-semibold sm:text-lg">
             Filtros e legenda
           </h2>
           <button
             type="button"
             onClick={() => filtersRef.current?.close()}
-            className="min-h-11 rounded-lg px-3 font-semibold text-fila-blue"
+            className="min-h-11 shrink-0 whitespace-nowrap rounded-lg px-2 font-semibold text-fila-blue"
           >
             Voltar ao mapa
           </button>
         </div>
         <div className="space-y-4 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          {state.status === "success" && (
-            <p className="text-sm text-slate-700">{countText}</p>
-          )}
+          {state.status === "success" &&
+            !(nearbyEnabled && activeRadiusKm !== null) && (
+              <p className="text-sm text-slate-700">{countText}</p>
+            )}
           <BrazilianStateSelect
             value={stateCode}
             onChange={setStateCode}
@@ -527,6 +654,7 @@ export function MapPage() {
             nearbySelected={nearbyEnabled}
             canSelectNearby={currentOrigin !== null}
             onSelectNearby={() => setNearbyEnabled(true)}
+            nearbyHint={nearbyHint}
           />
           {nearbyEnabled && activeRadiusKm !== null && (
             <NearbyRadiusSelect
@@ -538,6 +666,8 @@ export function MapPage() {
           {nearbyEnabled && activeRadiusKm !== null && (
             <p className="text-sm leading-relaxed text-slate-700">
               {countText}. A lista mostra unidades até esta distância em linha reta.
+              {(activeRadiusKm >= 100 || unitsAtRadius < 3) &&
+                ` ${catalogNotice}`}
             </p>
           )}
           <OccupancyControls legendOpen={isLegendOpen} />
@@ -557,10 +687,12 @@ export function MapPage() {
         filterKey={`${deferredState}|${deferredQuery}|${simulatedFilter ? "simulated" : ""}|${nearbyEnabled ? activeRadiusKm ?? "nearby" : ""}`}
         units={filteredUnits}
         selectedUnitId={selectedUnitId}
-        listSearch={search}
+        linkSearch={search}
         occupancy={byUnit}
         isCountryWide={isCountryWide}
         overlayRef={panelRef}
+        onPopupOpenChange={setPopupOpen}
+        onUnitsInViewChange={setUnitsInView}
         className="absolute inset-0"
       />
     </div>

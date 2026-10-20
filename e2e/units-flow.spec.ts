@@ -165,7 +165,7 @@ test("abre o detalhe da unidade em uma URL própria", async ({ page }) => {
   ).toHaveAttribute("href", "https://cnes.datasus.gov.br/");
 });
 
-test("liga o cartão ao popup do mapa e volta ao mesmo cartão", async ({
+test("liga o cartão ao popup do mapa, ao detalhe e de volta ao cartão", async ({
   page,
 }) => {
   await openUnitsPage(page);
@@ -183,13 +183,17 @@ test("liga o cartão ao popup do mapa e volta ao mesmo cartão", async ({
   await expect(
     popup.getByText("UPA Vila Mariana", { exact: true }),
   ).toBeFocused();
-  await expect(
-    popup.getByRole("link", { name: /Ver na lista\s*: UPA Vila Mariana/ }),
-  ).toBeVisible();
 
   await popup
-    .getByRole("link", { name: /Ver na lista\s*: UPA Vila Mariana/ })
+    .getByRole("link", { name: /Ver detalhes\s*: UPA Vila Mariana/ })
     .click();
+
+  await expect(page).toHaveURL(/\/units\/1234567\?uf=SP$/);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "UPA Vila Mariana" }),
+  ).toBeFocused();
+
+  await page.getByRole("link", { name: "Voltar à lista" }).click();
 
   await expect(page).toHaveURL(/\/units\?uf=SP#unit-1234567$/);
   await expect(
@@ -259,12 +263,12 @@ test("mantém o popup selecionado dentro da área útil no celular", async ({
     })
     .toBe(true);
 
-  const listLink = popup.getByRole("link", {
-    name: /Ver na lista\s*: UPA Vila Mariana/,
+  const detailLink = popup.getByRole("link", {
+    name: /Ver detalhes\s*: UPA Vila Mariana/,
   });
-  await listLink.scrollIntoViewIfNeeded();
-  await listLink.click();
-  await expect(page).toHaveURL(/\/units\?uf=SP#unit-1234567$/);
+  await detailLink.scrollIntoViewIfNeeded();
+  await detailLink.click();
+  await expect(page).toHaveURL(/\/units\/1234567\?uf=SP$/);
 });
 
 test("mostra unidade não encontrada e dado desatualizado no detalhe", async ({
@@ -500,6 +504,51 @@ test("mantém a busca ao ler Sobre os dados e voltar ao mapa", async ({
     page.getByRole("searchbox", { name: "Buscar no mapa" }),
   ).toHaveValue("Osasco");
   await expect(page.getByText("1 unidade no mapa.")).toBeVisible();
+});
+
+test("no celular, o aviso informativo abre por inteiro e leva a Sobre os dados", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.route("**/api/units?state=ALL", (route) =>
+    route.fulfill({ json: unitsResponse }),
+  );
+  await page.goto("/");
+
+  const footer = page.getByRole("contentinfo");
+  await expect(footer.getByText("sem orientação médica")).toBeVisible();
+  const notice = page.getByRole("note", { name: "Aviso informativo" });
+  await expect(notice).toBeHidden();
+
+  const open = footer.getByRole("button", { name: "Saiba mais" });
+  await open.click();
+  await expect(notice).toBeVisible();
+  await expect(
+    notice.getByText(/não faz diagnóstico, triagem nem recomendação médica/),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(notice).toBeHidden();
+  await expect(open).toBeFocused();
+
+  await open.click();
+  await notice.getByRole("button", { name: "Fechar" }).click();
+  await expect(notice).toBeHidden();
+  await expect(open).toBeFocused();
+
+  // Leaving it with the keyboard closes it, so it never covers the map
+  // controls that receive focus next.
+  await open.focus();
+  await page.keyboard.press("Enter");
+  await expect(notice).toBeVisible();
+  await page.keyboard.press("Shift+Tab");
+  await expect(notice).toBeHidden();
+
+  await open.click();
+  await notice.getByRole("link", { name: "Sobre os dados" }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Sobre os dados" }),
+  ).toBeVisible();
+  await expect(notice).toBeHidden();
 });
 
 test("trata /units/ com barra final como a lista e grava a busca na URL", async ({

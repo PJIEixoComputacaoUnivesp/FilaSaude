@@ -26,6 +26,9 @@
   throws after 100 `replaceState` calls in 30 seconds. The URL is followed only
   when something else changes it (a link, Voltar); reading the page's own writes
   back drops characters while typing.
+- No detalhe, “Voltar à lista” e “Ver no mapa” ficam junto ao título, antes
+  dos dados e do histórico. Tipo e código CNES aparecem uma vez no cabeçalho
+  do registro.
 - Every unit has a stable detail route at `/units/:cnes`. Cards link to that
   detail and to a selected marker on the map. The marker popup links back to
   the same card, preserving the live UF and text filters; a target beyond the
@@ -34,7 +37,10 @@
   with no menu button. "Sobre os dados" lives in the footer. Removed or unknown
   paths (`/map`, anything else) redirect to `/` and keep the query string.
 - The safety notice is in the footer of every screen. Source and update date
-  stay on each unit, in the card and in the map popup.
+  stay on each unit, in the card and in the map popup. Below `sm`, the footer
+  keeps one visible line ("Informativo: sem orientação médica") and "Saiba
+  mais" opens the full notice and "Sobre os dados" in a native popover. It is
+  never a hover tooltip: touch has no hover, and the notice must stay visible.
 - Search matches name and address, which is what its labels promise ("unidade,
   cidade ou bairro"). It does not match service hours: filtering by
   characteristic is a feature of its own (#29).
@@ -131,12 +137,19 @@
   and a negative vertical margin.
 - Full-screen views (the map) use `dvh`-based flex layouts, never
   `100vh` minus a hard-coded header height.
+- Os controles completos do mapa exigem largura de pelo menos 40rem e altura
+  de pelo menos 32rem (`map-wide`). Em telas largas com pouca altura, o painel
+  compacto fica à esquerda e libera espaço ao lado para o popup; filtros e
+  legenda continuam acessíveis pela janela modal. O mínimo de altura do mapa
+  é preservado para permitir rolagem em telas muito baixas ou com zoom.
 - Text is cut before controls on narrow screens. In the map panel the field
-  labels are screen-reader-only below `sm` (the select shows its value and the
-  field has a placeholder), and the origin line is the one-line `shortText`
-  ("Cópia do CNES de 22/09/2026"); an outage keeps its full amber notice. The
-  footer is one short paragraph with the link inline, so the map keeps its
-  height.
+  labels are screen-reader-only outside `map-wide` (the select shows its value
+  and the field has a placeholder), and the origin line is the one-line `shortText`
+  ("Cópia do CNES de 22/09/2026"); an outage keeps its full amber notice. From
+  `sm` the footer is one short paragraph with the link inline; below it, the
+  short line and popover described in Journey. The map's minimum height
+  depends on the screen height, not its width, so a phone held sideways does
+  not scroll.
 - Reserve the height of a results screen (`min-h-[60dvh]`) so the footer does
   not jump when cards replace a short loading state.
 - Long result lists load progressively (24 at a time, "Mostrar mais") with a
@@ -144,12 +157,40 @@
 - Map overlays stay compact on narrow screens, and map fitting must keep points
   out from under them. In DOM order the search panel comes before the map, so
   keyboard users reach it first.
+- O popup de uma unidade fica livre do painel de busca, do cabeçalho, dos botões
+  de zoom, da atribuição e do painel “Sua localização”: o painel do popup fica
+  abaixo dos controles do Leaflet, então o espaço é descontado na geometria, e
+  o popup é reposicionado quando o conteúdo cresce depois de abrir. “Ver
+  detalhes” vem logo abaixo do nome; o restante rola dentro do popup em telas
+  baixas. Fora de `map-wide`, o painel “Sua localização” fica invisível
+  enquanto há um popup aberto e volta ao fechá-lo.
+- O painel “Sua localização” mantém “Atualizar” e “Remover” juntos na mesma
+  linha. Remover a posição é anunciado, inclusive quando desativa “Ao redor de
+  você”; quando a opção está indisponível, o campo Estado diz o motivo.
+- Quando o enquadramento da posição não mostra nenhuma unidade, o painel “Sua
+  localização” diz “Nenhuma unidade nesta parte do mapa.” e oferece “Mostrar
+  unidades ao redor de você”, sem destacar nem ordenar unidade alguma.
+- Fora de `map-wide`, o painel do mapa resume o aviso do catálogo em uma linha;
+  o texto completo fica na folha de filtros. A mensagem de vazio vem antes da
+  ação que a resolve. Em `map-wide`, um painel mais alto que o mapa rola e
+  mostra sombra na borda onde há mais conteúdo.
 - No celular, UF, contagem, filtro de unidades simuladas, procedência e legenda
   ficam em uma janela modal aberta por “Filtros”. O atalho “Legenda” junto do
-  interruptor abre a explicação expandida. “Voltar ao mapa” permanece visível
-  durante a rolagem; Escape fecha a janela e o foco retorna ao acionador.
+  interruptor abre a explicação expandida. A folha tem altura fixa, então
+  “Voltar ao mapa” não muda de lugar quando o conteúdo muda, e permanece
+  visível durante a rolagem; Escape ou um toque no fundo fecha a janela e o
+  foco retorna ao acionador. O selo do botão “Filtros” fica abaixo da palavra,
+  para não estreitar a busca. A partir de `sm`, a folha vira um cartão estreito no
+  canto inferior esquerdo.
   Preservar a área segura inferior do dispositivo e alvos de toque de 44 px.
 - Text fields are 16px or larger, and placeholders are `slate-500` or darker.
+- Na lista, fora de `map-wide` (celular em retrato ou paisagem), os controles
+  secundários da simulação ficam em “Filtros e legenda”, recolhidos por padrão.
+  Em “Ao redor de você”, Estado e Distância ficam lado a lado. O interruptor e o aviso de dados fictícios
+  ficam visíveis; o acionador indica quando há filtro ativo.
+- No detalhe, os leitos por categoria usam blocos com rótulos e valores abaixo
+  de `sm`; a tabela completa permanece em telas maiores. Ocupados, capacidade
+  simulada e percentual ficam visíveis juntos sem rolagem horizontal.
 
 ## Initial patterns
 

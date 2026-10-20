@@ -20,15 +20,19 @@ import { useOccupancyLayer } from "./useOccupancyLayer";
  */
 export function OccupancyControls({
   compact = false,
+  collapsible = false,
   onOpenLegend,
   legendOpen = false,
 }: {
   compact?: boolean;
+  collapsible?: boolean;
   onOpenLegend?: () => void;
   legendOpen?: boolean;
 }) {
   const layer = useOccupancyLayer();
   const hintId = useId();
+  const secondaryId = useId();
+  const [isExpanded, setExpanded] = useState(false);
   const legendRef = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
     if (legendOpen) legendRef.current?.scrollIntoView({ block: "start" });
@@ -53,7 +57,7 @@ export function OccupancyControls({
     <div
       className={
         compact
-          ? "mt-2 border-t border-slate-100 pt-2 sm:mt-3 sm:pt-3"
+          ? "mt-2 border-t border-slate-100 pt-2 map-wide:mt-3 map-wide:pt-3"
           : "rounded-2xl border border-slate-200 bg-white p-4 sm:p-5"
       }
     >
@@ -79,14 +83,14 @@ export function OccupancyControls({
             <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full border-2 border-slate-500 bg-slate-500 transition motion-reduce:transition-none" />
           </span>
           <span
-            className={`text-sm font-semibold text-slate-900 ${compact ? "sr-only sm:not-sr-only" : ""}`}
+            className={`text-sm font-semibold text-slate-900 ${compact ? "sr-only map-wide:not-sr-only" : ""}`}
           >
             Ocupação simulada de leitos
           </span>
           {compact && (
             <span
               aria-hidden="true"
-              className="text-sm font-semibold text-slate-900 sm:hidden"
+              className="text-sm font-semibold text-slate-900 map-wide:hidden"
             >
               Leitos simulados
             </span>
@@ -97,7 +101,7 @@ export function OccupancyControls({
             type="button"
             onClick={onOpenLegend}
             aria-haspopup="dialog"
-            className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-fila-blue underline underline-offset-2 sm:hidden"
+            className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-fila-blue underline underline-offset-2 map-wide:hidden"
           >
             Legenda
           </button>
@@ -108,40 +112,40 @@ export function OccupancyControls({
           first thing every visitor sees and must leave room for the map. */}
       <p
         id={hintId}
-        className={`text-xs leading-relaxed text-slate-700 ${compact ? (layer.isEnabled ? "sr-only sm:not-sr-only" : "sr-only") : ""}`}
+        className={`text-xs leading-relaxed text-slate-700 ${compact ? (layer.isEnabled ? "sr-only map-wide:not-sr-only" : "sr-only") : collapsible ? "sr-only map-wide:not-sr-only" : ""}`}
       >
         {SIMULATION_NOTICE}
       </p>
-      {compact && layer.isEnabled && (
-        <p className="text-xs leading-relaxed text-slate-700 sm:hidden">
+      {((compact && layer.isEnabled) || collapsible) && (
+        <p
+          aria-hidden={collapsible ? true : undefined}
+          className="text-xs leading-relaxed text-slate-700 map-wide:hidden"
+        >
           Leitos fictícios. Não representam filas.
         </p>
       )}
       <LiveStatus message={announcement} delay={0} />
 
+      {layer.isEnabled && collapsible && (
+        <button
+          type="button"
+          onClick={() => setExpanded((expanded) => !expanded)}
+          aria-expanded={isExpanded}
+          aria-controls={secondaryId}
+          className="mt-1 min-h-11 text-sm font-semibold text-fila-blue underline underline-offset-2 map-wide:hidden"
+        >
+          Filtros e legenda{layer.onlySimulated ? " (1 filtro ativo)" : ""}
+        </button>
+      )}
       {layer.isEnabled && (
-        <div className={`mt-2 space-y-1 ${compact ? "hidden sm:block" : ""}`}>
+        <div
+          id={secondaryId}
+          className={`mt-2 space-y-1 ${compact ? "hidden map-wide:block" : collapsible && !isExpanded ? "hidden map-wide:block" : ""}`}
+        >
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-700">
             <SimulationPill />
             {response ? simulatedText : "Carregando…"}
           </p>
-          {state.status === "error" && (
-            // With data still on screen a failed refresh is only a status; an
-            // alert would interrupt the reader on every failed attempt.
-            <p
-              className="text-xs text-red-900"
-              role={response ? "status" : "alert"}
-            >
-              {state.message}{" "}
-              <button
-                type="button"
-                onClick={layer.retry}
-                className="-my-3 inline-flex min-h-11 items-center font-semibold text-fila-blue underline"
-              >
-                Tentar novamente
-              </button>
-            </p>
-          )}
           <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-slate-800">
             <input
               type="checkbox"
@@ -203,9 +207,9 @@ export function OccupancyControls({
           </details>
         </div>
       )}
-      {compact && layer.isEnabled && state.status === "error" && (
+      {layer.isEnabled && state.status === "error" && (
         <p
-          className="mt-1 text-xs text-red-900 sm:hidden"
+          className="mt-1 text-xs text-red-900"
           role={response ? "status" : "alert"}
         >
           {state.message}{" "}

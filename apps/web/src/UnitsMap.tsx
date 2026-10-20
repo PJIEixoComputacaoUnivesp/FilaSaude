@@ -21,7 +21,6 @@ import {
   useMapEvents,
   ZoomControl,
 } from "react-leaflet";
-import type { LatLngBoundsExpression } from "leaflet";
 import { MapFocusRing } from "./MapFocusRing";
 import type { UserPosition } from "./useUserLocation";
 import { useUnitDistance } from "./useUnitDistance";
@@ -32,7 +31,7 @@ import {
   type UnitOccupancy,
 } from "./occupancy";
 import { UnitSources } from "./UnitSources";
-import { unitListLink } from "./unitLinks";
+import { unitDetailLink } from "./unitLinks";
 import type { HealthUnit } from "./units";
 import {
   formatAddress,
@@ -133,10 +132,10 @@ const boundaryOptions: L.PolylineOptions = { smoothFactor: 1 };
 const boundaryPane = "brazilBoundary";
 const boundaryTimeout = 10_000;
 
-const BRAZIL_BOUNDS: LatLngBoundsExpression = [
+const BRAZIL_BOUNDS = L.latLngBounds([
   [-34, -74],
   [6, -34],
-];
+]);
 // The outline's own box, oceanic islands included (BRAZIL_BOUNDS stops at
 // -34 and would cut Fernando de Noronha and Trindade). Tiles are only
 // requested inside it, so the world beyond it is never downloaded.
@@ -309,13 +308,17 @@ interface UnitsMapProps {
   units: HealthUnit[];
   className?: string;
   selectedUnitId?: string;
-  listSearch?: string;
+  linkSearch?: string;
   /** When true, the map fits Brazil; otherwise fits the current unit set. */
   isCountryWide?: boolean;
   /** Element drawn over the map; fitted units are kept out from under it. */
   overlayRef?: RefObject<HTMLElement | null>;
   /** Simulated occupancy by CNES; empty while the layer is off. */
   occupancy?: ReadonlyMap<string, UnitOccupancy>;
+  /** Called when a unit's popup opens or closes. */
+  onPopupOpenChange?: (open: boolean) => void;
+  /** Called after each move with whether any unit is in the visible map. */
+  onUnitsInViewChange?: (inView: boolean) => void;
 }
 
 function UnitMarker({
@@ -325,7 +328,8 @@ function UnitMarker({
   renderer,
   selected,
   overlayRef,
-  listSearch,
+  locationPanelRef,
+  linkSearch,
   autoPanPaddingTopLeft,
   popupMaxWidth,
   popupMaxHeight,
@@ -336,7 +340,8 @@ function UnitMarker({
   renderer: L.Renderer;
   selected: boolean;
   overlayRef?: RefObject<HTMLElement | null>;
-  listSearch: string;
+  locationPanelRef?: RefObject<HTMLElement | null>;
+  linkSearch: string;
   autoPanPaddingTopLeft: [number, number];
   popupMaxWidth: number;
   popupMaxHeight: number;
@@ -344,7 +349,10 @@ function UnitMarker({
   const map = useMap();
   const markerRef = useRef<L.CircleMarker>(null);
   const popupHeadingRef = useRef<HTMLElement>(null);
+  const stopFollowingPopupRef = useRef<(() => void) | null>(null);
   const isSimulated = occupancy !== undefined;
+
+  useEffect(() => () => stopFollowingPopupRef.current?.(), []);
 
   // Canvas paints in the order layers were added; a unit of the simulation is
   // brought to the front, so a neutral marker never covers it.
@@ -360,7 +368,12 @@ function UnitMarker({
     let stopSettling: number | undefined;
     const keepSelectedPopupVisible = () => {
       window.requestAnimationFrame(() =>
-        keepPopupClearOfOverlay(map, marker.getPopup(), overlayRef?.current),
+        keepPopupClearOfOverlay(
+          map,
+          marker.getPopup(),
+          overlayRef?.current,
+          locationPanelRef?.current,
+        ),
       );
     };
     const openPopup = () => {
@@ -377,7 +390,7 @@ function UnitMarker({
     };
     map.once("moveend", openPopup);
     map.fitBounds([[unit.location.latitude!, unit.location.longitude!]], {
-      ...overlayPadding(map, overlayRef?.current),
+      ...overlayPadding(map, overlayRef?.current, locationPanelRef?.current),
       maxZoom: 15,
       animate: map.options.zoomAnimation !== false,
     });
@@ -392,7 +405,7 @@ function UnitMarker({
       map.off("moveend", openPopup);
       map.off("moveend", keepSelectedPopupVisible);
     };
-  }, [map, overlayRef, selected, unit]);
+  }, [map, overlayRef, locationPanelRef, selected, unit]);
 
   return (
     <CircleMarker
@@ -402,14 +415,28 @@ function UnitMarker({
       radius={occupancy ? radius + 3 : radius}
       renderer={renderer}
       eventHandlers={{
-        popupopen: () => {
+        popupclose: (event) => {
+          stopFollowingPopupRef.current?.();
+          stopFollowingPopupRef.current = null;
+          resetPopupPlacement(event.popup);
+        },
+        popupopen: (event) => {
+          // React renders the content after this event, so measure next frame.
           window.requestAnimationFrame(() => {
-            keepPopupClearOfOverlay(
-              map,
-              markerRef.current?.getPopup(),
-              overlayRef?.current,
-            );
+            const popup = event.popup;
+            if (!popup.isOpen()) return;
+            const overlay = overlayRef?.current;
+            const locationPanel = locationPanelRef?.current;
+            placePopupWhereItFits(map, popup, overlay, locationPanel);
+            keepPopupClearOfOverlay(map, popup, overlay, locationPanel);
             if (selected) popupHeadingRef.current?.focus();
+            stopFollowingPopupRef.current?.();
+            stopFollowingPopupRef.current = followPopupSize(
+              map,
+              popup,
+              overlay,
+              locationPanel,
+            );
           });
         },
       }}
@@ -422,6 +449,9 @@ function UnitMarker({
       }
     >
       <Popup
+        // Leaflet's animated auto pan fought the pan limit near the edges of
+        // Brazil; placePopupWhereItFits and keepPopupClearOfOverlay replace it.
+        autoPan={false}
         autoPanPaddingTopLeft={autoPanPaddingTopLeft}
         autoPanPaddingBottomRight={[fitPadding, fitPadding]}
         maxWidth={popupMaxWidth}
@@ -433,11 +463,20 @@ function UnitMarker({
           <strong
             ref={popupHeadingRef}
             tabIndex={selected ? -1 : undefined}
-            className="text-sm text-slate-900 focus:outline-none"
+            className="block text-sm text-slate-900 focus:outline-none"
           >
             {unit.name}
           </strong>
-          <p className="my-2 text-sm text-slate-600">
+          {/* Right under the name: on a short screen the rest scrolls. */}
+          <Link
+            to={unitDetailLink(unit.id, linkSearch)}
+            className="inline-flex min-h-11 items-center font-semibold text-fila-blue underline underline-offset-2"
+          >
+            Ver detalhes
+            <span className="sr-only">: {unit.name}</span>
+          </Link>
+          {/* Leaflet's own paragraph margin would leave a gap under the link. */}
+          <p className="mt-0! mb-2 text-sm text-slate-600">
             {formatAddress(unit.address)}
           </p>
           <PopupDistance unit={unit} />
@@ -474,13 +513,6 @@ function UnitMarker({
             sources={unit.sources}
             className="mb-0 space-y-1 text-xs text-slate-500"
           />
-          <Link
-            to={unitListLink(unit.id, listSearch)}
-            className="mt-2 inline-flex min-h-11 items-center font-semibold text-fila-blue underline underline-offset-2"
-          >
-            Ver na lista
-            <span className="sr-only">: {unit.name}</span>
-          </Link>
         </div>
       </Popup>
     </CircleMarker>
@@ -505,7 +537,8 @@ function UnitMarkers({
   renderer,
   selectedUnitId,
   overlayRef,
-  listSearch,
+  locationPanelRef,
+  linkSearch,
 }: {
   units: HealthUnit[];
   occupancy: ReadonlyMap<string, UnitOccupancy>;
@@ -513,7 +546,8 @@ function UnitMarkers({
   renderer: L.Renderer;
   selectedUnitId?: string;
   overlayRef?: RefObject<HTMLElement | null>;
-  listSearch: string;
+  locationPanelRef?: RefObject<HTMLElement | null>;
+  linkSearch: string;
 }) {
   const map = useMap();
   const [layout, setLayout] = useState<{
@@ -524,21 +558,26 @@ function UnitMarkers({
 
   useLayoutEffect(() => {
     const updateLayout = () => {
-      const popupMaxWidth = Math.max(
-        192,
-        Math.min(256, map.getSize().x - fitPadding * 2 - 72),
-      );
       const mapBox = map.getContainer().getBoundingClientRect();
       const autoPanPaddingTopLeft = popupAutoPanPadding(
         map,
         overlayRef?.current,
       );
-      // Leaflet adds about 28px of vertical chrome around popup content.
+      // Account for a sidebar as well as the popup's margins and close button.
+      const popupMaxWidth = Math.max(
+        128,
+        Math.min(
+          256,
+          mapBox.width - autoPanPaddingTopLeft[0] - fitPadding - 72,
+        ),
+      );
+      // Leaflet adds about 28px of vertical chrome around popup content. The
+      // zoom buttons and the attribution stay below it.
       const popupMaxHeight = Math.max(
         128,
         Math.min(
           448,
-          mapBox.height - autoPanPaddingTopLeft[1] - fitPadding - 28,
+          mapBox.height - autoPanPaddingTopLeft[1] - bottomPadding(map) - 28,
         ),
       );
       // This state mirrors the current DOM geometry of the responsive panel.
@@ -571,7 +610,8 @@ function UnitMarkers({
       renderer={renderer}
       selected={unit.id === selectedUnitId}
       overlayRef={overlayRef}
-      listSearch={listSearch}
+      locationPanelRef={locationPanelRef}
+      linkSearch={linkSearch}
       autoPanPaddingTopLeft={layout.autoPanPaddingTopLeft}
       popupMaxWidth={layout.popupMaxWidth}
       popupMaxHeight={layout.popupMaxHeight}
@@ -579,10 +619,14 @@ function UnitMarkers({
   ));
 }
 
-/** Map padding that keeps fitted points clear of an overlay panel. */
+/**
+ * Map padding that keeps fitted points clear of an overlay panel and, while
+ * enough of the map is left, of the location panel at the bottom.
+ */
 function overlayPadding(
   map: L.Map,
   overlay: HTMLElement | null | undefined,
+  locationPanel?: HTMLElement | null,
 ): L.FitBoundsOptions {
   const padding: L.FitBoundsOptions = {
     padding: [fitPadding, fitPadding],
@@ -598,12 +642,42 @@ function overlayPadding(
     box.width > mapBox.width * 0.6
       ? [fitPadding, box.bottom - mapBox.top + fitPadding]
       : [box.right - mapBox.left + fitPadding, fitPadding];
+  const bottom = bottomPadding(map, locationPanel);
 
   return {
     paddingTopLeft: topLeft,
-    paddingBottomRight: [fitPadding, fitPadding],
+    paddingBottomRight: [
+      fitPadding,
+      mapBox.height - topLeft[1] - bottom >= 40 ? bottom : fitPadding,
+    ],
     maxZoom: 13,
   };
+}
+
+/**
+ * Room at the bottom of the map taken by Leaflet's controls (zoom buttons,
+ * attribution) and, when it shows, the location panel. Popups paint under
+ * them: the popup pane lives inside the map pane, below the controls.
+ */
+function bottomPadding(
+  map: L.Map,
+  locationPanel?: HTMLElement | null,
+): number {
+  const mapBox = map.getContainer().getBoundingClientRect();
+  const elements = [
+    ...map
+      .getContainer()
+      .querySelectorAll<HTMLElement>(".leaflet-bottom .leaflet-control"),
+  ];
+  if (locationPanel && getComputedStyle(locationPanel).visibility !== "hidden") {
+    elements.push(locationPanel);
+  }
+  let top = mapBox.bottom - fitPadding;
+  for (const element of elements) {
+    const box = element.getBoundingClientRect();
+    if (box.height > 0) top = Math.min(top, box.top - 8);
+  }
+  return mapBox.bottom - top;
 }
 
 /** Keeps an opened popup clear of the search panel and viewport edges. */
@@ -620,11 +694,129 @@ function popupAutoPanPadding(
     : [box.right - mapBox.left + fitPadding, fitPadding];
 }
 
+// With Leaflet's default offset and tip, a popup ends 13px above its marker.
+// Below it, index.css starts the content the same 13px under the marker.
+const popupOffset = L.point(0, 7);
+const popupGap = 13;
+// Leaflet's tip is 40px wide and centred with a -20px margin.
+const popupTipMargin = -20;
+
+/**
+ * Places the popup where it fits without moving the map. Near the edges of
+ * Brazil the map cannot pan far enough, and the popup was cut off while the
+ * map kept trying to bring it into view. It opens below its marker when there
+ * is more room there (anchored by its top, so content added later grows
+ * downward) and slides sideways near the coast, its tip still on the marker.
+ */
+function placePopupWhereItFits(
+  map: L.Map,
+  popup: L.Popup | undefined,
+  overlay: HTMLElement | null | undefined,
+  locationPanel?: HTMLElement | null,
+): void {
+  const element = popup?.getElement();
+  if (!popup?.isOpen() || !element) return;
+  resetPopupPlacement(popup);
+
+  const [leftPadding, topPadding] = popupAutoPanPadding(map, overlay);
+  const anchorY = map.latLngToContainerPoint(popup.getLatLng()!).y;
+  const roomAbove = anchorY - popupGap - topPadding;
+  const roomBelow =
+    map.getSize().y - bottomPadding(map, locationPanel) - anchorY - popupGap;
+  element.classList.toggle(
+    "leaflet-popup-below",
+    element.offsetHeight > roomAbove && roomBelow >= roomAbove,
+  );
+
+  const mapBox = map.getContainer().getBoundingClientRect();
+  const box = element.getBoundingClientRect();
+  const overflowRight = box.right - (mapBox.right - fitPadding);
+  const overflowLeft = mapBox.left + leftPadding - box.left;
+  // The tip must stay over the card, clear of its rounded corners.
+  const limit = box.width / 2 + popupTipMargin - 12;
+  const shift = Math.round(
+    Math.max(
+      -limit,
+      Math.min(
+        limit,
+        overflowRight > 0 ? -overflowRight : Math.max(overflowLeft, 0),
+      ),
+    ),
+  );
+  if (shift === 0) return;
+
+  popup.options.offset = popupOffset.add([shift, 0]);
+  popup.update();
+  const tip = element.querySelector<HTMLElement>(
+    ".leaflet-popup-tip-container",
+  );
+  if (tip) tip.style.marginLeft = `${popupTipMargin - shift}px`;
+}
+
+function resetPopupPlacement(popup: L.Popup): void {
+  const element = popup.getElement();
+  element?.classList.remove("leaflet-popup-below");
+  element
+    ?.querySelector<HTMLElement>(".leaflet-popup-tip-container")
+    ?.style.removeProperty("margin-left");
+  if (
+    !popup.options.offset ||
+    !L.point(popup.options.offset).equals(popupOffset)
+  ) {
+    popup.options.offset = popupOffset;
+    if (popup.isOpen()) popup.update();
+  }
+}
+
+/**
+ * Places an open popup again when its content, the map or the panel change
+ * size (a phone turned sideways, the occupancy layer adding lines), and pans
+ * only as far as needed to keep it clear of the panels: a popup that grew
+ * after opening hid its name under the search panel or the header. Returns a
+ * function that stops following.
+ */
+function followPopupSize(
+  map: L.Map,
+  popup: L.Popup,
+  overlay: HTMLElement | null | undefined,
+  locationPanel?: HTMLElement | null,
+): () => void {
+  const sizes = new Map<Element, string>();
+  let frame: number | undefined;
+  const observer = new ResizeObserver((entries) => {
+    let changed = false;
+    for (const entry of entries) {
+      const size = `${entry.contentRect.width}x${entry.contentRect.height}`;
+      // The first report is the size the popup was just placed with.
+      if (sizes.has(entry.target) && sizes.get(entry.target) !== size) {
+        changed = true;
+      }
+      sizes.set(entry.target, size);
+    }
+    if (!changed || frame !== undefined) return;
+    // Leaflet updates the map size for a window resize on the next frame.
+    frame = window.requestAnimationFrame(() => {
+      frame = undefined;
+      placePopupWhereItFits(map, popup, overlay, locationPanel);
+      keepPopupClearOfOverlay(map, popup, overlay, locationPanel);
+    });
+  });
+  const content = popup.getElement()?.querySelector(".leaflet-popup-content");
+  for (const element of [content, map.getContainer(), overlay]) {
+    if (element) observer.observe(element);
+  }
+  return () => {
+    observer.disconnect();
+    if (frame !== undefined) window.cancelAnimationFrame(frame);
+  };
+}
+
 /** Leaflet's automatic pan does not account reliably for an HTML overlay. */
 function keepPopupClearOfOverlay(
   map: L.Map,
   popup: L.Popup | undefined,
   overlay: HTMLElement | null | undefined,
+  locationPanel?: HTMLElement | null,
 ): void {
   if (!popup?.isOpen()) return;
   const element = popup?.getElement();
@@ -637,7 +829,7 @@ function keepPopupClearOfOverlay(
     left: mapBox.left + leftPadding,
     top: mapBox.top + topPadding,
     right: mapBox.right - fitPadding,
-    bottom: mapBox.bottom - fitPadding,
+    bottom: mapBox.bottom - bottomPadding(map, locationPanel),
   };
   const moveX =
     popupBox.left < safe.left
@@ -645,11 +837,13 @@ function keepPopupClearOfOverlay(
       : popupBox.right > safe.right
         ? safe.right - popupBox.right
         : 0;
+  // The top (name and "Ver detalhes") wins when the popup is taller than the
+  // free area; its content scrolls.
   const moveY =
     popupBox.top < safe.top
       ? safe.top - popupBox.top
       : popupBox.bottom > safe.bottom
-        ? safe.bottom - popupBox.bottom
+        ? -Math.min(popupBox.bottom - safe.bottom, popupBox.top - safe.top)
         : 0;
 
   if (moveX !== 0 || moveY !== 0) {
@@ -660,12 +854,14 @@ function keepPopupClearOfOverlay(
 function FitUnits({
   units,
   overlayRef,
+  locationPanelRef,
   hasSelection,
   framesUserPosition,
   filterKey,
 }: {
   units: HealthUnit[];
   overlayRef?: RefObject<HTMLElement | null>;
+  locationPanelRef?: RefObject<HTMLElement | null>;
   /** A selected unit frames the map itself (see UnitMarker). */
   hasSelection: boolean;
   /** The person's position is known and inside the filtered area. */
@@ -710,7 +906,11 @@ function FitUnits({
       map.once("moveend", remember);
       if (coordinates.length > 0) {
         map.fitBounds(coordinates, {
-          ...overlayPadding(map, overlayRef?.current),
+          ...overlayPadding(
+            map,
+            overlayRef?.current,
+            locationPanelRef?.current,
+          ),
           ...noMotion,
         });
       } else {
@@ -742,7 +942,15 @@ function FitUnits({
       observer.disconnect();
       map.off("moveend", remember);
     };
-  }, [map, overlayRef, units, hasSelection, framesUserPosition, filterKey]);
+  }, [
+    map,
+    overlayRef,
+    locationPanelRef,
+    units,
+    hasSelection,
+    framesUserPosition,
+    filterKey,
+  ]);
 
   return null;
 }
@@ -888,6 +1096,45 @@ function UserLocation({
  * named as a supplement and points to the list, which has the same data. Also
  * replaces the English strings and the flag that Leaflet adds by default.
  */
+function PopupOpenListener({
+  onChange,
+}: {
+  onChange?: (open: boolean) => void;
+}) {
+  useMapEvents({
+    popupopen: () => onChange?.(true),
+    popupclose: () => onChange?.(false),
+  });
+  return null;
+}
+
+function UnitsInView({
+  units,
+  onChange,
+}: {
+  units: HealthUnit[];
+  onChange?: (inView: boolean) => void;
+}) {
+  const map = useMap();
+  useEffect(() => {
+    if (!onChange) return;
+    const update = () => {
+      const bounds = map.getBounds();
+      onChange(
+        units.some((unit) =>
+          bounds.contains([unit.location.latitude!, unit.location.longitude!]),
+        ),
+      );
+    };
+    update();
+    map.on("moveend", update);
+    return () => {
+      map.off("moveend", update);
+    };
+  }, [map, units, onChange]);
+  return null;
+}
+
 function MapLocalization() {
   const map = useMap();
 
@@ -982,6 +1229,50 @@ function EnforceCountryZoom() {
   return null;
 }
 
+/**
+ * The pan limit is Brazil plus the room the search panel takes. A wall at the
+ * country's own edges left the west under the panel, with no way to drag it
+ * out, and froze the map at the minimum zoom.
+ */
+function KeepCountryClearOfOverlay({
+  overlayRef,
+}: {
+  overlayRef?: RefObject<HTMLElement | null>;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    const updateMaxBounds = () => {
+      const zoom = map.getZoom();
+      const [left, top] = popupAutoPanPadding(map, overlayRef?.current);
+      const northWest = map
+        .project(BRAZIL_BOUNDS.getNorthWest(), zoom)
+        .subtract([left, top]);
+      const southEast = map
+        .project(BRAZIL_BOUNDS.getSouthEast(), zoom)
+        .add([fitPadding, fitPadding]);
+      map.setMaxBounds(
+        L.latLngBounds(
+          map.unproject(northWest, zoom),
+          map.unproject(southEast, zoom),
+        ),
+      );
+    };
+
+    updateMaxBounds();
+    map.on("zoomend", updateMaxBounds);
+    const resizeObserver = new ResizeObserver(updateMaxBounds);
+    resizeObserver.observe(map.getContainer());
+    if (overlayRef?.current) resizeObserver.observe(overlayRef.current);
+    return () => {
+      map.off("zoomend", updateMaxBounds);
+      resizeObserver.disconnect();
+    };
+  }, [map, overlayRef]);
+
+  return null;
+}
+
 export function UnitsMap({
   userPosition,
   nearbyRadiusKm,
@@ -993,8 +1284,10 @@ export function UnitsMap({
   overlayRef,
   isCountryWide,
   selectedUnitId,
-  listSearch = "",
+  linkSearch = "",
   occupancy = noOccupancy,
+  onPopupOpenChange,
+  onUnitsInViewChange,
 }: UnitsMapProps) {
   // Stable between renders: FitUnits re-fits the map whenever this changes.
   const unitsWithLocation = useMemo(() => units.filter(hasLocation), [units]);
@@ -1033,8 +1326,11 @@ export function UnitsMap({
       {isBaseReady && <BrazilTileLayer />}
       <BrazilBorderLayer onSettled={showBase} />
       <MapLocalization />
+      <PopupOpenListener onChange={onPopupOpenChange} />
+      <UnitsInView units={unitsWithLocation} onChange={onUnitsInViewChange} />
       <MapFocusRing />
       <EnforceCountryZoom />
+      <KeepCountryClearOfOverlay overlayRef={overlayRef} />
       <ZoomControl
         position="bottomleft"
         zoomInTitle="Aproximar o mapa"
@@ -1045,6 +1341,7 @@ export function UnitsMap({
         filterKey={filterKey}
         units={unitsToFit}
         overlayRef={overlayRef}
+        locationPanelRef={locationPanelRef}
         hasSelection={selectedUnitId !== undefined}
       />
       <UnitMarkers
@@ -1054,7 +1351,8 @@ export function UnitsMap({
         renderer={renderer}
         selectedUnitId={selectedUnitId}
         overlayRef={overlayRef}
-        listSearch={listSearch}
+        locationPanelRef={locationPanelRef}
+        linkSearch={linkSearch}
       />
       {userPosition && (
         <UserLocation

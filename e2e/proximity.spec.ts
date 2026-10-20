@@ -328,3 +328,139 @@ test("o popup da unidade no mapa mostra a distância", async ({
     "Distância de você: ≈ 16 km em linha reta",
   );
 });
+
+test("sem posição por tempo esgotado, a lista diz o motivo", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "geolocation", {
+      value: {
+        getCurrentPosition(_: PositionCallback, error: PositionErrorCallback) {
+          error({ code: 3 } as GeolocationPositionError);
+        },
+      },
+    });
+  });
+  await page.goto("/units");
+  await expect(
+    page.getByText(/A localização demorou para responder/),
+  ).toBeVisible();
+});
+
+test("ao redor de você no celular, estado e raio lado a lado e o primeiro resultado à vista", async ({
+  page,
+  context,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await context.setGeolocation({
+    latitude: -23.5505,
+    longitude: -46.6333,
+    accuracy: 50,
+  });
+  await context.grantPermissions(["geolocation"]);
+  await page.goto("/units");
+  const stateSelect = page.getByRole("combobox", { name: "Estado" });
+  await stateSelect.selectOption("NEARBY");
+  const radius = page.getByRole("combobox", { name: "Distância" });
+  await expect(radius).toBeVisible();
+  // The nearby search reloads the list; measure once it has answered.
+  await expect(page.getByRole("article")).toHaveCount(3);
+  const [a, b] = await Promise.all([
+    stateSelect.boundingBox(),
+    radius.boundingBox(),
+  ]);
+  expect(Math.abs(a!.y - b!.y)).toBeLessThan(2);
+  await page
+    .getByRole("combobox", { name: "Ordenar por" })
+    .selectOption("distance");
+  await expect(
+    page.getByRole("status").filter({ hasText: "ordenados por distância" }),
+  ).toBeAttached();
+  const first = page.getByRole("article").first();
+  expect((await first.boundingBox())!.y).toBeLessThan(844);
+});
+
+test("no detalhe com distância, os dados preenchem duas colunas", async ({
+  page,
+  context,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await context.setGeolocation({
+    latitude: -23.5505,
+    longitude: -46.6333,
+    accuracy: 50,
+  });
+  await context.grantPermissions(["geolocation"]);
+  await page.goto("/units");
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Pronto Atendimento Central" })
+    .getByRole("link", { name: /Ver detalhes/ })
+    .click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Pronto Atendimento Central" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("term").filter({ hasText: "Distância de você" }),
+  ).toBeVisible();
+  const [hours, position] = await Promise.all([
+    page.getByText("Horário informado", { exact: true }).boundingBox(),
+    page.getByText("Localização no mapa", { exact: true }).boundingBox(),
+  ]);
+  expect(Math.abs(hours!.y - position!.y)).toBeLessThan(2);
+});
+
+test("sem unidades no enquadramento da posição, avisa e oferece a busca ao redor", async ({
+  page,
+  context,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await context.setGeolocation({ latitude: -23.3, longitude: -46.95, accuracy: 50 });
+  await context.grantPermissions(["geolocation"]);
+  await page.goto("/");
+  const location = page.getByRole("region", { name: "Sua localização", exact: true });
+  await expect(location.getByText("Nenhuma unidade nesta parte do mapa.")).toBeVisible();
+  await location
+    .getByRole("button", { name: "Mostrar unidades ao redor de você" })
+    .click();
+  await expect(
+    page.getByRole("button", { name: /^Filtros e legenda: até \d+ km/ }),
+  ).toBeVisible();
+  await expect(location.getByText("Nenhuma unidade nesta parte do mapa.")).toHaveCount(0);
+});
+
+test("no celular, o painel resume o aviso do catálogo e a folha o mostra inteiro", async ({
+  page,
+  context,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await context.setGeolocation({ latitude: -23.5505, longitude: -46.6333, accuracy: 50 });
+  await context.grantPermissions(["geolocation"]);
+  await page.goto("/");
+  await expect(page.locator(".user-location-marker")).toBeVisible();
+  await page.getByRole("button", { name: /^Filtros e legenda/ }).click();
+  const dialog = page.getByRole("dialog", { name: "Filtros e legenda" });
+  await dialog.getByRole("combobox", { name: "Estado" }).selectOption("NEARBY");
+  await dialog.getByRole("combobox", { name: "Distância de você" }).selectOption("100");
+  await expect(dialog.getByText(/O catálogo reúne UPAs e prontos-socorros/)).toBeVisible();
+  await dialog.getByRole("button", { name: "Voltar ao mapa" }).click();
+  const panel = page.getByRole("region", { name: "Controles do mapa" });
+  await expect(
+    panel.getByText("Sem unidades aqui não indica ausência de atendimento."),
+  ).toBeVisible();
+  await expect(panel.getByText(/O catálogo reúne/)).toBeHidden();
+});
+
+test("em telas largas e baixas, a folha de filtros é um cartão estreito", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.goto("/");
+  await page.getByRole("button", { name: /^Filtros e legenda/ }).click();
+  const box = (await page
+    .getByRole("dialog", { name: "Filtros e legenda" })
+    .boundingBox())!;
+  expect(box.width).toBeLessThanOrEqual(450);
+  expect(box.x).toBeLessThanOrEqual(20);
+  expect(box.y).toBeGreaterThanOrEqual(0);
+});
