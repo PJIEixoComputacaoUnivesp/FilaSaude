@@ -46,18 +46,21 @@ describe("directionsTarget", () => {
 
 describe("directionsLink", () => {
   it("routes to the point, with the unit's name, on Android", () => {
+    const web = directionsLink(unit("source"), "web");
     expect(directionsLink(unit("source"), "android")).toBe(
-      "geo:-23.5505,-46.6333?q=-23.5505,-46.6333(UPA%20Vila%20Mariana)",
+      "intent:-23.5505,-46.6333?q=-23.5505,-46.6333(UPA%20Vila%20Mariana)" +
+        `#Intent;scheme=geo;S.browser_fallback_url=${encodeURIComponent(web)};end`,
     );
   });
 
   it("escapes parentheses, which geo: reads as the label", () => {
     const named = { ...unit("source"), name: "UPA 24h (Zona Norte)" };
-    expect(directionsLink(named, "android")).toBe(
-      "geo:-23.5505,-46.6333?q=-23.5505,-46.6333(UPA%2024h%20%28Zona%20Norte%29)",
+    expect(directionsLink(named, "android")).toMatch(
+      /^intent:-23\.5505,-46\.6333\?q=-23\.5505,-46\.6333\(UPA%2024h%20%28Zona%20Norte%29\)#Intent;/,
     );
     const approximate = { ...unit("municipality"), name: "PA (Centro)" };
-    expect(directionsLink(approximate, "android")).not.toMatch(/[()]/);
+    const geo = directionsLink(approximate, "android").split("#Intent")[0];
+    expect(geo).not.toMatch(/[()]/);
   });
 
   it("routes to the point on Google Maps elsewhere, with no origin", () => {
@@ -73,9 +76,11 @@ describe("directionsLink", () => {
   it("searches by name and address when the point is the municipality", () => {
     const address =
       "UPA Vila Mariana, Rua Domingos de Morais, 100, Vila Mariana, São Paulo - SP";
-    expect(directionsLink(unit("municipality"), "android")).toBe(
-      `geo:0,0?q=${encodeURIComponent(address)}`,
-    );
+    expect(
+      directionsLink(unit("municipality"), "android").startsWith(
+        `intent:0,0?q=${encodeURIComponent(address)}#Intent;scheme=geo;`,
+      ),
+    ).toBe(true);
     expect(
       new URL(directionsLink(unit("municipality"), "web")).searchParams.get(
         "destination",

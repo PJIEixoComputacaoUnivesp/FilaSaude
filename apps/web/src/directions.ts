@@ -10,7 +10,7 @@ function encodeGeo(value: string): string {
   return encodeURIComponent(value).replace(/\(/g, "%28").replace(/\)/g, "%29");
 }
 
-/** Android hands a `geo:` link to the maps app the person chose. */
+/** Android hands a geo: intent to the maps app the person chose. */
 export function directionsTarget(
   userAgent = globalThis.navigator?.userAgent ?? "",
 ): DirectionsTarget {
@@ -34,15 +34,18 @@ export function directionsLink(
       ? `${latitude},${longitude}`
       : null;
   const query = [unit.name, ...addressParts(unit.address)].join(", ");
-
-  if (target === "android") {
-    return point
-      ? `geo:${point}?q=${point}(${encodeGeo(unit.name)})`
-      : `geo:0,0?q=${encodeGeo(query)}`;
-  }
   const params = new URLSearchParams({
     api: "1",
     destination: point ?? query,
   });
-  return `https://www.google.com/maps/dir/?${params.toString()}`;
+  const web = `https://www.google.com/maps/dir/?${params.toString()}`;
+  if (target === "web") return web;
+
+  // An intent: link, not a bare geo: one: Android still offers the maps apps
+  // (Chrome builds "geo:" + the part before #Intent), and a browser or device
+  // with none of them opens Google Maps on the web instead of an error page.
+  const geo = point
+    ? `${point}?q=${point}(${encodeGeo(unit.name)})`
+    : `0,0?q=${encodeGeo(query)}`;
+  return `intent:${geo}#Intent;scheme=geo;S.browser_fallback_url=${encodeURIComponent(web)};end`;
 }

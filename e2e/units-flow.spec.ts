@@ -610,7 +610,7 @@ test.describe("no Android", () => {
       "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36",
   });
 
-  test("Como chegar usa geo: para o app de mapas escolhido", async ({
+  test("Como chegar oferece o app de mapas, com o Google Maps de reserva", async ({
     page,
   }) => {
     await openUnitsPage(page);
@@ -624,7 +624,11 @@ test.describe("no Android", () => {
       .getByRole("link", { name: /^Como chegar\s*: UPA Vila Mariana/ });
     await expect(link).toHaveAttribute(
       "href",
-      "geo:-23.596,-46.643?q=-23.596,-46.643(UPA%20Vila%20Mariana)",
+      "intent:-23.596,-46.643?q=-23.596,-46.643(UPA%20Vila%20Mariana)#Intent;scheme=geo;S.browser_fallback_url=" +
+        encodeURIComponent(
+          "https://www.google.com/maps/dir/?api=1&destination=-23.596%2C-46.643",
+        ) +
+        ";end",
     );
     await expect(link).not.toHaveAttribute("target", /.+/);
     await expect(link).toHaveAccessibleName(
