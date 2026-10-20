@@ -742,6 +742,7 @@ function UserLocation({
     const bounds = L.latLng(latitude, longitude).toBounds(
       Math.max(accuracy * 2, 100),
     );
+    let isFitting = false;
     const fit = () => {
       const mapBox = map.getContainer().getBoundingClientRect();
       const locationBox = locationPanelRef?.current?.getBoundingClientRect();
@@ -749,21 +750,28 @@ function UserLocation({
       const { x: left, y: top } = L.point(
         padding.paddingTopLeft ?? padding.padding ?? [fitPadding, fitPadding],
       );
-      map.fitBounds(bounds, {
-        ...padding,
-        // Short landscape screens can scroll because the map has a minimum
-        // height. Keep the position inside the visible part of that map too.
-        paddingTopLeft: [left, Math.max(top, fitPadding - mapBox.top)],
-        paddingBottomRight: [
-          fitPadding,
-          Math.max(
-            locationBox ? mapBox.bottom - locationBox.top + fitPadding : fitPadding,
-            mapBox.bottom - window.innerHeight + fitPadding,
-          ),
-        ],
-        maxZoom: 16,
-        animate: false,
-      });
+      isFitting = true;
+      try {
+        map.fitBounds(bounds, {
+          ...padding,
+          // Short landscape screens can scroll because the map has a minimum
+          // height. Keep the position inside the visible part of that map too.
+          paddingTopLeft: [left, Math.max(top, fitPadding - mapBox.top)],
+          paddingBottomRight: [
+            fitPadding,
+            Math.max(
+              locationBox
+                ? mapBox.bottom - locationBox.top + fitPadding
+                : fitPadding,
+              mapBox.bottom - window.innerHeight + fitPadding,
+            ),
+          ],
+          maxZoom: 16,
+          animate: false,
+        });
+      } finally {
+        isFitting = false;
+      }
     };
     fit();
     const observer = new ResizeObserver(fit);
@@ -771,13 +779,15 @@ function UserLocation({
     if (overlayRef?.current) observer.observe(overlayRef.current);
     if (locationPanelRef?.current) observer.observe(locationPanelRef.current);
     // After a deliberate map move, resizing should preserve that view.
-    map.once("dragstart zoomstart", stopFollowing);
+    map.on("movestart", stopFollowing);
     function stopFollowing() {
+      if (isFitting) return;
       observer.disconnect();
+      map.off("movestart", stopFollowing);
     }
     return () => {
       observer.disconnect();
-      map.off("dragstart zoomstart", stopFollowing);
+      map.off("movestart", stopFollowing);
     };
   }, [
     map,

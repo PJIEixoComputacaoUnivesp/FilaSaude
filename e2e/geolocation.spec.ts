@@ -97,7 +97,8 @@ for (const viewport of [
         const centerX = point.x + point.width / 2;
         const centerY = point.y + point.height / 2;
         return (
-        centerY > 12 && centerY < viewport.height - 12 &&
+          centerY > 12 &&
+          centerY < viewport.height - 12 &&
           centerX > map.x &&
           centerX < map.x + map.width &&
           centerY > map.y &&
@@ -249,7 +250,7 @@ test("mantém a posição visível após a resposta tardia do catálogo e a rota
   await context.setGeolocation({
     latitude: -23.55,
     longitude: -46.63,
-    accuracy: 80,
+    accuracy: 5000,
   });
   await context.grantPermissions(["geolocation"]);
   let releaseCatalog!: () => void;
@@ -276,6 +277,9 @@ test("mantém a posição visível após a resposta tardia do catálogo e a rota
   for (const viewport of [
     { width: 390, height: 844 },
     { width: 667, height: 375 },
+    { width: 390, height: 844 },
+    { width: 1280, height: 800 },
+    { width: 320, height: 640 },
   ]) {
     await page.setViewportSize(viewport);
     await expect
