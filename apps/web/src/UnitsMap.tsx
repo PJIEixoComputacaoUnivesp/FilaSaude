@@ -23,7 +23,7 @@ import {
 } from "react-leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
 import { MapFocusRing } from "./MapFocusRing";
-import type { UserPosition } from "./useGeolocation";
+import type { UserPosition } from "./useUserLocation";
 import { OccupancyBadge } from "./OccupancyBadge";
 import {
   occupancyStatus,
@@ -300,6 +300,8 @@ function BrazilBorderLayer({ onSettled }: { onSettled: () => void }) {
 interface UnitsMapProps {
   userPosition?: UserPosition;
   locationPanelRef?: RefObject<HTMLElement | null>;
+  /** Changes when the person changes the filters (see FitUnits). */
+  filterKey?: string;
   units: HealthUnit[];
   className?: string;
   selectedUnitId?: string;
@@ -643,19 +645,30 @@ function FitUnits({
   units,
   overlayRef,
   hasSelection,
-  userPosition,
+  hasUserPosition,
+  filterKey,
 }: {
   units: HealthUnit[];
   overlayRef?: RefObject<HTMLElement | null>;
   /** A selected unit frames the map itself (see UnitMarker). */
   hasSelection: boolean;
-  userPosition?: UserPosition;
+  hasUserPosition: boolean;
+  /** Changes when the person changes the filters (UF, text, simulated). */
+  filterKey: string;
 }) {
   const map = useMap();
+  // The filters in place when the person's position framed the map. Late
+  // catalog responses and overlay resizing must not undo that view; a filter
+  // the person changes afterwards frames its units again, for good.
+  const positionFilterKey = useRef<string | null>(null);
 
   useEffect(() => {
-    // Late catalog responses and overlay resizing must not undo a GPS view.
-    if (userPosition) return;
+    if (!hasUserPosition) positionFilterKey.current = null;
+    else if (positionFilterKey.current === null) {
+      positionFilterKey.current = filterKey;
+    }
+    if (hasUserPosition && positionFilterKey.current === filterKey) return;
+    if (hasUserPosition) positionFilterKey.current = "";
     const coordinates = units
       .filter(hasLocation)
       .map(
@@ -712,7 +725,7 @@ function FitUnits({
       observer.disconnect();
       map.off("moveend", remember);
     };
-  }, [map, overlayRef, units, hasSelection, userPosition]);
+  }, [map, overlayRef, units, hasSelection, hasUserPosition, filterKey]);
 
   return null;
 }
@@ -730,14 +743,21 @@ function UserLocation({
   position,
   overlayRef,
   locationPanelRef,
+  hasSelection,
 }: {
   position: UserPosition;
+  /** A selected unit keeps the view; the position is only drawn. */
+  hasSelection: boolean;
   overlayRef?: RefObject<HTMLElement | null>;
   locationPanelRef?: RefObject<HTMLElement | null>;
 }) {
   const map = useMap();
   const { latitude, longitude, accuracy } = position;
+  // A more precise reading arriving after a deliberate map move only moves
+  // the target; it does not take the view back.
+  const following = useRef(!hasSelection);
   useEffect(() => {
+    if (!following.current) return;
     map.closePopup();
     const bounds = L.latLng(latitude, longitude).toBounds(
       Math.max(accuracy * 2, 100),
@@ -782,6 +802,7 @@ function UserLocation({
     map.on("movestart", stopFollowing);
     function stopFollowing() {
       if (isFitting) return;
+      following.current = false;
       observer.disconnect();
       map.off("movestart", stopFollowing);
     }
@@ -796,7 +817,6 @@ function UserLocation({
     accuracy,
     overlayRef,
     locationPanelRef,
-    position,
   ]);
 
   return (
@@ -926,6 +946,7 @@ function EnforceCountryZoom() {
 export function UnitsMap({
   userPosition,
   locationPanelRef,
+  filterKey = "",
   units,
   className = "",
   overlayRef,
@@ -979,7 +1000,8 @@ export function UnitsMap({
         zoomOutTitle="Afastar o mapa"
       />
       <FitUnits
-        userPosition={userPosition}
+        hasUserPosition={userPosition !== undefined}
+        filterKey={filterKey}
         units={unitsToFit}
         overlayRef={overlayRef}
         hasSelection={selectedUnitId !== undefined}
@@ -998,6 +1020,7 @@ export function UnitsMap({
           position={userPosition}
           overlayRef={overlayRef}
           locationPanelRef={locationPanelRef}
+          hasSelection={selectedUnitId !== undefined}
         />
       )}
     </MapContainer>

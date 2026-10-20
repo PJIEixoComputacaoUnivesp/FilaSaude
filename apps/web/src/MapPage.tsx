@@ -17,12 +17,12 @@ import { useOccupancyLayer } from "./useOccupancyLayer";
 import { useSearchFilters } from "./useSearchFilters";
 import { useUnits } from "./useUnits";
 import { SELECTED_UNIT_PARAM } from "./unitLinks";
-import { useGeolocation } from "./useGeolocation";
+import { useUserLocation } from "./useUserLocation";
 
 const title = "Mapa das unidades de pronto atendimento";
 
 export function MapPage() {
-  const location = useGeolocation();
+  const location = useUserLocation();
   const locationDescriptionId = useId();
   const locationPanelRef = useRef<HTMLElement>(null);
   const headingRef = usePageHeading(title);
@@ -232,7 +232,7 @@ export function MapPage() {
             className="text-xs leading-relaxed text-slate-700"
           >
             {location.state.status === "success"
-              ? `Sua localização está marcada com um alvo. Precisão aproximada: ${Math.ceil(location.state.position.accuracy).toLocaleString("pt-BR")} m.`
+              ? `Sua localização está marcada com um ponto azul-claro. Precisão aproximada: ${Math.ceil(location.state.position.accuracy).toLocaleString("pt-BR")} m.${location.state.refining ? " Ajustando a precisão…" : ""}`
               : location.state.status === "error"
                 ? location.state.message
                 : "Obtendo sua localização. Se solicitado, permita o acesso no navegador."}
@@ -241,7 +241,7 @@ export function MapPage() {
             id={locationDescriptionId}
             className="text-xs leading-relaxed text-slate-600"
           >
-            Sua posição fica apenas nesta página.
+            Sua posição fica apenas nesta aba.
           </p>
           <div className="flex flex-wrap items-center gap-x-3">
             {location.state.status === "error" && location.state.canRetry && (
@@ -326,6 +326,7 @@ export function MapPage() {
             ? location.state.position
             : undefined
         }
+        filterKey={`${deferredState}|${deferredQuery}|${simulatedFilter ? "simulated" : ""}`}
         units={filteredUnits}
         selectedUnitId={selectedUnitId}
         listSearch={search}

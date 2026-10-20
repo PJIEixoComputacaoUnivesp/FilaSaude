@@ -65,12 +65,14 @@ export function AboutPage() {
           Sua localização no mapa
         </h2>
         <p className="text-base leading-relaxed text-slate-700">
-          Ao abrir o mapa, o navegador pede sua permissão para obter uma posição
-          aproximada por GPS ou outras fontes do dispositivo. Se você recusar, o
-          mapa continua mostrando o Brasil e nada é pedido de novo. O alvo indica
-          sua posição e o círculo mostra a precisão informada pelo navegador. A
-          posição fica apenas na memória desta página, pode ser removida e não é
-          enviada à API do FilaSaúde nem incluída na URL.
+          Ao entrar no FilaSaúde, o navegador pede sua permissão para obter uma
+          posição aproximada por GPS ou outras fontes do dispositivo. Se você
+          recusar, o mapa continua mostrando o Brasil e nada é pedido de novo.
+          Primeiro aparece uma posição rápida, que é ajustada quando chega uma
+          leitura mais precisa. O ponto azul-claro indica sua posição e o círculo
+          mostra a precisão informada pelo navegador. A posição fica apenas na
+          memória desta aba, pode ser removida e não é enviada à API do
+          FilaSaúde nem incluída na URL.
         </p>
         <p className="text-base leading-relaxed text-slate-700">
           O mapa carrega imagens do OpenStreetMap conforme a área visualizada.

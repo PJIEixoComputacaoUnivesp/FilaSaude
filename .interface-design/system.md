@@ -154,10 +154,12 @@
 ## Initial patterns
 
 - Geolocation is requested when the map opens, with no button to ask for it.
-  A refusal is silent and final. Status lives in a separate control at the
+  A refusal is silent and final. A quick network reading frames the map at
+  once and a precise one replaces it when more accurate ("Ajustando a
+  precisão…" meanwhile), never taking back a view the person moved. Status lives in a separate control at the
   bottom of the map, shown only while locating, after a failure (with a retry
   when one can help) or with a position, preserving the search panel's height
-  on mobile. Use a target to distinguish the person from unit discs, with
+  on mobile. Use a cyan dot with a halo and shadow to distinguish the person from the flat unit discs, with
   accuracy in text and a circle on the map. Preserve filters and keep the
   position only in page memory, with actions to cancel and remove it.
 
