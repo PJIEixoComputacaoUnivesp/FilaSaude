@@ -56,6 +56,8 @@ export function SearchFiltersProvider({ children }: { children: ReactNode }) {
   const fromUrl = readFilters(params);
 
   const [filters, setFilters] = useState<Filters>(fromUrl);
+  const [nearbyEnabled, setNearbyEnabledState] = useState(false);
+  const [nearbyRadiusKm, setNearbyRadiusState] = useState<number | null>(null);
   const current = useRef(fromUrl);
   const tracker = useRef<ReturnType<typeof createOwnWriteTracker> | null>(null);
   if (tracker.current === null)
@@ -111,9 +113,22 @@ export function SearchFiltersProvider({ children }: { children: ReactNode }) {
   );
 
   const setStateCode = useCallback(
-    (value: string) => update({ stateCode: value }, true),
+    (value: string) => {
+      setNearbyEnabledState(false);
+      update({ stateCode: value }, true);
+    },
     [update],
   );
+  const setNearbyEnabled = useCallback(
+    (value: boolean) => {
+      setNearbyEnabledState(value);
+      if (value) update({ stateCode: NationalStateCode.All }, true);
+    },
+    [update],
+  );
+  const setNearbyRadiusKm = useCallback((value: number) => {
+    setNearbyRadiusState(value);
+  }, []);
   const setQuery = useCallback(
     (value: string) => update({ query: value }, false),
     [update],
@@ -136,6 +151,7 @@ export function SearchFiltersProvider({ children }: { children: ReactNode }) {
 
     cancelPendingWrite();
     tracker.current?.reset();
+    setNearbyEnabledState(false);
     current.current = incoming;
     // Following the URL is the point of this effect.
     // oxlint-disable-next-line react/set-state-in-effect
@@ -148,12 +164,25 @@ export function SearchFiltersProvider({ children }: { children: ReactNode }) {
     () => ({
       stateCode: filters.stateCode,
       query: filters.query,
+      nearbyEnabled,
+      nearbyRadiusKm,
       search: buildSearch(filters),
       setStateCode,
+      setNearbyEnabled,
+      setNearbyRadiusKm,
       setQuery,
       flush,
     }),
-    [filters, setStateCode, setQuery, flush],
+    [
+      filters,
+      nearbyEnabled,
+      nearbyRadiusKm,
+      setStateCode,
+      setNearbyEnabled,
+      setNearbyRadiusKm,
+      setQuery,
+      flush,
+    ],
   );
 
   return (

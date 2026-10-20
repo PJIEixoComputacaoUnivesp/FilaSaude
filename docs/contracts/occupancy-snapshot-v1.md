@@ -120,6 +120,13 @@ Uma nova ocorrência com o mesmo `eventId` e o mesmo corpo é considerada
 recebida e responde `202 Accepted` sem criar outra entrada na inbox. O mesmo
 `eventId` associado a um corpo diferente responde `409 Conflict`.
 
+A comparação exige também a mesma fonte e usa o corpo textual exato, sem
+normalizar JSON: espaços ou ordem de propriedades diferentes podem gerar
+conflito. Essa deduplicação depende da existência da entrada na inbox; após a
+limpeza por retenção, não há registro permanente dos IDs removidos. Duplicar
+um evento `failed` não o recoloca na fila. `202` confirma recebimento persistido,
+não processamento concluído.
+
 Erros de requisição usam uma resposta estruturada com código estável, mensagem
 curta e, quando necessário, campos inválidos. A resposta nunca inclui segredos,
 assinaturas completas ou detalhes internos.
@@ -138,3 +145,10 @@ assinaturas completas ou detalhes internos.
 
 O corpo máximo é de 64 KB, a tolerância do timestamp é de cinco minutos e o
 limite inicial é de 60 requisições por minuto por fonte.
+
+O contador usa janela fixa iniciada na primeira requisição daquela fonte e
+fica na memória de cada instância da API. Reinícios apagam as janelas e réplicas
+não compartilham o limite. Requisições autenticadas consomem a janela antes da
+validação do payload e da verificação de duplicidade. Veja a
+[referência de regras](../behavior-reference.md#webhook-e-envio) e a
+[ADR de processamento](../adr/0004-occupancy-inbox-processing.md).

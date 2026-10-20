@@ -302,8 +302,15 @@ backups e o passo a passo.
 
 ## Documentação
 
+- [Fluxo completo](docs/architecture-flow.md): cadastro, jobs, simulador, webhook, processamento e frontend.
+- [Referência de regras e limites](docs/behavior-reference.md): cálculos, ordenação, cache, histórico e retentativas.
+- [Operação e diagnóstico](docs/operations.md): backlog, falhas, retenção e conexões PostgreSQL.
 - [ADR 0001](docs/adr/0001-public-health-unit-data-source.md): fonte pública de unidades, posição e correção manual.
 - [ADR 0002](docs/adr/0002-additional-public-data-sources.md): fontes públicas adicionais.
+- [ADR 0003](docs/adr/0003-occupancy-server-sent-events.md): atualização da ocupação por SSE.
+- [ADR 0004](docs/adr/0004-occupancy-inbox-processing.md): inbox e projeção assíncrona.
+- [ADR 0005](docs/adr/0005-simulated-occupancy-semantics.md): semântica da ocupação simulada.
+- [ADR 0006](docs/adr/0006-catalog-cache-and-fallback.md): cache e contingência cadastral.
 - [Proposta 0001](docs/proposals/0001-operational-occupancy-simulation.md): simulação de ocupação operacional.
 - [Contrato do snapshot de ocupação v1](docs/contracts/occupancy-snapshot-v1.md) e seu [JSON Schema](docs/contracts/occupancy-snapshot-v1.schema.json).
 - [Roteiro de teste do `occupancy-feed`](docs/simulator-testing.md).

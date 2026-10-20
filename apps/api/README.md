@@ -5,6 +5,11 @@ frontend do FilaSaúde.
 
 ## Desenvolvimento
 
+Para entender os processos e suas garantias, consulte o
+[fluxo completo](../../docs/architecture-flow.md), a
+[referência de regras](../../docs/behavior-reference.md) e o
+[runbook operacional](../../docs/operations.md).
+
 Execute os comandos a partir da raiz do monorepo:
 
 ```bash

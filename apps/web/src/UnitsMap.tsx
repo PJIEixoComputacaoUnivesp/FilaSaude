@@ -12,6 +12,8 @@ import "leaflet/dist/leaflet.css";
 import { Link } from "react-router-dom";
 import {
   CircleMarker,
+  Circle,
+  Marker,
   MapContainer,
   Popup,
   TileLayer,
@@ -20,6 +22,8 @@ import {
   ZoomControl,
 } from "react-leaflet";
 import { MapFocusRing } from "./MapFocusRing";
+import type { UserPosition } from "./useUserLocation";
+import { useUnitDistance } from "./useUnitDistance";
 import { OccupancyBadge } from "./OccupancyBadge";
 import {
   occupancyStatus,
@@ -294,6 +298,13 @@ function BrazilBorderLayer({ onSettled }: { onSettled: () => void }) {
 }
 
 interface UnitsMapProps {
+  userPosition?: UserPosition;
+  nearbyRadiusKm?: number;
+  locationPanelRef?: RefObject<HTMLElement | null>;
+  /** Changes when the person changes the filters (see FitUnits). */
+  filterKey?: string;
+  /** Whether the position is where the filtered units are (see MapPage). */
+  isPositionInArea?: boolean;
   units: HealthUnit[];
   className?: string;
   selectedUnitId?: string;
@@ -445,6 +456,7 @@ function UnitMarker({
           <p className="my-2 text-sm text-slate-600">
             {formatAddress(unit.address)}
           </p>
+          <PopupDistance unit={unit} />
           {unit.serviceHours && (
             <p className="my-2 text-sm text-slate-600">{unit.serviceHours}</p>
           )}
@@ -489,6 +501,17 @@ function UnitMarker({
       </Popup>
     </CircleMarker>
   );
+}
+
+/**
+ * Its own component: only an open popup reads the person's position, so a
+ * new reading does not redraw every marker.
+ */
+function PopupDistance({ unit }: { unit: HealthUnit }) {
+  const distance = useUnitDistance(unit);
+  return distance ? (
+    <p className="my-2 text-sm text-slate-600">Distância de você: {distance}</p>
+  ) : null;
 }
 
 function UnitMarkers({
@@ -770,15 +793,31 @@ function FitUnits({
   units,
   overlayRef,
   hasSelection,
+  framesUserPosition,
+  filterKey,
 }: {
   units: HealthUnit[];
   overlayRef?: RefObject<HTMLElement | null>;
   /** A selected unit frames the map itself (see UnitMarker). */
   hasSelection: boolean;
+  /** The person's position is known and inside the filtered area. */
+  framesUserPosition: boolean;
+  /** Changes when the person changes the filters (UF, text, simulated). */
+  filterKey: string;
 }) {
   const map = useMap();
+  // The filters in place when the person's position framed the map. Late
+  // catalog responses and overlay resizing must not undo that view; a filter
+  // the person changes afterwards frames its units again, for good.
+  const positionFilterKey = useRef<string | null>(null);
 
   useEffect(() => {
+    if (!framesUserPosition) positionFilterKey.current = null;
+    else if (positionFilterKey.current === null) {
+      positionFilterKey.current = filterKey;
+    }
+    if (framesUserPosition && positionFilterKey.current === filterKey) return;
+    if (framesUserPosition) positionFilterKey.current = "";
     const coordinates = units
       .filter(hasLocation)
       .map(
@@ -835,9 +874,145 @@ function FitUnits({
       observer.disconnect();
       map.off("moveend", remember);
     };
-  }, [map, overlayRef, units, hasSelection]);
+  }, [map, overlayRef, units, hasSelection, framesUserPosition, filterKey]);
 
   return null;
+}
+
+// A cyan dot with a white and a dark ring distinguishes the person's position
+// from the unit discs by size and shape, not only by color, and keeps 3:1 on
+// any tile. Values as in index.css (canvas paths do not read CSS variables).
+const userLocationColor = "#00a5e3";
+const userLocationIcon = L.divIcon({
+  className: "user-location-marker",
+  html: '<span aria-hidden="true"></span>',
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
+});
+
+function UserLocation({
+  position,
+  nearbyRadiusKm,
+  overlayRef,
+  locationPanelRef,
+  hasSelection,
+  frame,
+}: {
+  position: UserPosition;
+  nearbyRadiusKm?: number;
+  /** False when the person is outside the filtered area: only drawn. */
+  frame: boolean;
+  /** A selected unit keeps the view; the position is only drawn. */
+  hasSelection: boolean;
+  overlayRef?: RefObject<HTMLElement | null>;
+  locationPanelRef?: RefObject<HTMLElement | null>;
+}) {
+  const map = useMap();
+  const { latitude, longitude, accuracy } = position;
+  // A more precise reading arriving after a deliberate map move only moves
+  // the target; it does not take the view back.
+  const following = useRef(!hasSelection);
+  useEffect(() => {
+    if (!frame || !following.current) return;
+    map.closePopup();
+    const bounds = L.latLng(latitude, longitude).toBounds(
+      Math.max(accuracy * 2, (nearbyRadiusKm ?? 0) * 2_000, 100),
+    );
+    let isFitting = false;
+    const fit = () => {
+      const mapBox = map.getContainer().getBoundingClientRect();
+      const locationBox = locationPanelRef?.current?.getBoundingClientRect();
+      const padding = overlayPadding(map, overlayRef?.current);
+      const { x: left, y: top } = L.point(
+        padding.paddingTopLeft ?? padding.padding ?? [fitPadding, fitPadding],
+      );
+      isFitting = true;
+      try {
+        map.fitBounds(bounds, {
+          ...padding,
+          // Short landscape screens can scroll because the map has a minimum
+          // height. Keep the position inside the visible part of that map too.
+          paddingTopLeft: [left, Math.max(top, fitPadding - mapBox.top)],
+          paddingBottomRight: [
+            fitPadding,
+            Math.max(
+              locationBox
+                ? mapBox.bottom - locationBox.top + fitPadding
+                : fitPadding,
+              mapBox.bottom - window.innerHeight + fitPadding,
+            ),
+          ],
+          maxZoom: 16,
+          animate: false,
+        });
+      } finally {
+        isFitting = false;
+      }
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(map.getContainer());
+    if (overlayRef?.current) observer.observe(overlayRef.current);
+    if (locationPanelRef?.current) observer.observe(locationPanelRef.current);
+    // After a deliberate map move, resizing should preserve that view.
+    map.on("movestart", stopFollowing);
+    function stopFollowing() {
+      if (isFitting) return;
+      following.current = false;
+      observer.disconnect();
+      map.off("movestart", stopFollowing);
+    }
+    return () => {
+      observer.disconnect();
+      map.off("movestart", stopFollowing);
+    };
+  }, [
+    map,
+    latitude,
+    longitude,
+    accuracy,
+    nearbyRadiusKm,
+    overlayRef,
+    locationPanelRef,
+    frame,
+  ]);
+
+  return (
+    <>
+      {nearbyRadiusKm !== undefined && (
+        <Circle
+          center={[latitude, longitude]}
+          radius={nearbyRadiusKm * 1_000}
+          pathOptions={{
+            color: "#1266cc",
+            dashArray: "6 6",
+            fillOpacity: 0.025,
+            weight: 2,
+            interactive: false,
+          }}
+        />
+      )}
+      <Circle
+        center={[latitude, longitude]}
+        radius={accuracy}
+        pathOptions={{
+          color: userLocationColor,
+          fillOpacity: 0.1,
+          weight: 1,
+          interactive: false,
+        }}
+      />
+      <Marker
+        position={[latitude, longitude]}
+        icon={userLocationIcon}
+        title="Sua localização aproximada"
+        alt="Sua localização aproximada"
+        keyboard={false}
+        interactive={false}
+        zIndexOffset={1000}
+      />
+    </>
+  );
 }
 
 /**
@@ -984,6 +1159,11 @@ function KeepCountryClearOfOverlay({
 }
 
 export function UnitsMap({
+  userPosition,
+  nearbyRadiusKm,
+  locationPanelRef,
+  filterKey = "",
+  isPositionInArea = true,
   units,
   className = "",
   overlayRef,
@@ -1038,6 +1218,8 @@ export function UnitsMap({
         zoomOutTitle="Afastar o mapa"
       />
       <FitUnits
+        framesUserPosition={userPosition !== undefined && isPositionInArea}
+        filterKey={filterKey}
         units={unitsToFit}
         overlayRef={overlayRef}
         hasSelection={selectedUnitId !== undefined}
@@ -1051,6 +1233,16 @@ export function UnitsMap({
         overlayRef={overlayRef}
         linkSearch={linkSearch}
       />
+      {userPosition && (
+        <UserLocation
+          position={userPosition}
+          nearbyRadiusKm={nearbyRadiusKm}
+          overlayRef={overlayRef}
+          locationPanelRef={locationPanelRef}
+          hasSelection={selectedUnitId !== undefined}
+          frame={isPositionInArea}
+        />
+      )}
     </MapContainer>
   );
 }

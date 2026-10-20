@@ -14,6 +14,12 @@
 > uma proposta inicial para que o grupo possa discutir objetivos, limites,
 > alternativas e responsabilidades antes da implementação.
 
+Para o funcionamento já implementado, consulte o [fluxo atual](../architecture-flow.md)
+e as ADRs [0004](../adr/0004-occupancy-inbox-processing.md) e
+[0005](../adr/0005-simulated-occupancy-semantics.md). Este texto mantém propostas
+e questões históricas; não deve ser usado como referência normativa dos limites
+ou das funcionalidades disponíveis hoje.
+
 ## 1. Contexto acadêmico
 
 O projeto deve demonstrar o desenvolvimento de um software com framework web,
@@ -410,6 +416,13 @@ A sequência depende das decisões do grupo e da disponibilidade dos integrantes
 Nem todas as frentes precisam ser assumidas pelas mesmas pessoas.
 
 ## 14. Questões para decisão do grupo
+
+Esta tabela preserva as questões da proposta original e não é o estado atual
+da implementação. As escolhas já implementadas sobre faixas, camada, histórico,
+confirmação e inbox estão registradas nas ADRs
+[0004](../adr/0004-occupancy-inbox-processing.md) e
+[0005](../adr/0005-simulated-occupancy-semantics.md), com parâmetros atuais na
+[referência de regras](../behavior-reference.md).
 
 | Questão | Ponto de partida desta proposta | Decisão do grupo | Responsável/data |
 | --- | --- | --- | --- |

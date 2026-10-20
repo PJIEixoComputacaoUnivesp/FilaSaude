@@ -1,5 +1,9 @@
 # Deploy na DigitalOcean
 
+Para investigar backlog, falhas de eventos e saturação de conexões, consulte o
+[runbook operacional](operations.md). A separação entre geração, processamento
+e exposição pública está no [fluxo completo](architecture-flow.md).
+
 A produção do FilaSaúde usa um único Droplet e quatro containers:
 
 - Caddy recebe o tráfego público, emite certificados TLS e encaminha as

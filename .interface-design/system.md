@@ -172,6 +172,35 @@
 
 ## Initial patterns
 
+- Geolocation is requested when the person enters the app (not on /admin),
+  with no button to ask for it. A refusal is silent; a permission granted
+  later in the browser brings the position without a reload. A quick network
+  reading frames the map at once and a precise one replaces it when more
+  accurate ("Ajustando a precisão…" meanwhile), never taking back a view the
+  person moved or a selected unit. The position frames the map only inside
+  the filtered area; elsewhere the panel says the person is outside it.
+- Status lives in a separate control at the bottom of the map, shown while
+  locating, after a failure (with a retry when one can help) or with a
+  position, then collapsed to one line once the precise reading settles.
+  Screen readers hear one announcement per change, from a status region
+  apart from the panel. Text never names the marker's color.
+- Marker: cyan dot (`fila-cyan`) with a white and a `fila-cyan-ink` ring,
+  18px, distinct from unit discs by size and shape; its halo pulses twice on
+  arrival and rests. Accuracy in text and as a circle on the map. Preserve
+  filters and keep the position only in tab memory.
+- Once settled, offer "Atualizar" alongside "Remover". While refreshing,
+  keep the previous marker, accuracy and nearby filter until a new reading
+  arrives; cancellation or failure clears the position. Explicit removal
+  also ignores late callbacks.
+- "Ao redor de você" is an explicit, session-only area filter shared by the
+  map and list. Its initial straight-line radius is the smallest available
+  step that contains three positioned units, never smaller than the reported
+  location accuracy, and at most 500 km. Offer only steps that add units; at
+  the cap, show available results and an explicit action to show all of Brazil.
+  Draw the selected radius on the map and filter its markers to the same area
+  as the list. Keep this mode and radius out of the URL and never send the
+  person's coordinates to the API.
+
 - Product status: compact bordered pill with explicit text.
 - Safety notice: amber-tinted surface with a strong left border and direct label
   where it needs emphasis; a short plain footer paragraph elsewhere.

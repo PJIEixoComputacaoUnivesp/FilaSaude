@@ -1,4 +1,11 @@
-import { useDeferredValue, useId, useMemo, useRef, useState } from "react";
+import {
+  useDeferredValue,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { BrazilianStateSelect } from "./BrazilianStateSelect";
 import { NationalStateCode, stateName } from "./brazilianStates";
@@ -17,19 +24,47 @@ import { useOccupancyLayer } from "./useOccupancyLayer";
 import { useSearchFilters } from "./useSearchFilters";
 import { useUnits } from "./useUnits";
 import { SELECTED_UNIT_PARAM } from "./unitLinks";
+import { useUserLocation } from "./useUserLocation";
+import {
+  availableSearchRadiiKm,
+  distanceOrigin,
+  distancesFrom,
+  filterUnitsWithinRadius,
+  initialSearchRadiusKm,
+} from "./geo";
+import { NearbyRadiusSelect } from "./NearbyRadiusSelect";
 
 const title = "Mapa das unidades de pronto atendimento";
 
+function formatAccuracy(meters: number) {
+  return Math.ceil(meters).toLocaleString("pt-BR");
+}
+
 export function MapPage() {
+  const location = useUserLocation();
+  const locationDescriptionId = useId();
+  const locationPanelRef = useRef<HTMLElement>(null);
   const headingRef = usePageHeading(title);
-  const { stateCode, query, setStateCode, setQuery, flush, search } =
-    useSearchFilters();
+  // Always the h1, also when a selected unit keeps it from taking focus on mount.
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const {
+    stateCode,
+    query,
+    setStateCode,
+    setQuery,
+    flush,
+    search,
+    nearbyEnabled,
+    nearbyRadiusKm,
+    setNearbyEnabled,
+    setNearbyRadiusKm,
+  } = useSearchFilters();
   const [searchParams] = useSearchParams();
   const selectedUnitId = searchParams.get(SELECTED_UNIT_PARAM) ?? undefined;
   // A selected unit coming from a state list may be newer than the national
   // snapshot. Read that UF while the deep link is open so the marker exists.
   const requestState =
-    selectedUnitId && stateCode !== NationalStateCode.All
+    !nearbyEnabled && selectedUnitId && stateCode !== NationalStateCode.All
       ? stateCode
       : NationalStateCode.All;
   const { state, retry } = useUnits(requestState);
@@ -50,6 +85,35 @@ export function MapPage() {
     filtersRef.current?.showModal();
   }
   const { byUnit, simulatedFilter, setOnlySimulated } = useOccupancyLayer();
+  const currentOrigin = distanceOrigin(location.state);
+  useEffect(() => {
+    if (nearbyEnabled && !currentOrigin) setNearbyEnabled(false);
+  }, [nearbyEnabled, currentOrigin, setNearbyEnabled]);
+  const nationalUnits = useMemo(
+    () => (state.status === "success" ? state.response.data : []),
+    [state],
+  );
+  const initialRadiusKm = useMemo(
+    () =>
+      currentOrigin && state.status === "success"
+        ? initialSearchRadiusKm(
+            currentOrigin,
+            location.state.status === "success"
+              ? location.state.position.accuracy
+              : 0,
+            nationalUnits,
+          )
+        : null,
+    [currentOrigin, location.state, nationalUnits, state.status],
+  );
+  const activeRadiusKm = nearbyEnabled
+    ? (nearbyRadiusKm ?? initialRadiusKm)
+    : null;
+  useEffect(() => {
+    if (nearbyEnabled && nearbyRadiusKm === null && initialRadiusKm !== null) {
+      setNearbyRadiusKm(initialRadiusKm);
+    }
+  }, [nearbyEnabled, nearbyRadiusKm, initialRadiusKm, setNearbyRadiusKm]);
 
   // The fields answer at once; filtering and redrawing the markers can lag
   // behind them, so typing stays responsive on a phone with the national list.
@@ -57,6 +121,23 @@ export function MapPage() {
   // from one consistent pair.
   const deferredQuery = useDeferredValue(query.trim());
   const deferredState = useDeferredValue(stateCode);
+  const distances = useMemo(
+    () => (currentOrigin ? distancesFrom(currentOrigin, nationalUnits) : null),
+    [currentOrigin, nationalUnits],
+  );
+  const availableRadii = useMemo(
+    () =>
+      currentOrigin && state.status === "success"
+        ? availableSearchRadiiKm(
+            currentOrigin,
+            location.state.status === "success"
+              ? location.state.position.accuracy
+              : 0,
+            nationalUnits,
+          )
+        : [],
+    [currentOrigin, location.state, nationalUnits, state.status],
+  );
   const filteredUnits = useMemo(() => {
     if (state.status !== "success") return [];
     const inState =
@@ -67,36 +148,100 @@ export function MapPage() {
           );
 
     const matching = filterUnits(inState, deferredQuery);
-    return simulatedFilter
+    const withSimulation = simulatedFilter
       ? matching.filter((unit) => simulatedFilter.has(unit.id))
       : matching;
-  }, [deferredQuery, deferredState, state, simulatedFilter]);
+    return nearbyEnabled && activeRadiusKm !== null && distances
+      ? filterUnitsWithinRadius(withSimulation, distances, activeRadiusKm)
+      : withSimulation;
+  }, [
+    deferredQuery,
+    deferredState,
+    state,
+    simulatedFilter,
+    nearbyEnabled,
+    activeRadiusKm,
+    distances,
+  ]);
 
   const mappableCount = useMemo(
     () => filteredUnits.filter(hasLocation).length,
     [filteredUnits],
   );
+  const unitsAtRadius = useMemo(
+    () =>
+      nearbyEnabled && activeRadiusKm !== null && distances
+        ? filterUnitsWithinRadius(nationalUnits, distances, activeRadiusKm).length
+        : 0,
+    [nearbyEnabled, activeRadiusKm, distances, nationalUnits],
+  );
   const isCountryWide =
+    !nearbyEnabled &&
     deferredState === NationalStateCode.All &&
     deferredQuery === "" &&
     simulatedFilter === null;
+
+  const userPosition =
+    location.state.status === "success"
+      ? location.state.position
+      : location.state.status === "loading"
+        ? location.state.previous
+        : undefined;
+  // The person's position frames the map only where the filtered units are
+  // (with a margin of about 25 km), so a UF far away still shows its units.
+  // Before the list answers, or with no unit to show, there is nothing to
+  // compare with.
+  const isPositionInArea = useMemo(() => {
+    if (!userPosition || nearbyEnabled || isCountryWide || state.status !== "success") {
+      return true;
+    }
+    const located = filteredUnits.filter(hasLocation);
+    if (located.length === 0) return true;
+    const margin = 0.25;
+    const latitudes = located.map((unit) => unit.location.latitude!);
+    const longitudes = located.map((unit) => unit.location.longitude!);
+    return (
+      userPosition.latitude >= Math.min(...latitudes) - margin &&
+      userPosition.latitude <= Math.max(...latitudes) + margin &&
+      userPosition.longitude >= Math.min(...longitudes) - margin &&
+      userPosition.longitude <= Math.max(...longitudes) + margin
+    );
+  }, [userPosition, nearbyEnabled, isCountryWide, state.status, filteredUnits]);
   const originNotice =
     state.status === "success"
       ? dataOriginNotice(state.response.metadata)
       : null;
-  const countText = formatCount(
-    mappableCount,
-    "unidade no mapa",
-    "unidades no mapa",
-  );
+  const countText = nearbyEnabled && activeRadiusKm !== null
+    ? `${formatCount(mappableCount, "unidade", "unidades")} a até ${activeRadiusKm} km de você, em linha reta`
+    : formatCount(
+        mappableCount,
+        "unidade no mapa",
+        "unidades no mapa",
+      );
   // One region stays mounted across loading, success and error, so a change of
   // state is announced; the error has its own role="alert".
   const liveMessage =
     state.status === "loading"
       ? LOADING_MESSAGE
       : state.status === "success"
-        ? `${formatCount(mappableCount, "resultado", "resultados")} no mapa em ${stateName(deferredState)}`
+        ? `${formatCount(mappableCount, "resultado", "resultados")} ${nearbyEnabled && activeRadiusKm !== null ? `dentro de ${activeRadiusKm} km de você` : `no mapa em ${stateName(deferredState)}`}`
         : "";
+
+  function removeLocation() {
+    location.clear();
+    // The panel goes away with the position; keep focus on the page.
+    titleRef.current?.focus();
+  }
+  const locationAnnouncement =
+    location.state.status === "loading"
+      ? location.state.previous
+        ? "Atualizando sua localização."
+        : "Obtendo sua localização."
+      : location.state.status === "error"
+        ? location.state.message
+        : location.state.status === "success" && !location.state.refining
+          ? `Localização encontrada, precisão de cerca de ${formatAccuracy(location.state.position.accuracy)} m.`
+          : "";
 
   // The map's floor follows the height, not the width: a short screen (a phone
   // held sideways, a browser bar) fills the space left, and only a very short
@@ -104,7 +249,10 @@ export function MapPage() {
   return (
     <div className="relative min-h-56 w-full flex-1 [@media(min-height:40rem)]:min-h-[28rem]">
       <h1
-        ref={selectedUnitId ? undefined : headingRef}
+        ref={(element) => {
+          titleRef.current = element;
+          if (!selectedUnitId) headingRef.current = element;
+        }}
         tabIndex={-1}
         className="sr-only"
       >
@@ -130,7 +278,20 @@ export function MapPage() {
               onChange={setStateCode}
               compact
               allOptionLabel={stateName(NationalStateCode.All)}
+              nearbySelected={nearbyEnabled}
+              canSelectNearby={currentOrigin !== null}
+              onSelectNearby={() => setNearbyEnabled(true)}
             />
+            {nearbyEnabled && activeRadiusKm !== null && (
+              <div className="mt-2">
+                <NearbyRadiusSelect
+                  compact
+                  radiusKm={activeRadiusKm}
+                  options={availableRadii}
+                  onChange={setNearbyRadiusKm}
+                />
+              </div>
+            )}
           </div>
           <label className="block">
             <span className="sr-only text-xs font-semibold text-slate-800 map-wide:not-sr-only map-wide:mb-2 map-wide:block map-wide:text-sm">
@@ -153,7 +314,9 @@ export function MapPage() {
             type="button"
             onClick={() => openFilters()}
             aria-label={
-              stateCode === NationalStateCode.All
+              nearbyEnabled
+                ? `Abrir filtros e legenda: até ${activeRadiusKm ?? ""} km ao redor de você`
+                : stateCode === NationalStateCode.All
                 ? "Abrir filtros e legenda"
                 : `Abrir filtros e legenda: ${stateName(stateCode)}`
             }
@@ -161,9 +324,9 @@ export function MapPage() {
             className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-fila-blue map-wide:hidden"
           >
             Filtros
-            {stateCode !== NationalStateCode.All && (
+            {(nearbyEnabled || stateCode !== NationalStateCode.All) && (
               <span className="rounded bg-slate-100 px-1 text-xs text-slate-700">
-                {stateCode}
+                {nearbyEnabled ? `${activeRadiusKm ?? "…"} km` : stateCode}
               </span>
             )}
           </button>
@@ -192,6 +355,30 @@ export function MapPage() {
             )}
           </div>
         )}
+        {nearbyEnabled && activeRadiusKm !== null &&
+          (activeRadiusKm >= 100 || unitsAtRadius < 3) && (
+            <p className="mt-2 text-xs leading-relaxed text-slate-700">
+              O catálogo reúne UPAs e prontos-socorros do CNES. A ausência de
+              unidades nesta lista não indica ausência de atendimento na região.
+            </p>
+          )}
+        {nearbyEnabled &&
+          activeRadiusKm !== null &&
+          ((activeRadiusKm === 500 && unitsAtRadius < 3) ||
+            (mappableCount === 0 && deferredQuery !== "")) && (
+            <button
+              type="button"
+              onClick={() => {
+                setNearbyEnabled(false);
+                setStateCode(NationalStateCode.All);
+              }}
+              className="mt-2 min-h-11 font-semibold text-fila-blue underline underline-offset-2"
+            >
+              {deferredQuery !== ""
+                ? "Buscar em todo o Brasil"
+                : "Mostrar todo o Brasil"}
+            </button>
+          )}
         {originNotice?.isOutage && (
           <p
             className="mt-2 text-xs font-semibold text-amber-800 map-wide:hidden"
@@ -263,6 +450,96 @@ export function MapPage() {
         )}
       </section>
 
+      {/* Always mounted, apart from the panel, so each change is announced
+          once: the precise reading is announced when it settles, not on
+          every improvement. */}
+      <p role="status" className="sr-only">
+        {locationAnnouncement}
+      </p>
+
+      {(location.state.status === "loading" ||
+        location.state.status === "success" ||
+        location.state.status === "error") && (
+        <section
+          ref={locationPanelRef}
+          aria-label="Sua localização"
+          aria-describedby={locationDescriptionId}
+          className="absolute bottom-10 right-3 z-[900] max-h-[45%] max-w-[calc(100%-5.5rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 sm:right-6 sm:max-w-72"
+        >
+          <p id={locationDescriptionId} className="sr-only">
+            Sua posição fica apenas nesta aba.
+          </p>
+          {location.state.status === "success" && !location.state.refining ? (
+            // Settled: one line, so the panel takes little of the map.
+            <div className="flex flex-wrap items-center gap-x-2">
+              <p className="px-2 text-sm text-slate-700">
+                Sua localização (±{" "}
+                {formatAccuracy(location.state.position.accuracy)} m)
+              </p>
+              <button
+                type="button"
+                aria-label="Atualizar localização"
+                onClick={location.locate}
+                className="min-h-11 rounded-lg px-2 text-sm font-semibold text-fila-blue underline underline-offset-2"
+              >
+                Atualizar
+              </button>
+              <button
+                type="button"
+                aria-label="Remover localização"
+                onClick={removeLocation}
+                className="min-h-11 rounded-lg px-2 text-sm font-semibold text-slate-700 underline underline-offset-2"
+              >
+                Remover
+              </button>
+            </div>
+          ) : (
+            <>
+              <p className="px-2 text-sm leading-relaxed text-slate-700">
+                {location.state.status === "success"
+                  ? `Sua localização está marcada no mapa. Precisão aproximada: ${formatAccuracy(location.state.position.accuracy)} m. Ajustando a precisão…`
+                  : location.state.status === "error"
+                    ? location.state.message
+                    : location.state.status === "loading" && location.state.previous
+                      ? "Atualizando sua localização. A posição anterior permanece no mapa até a nova leitura."
+                      : "Obtendo sua localização para mostrar sua posição no mapa. Se o navegador perguntar, escolha Permitir."}
+              </p>
+              <div className="flex flex-wrap items-center gap-x-3">
+                {location.state.status === "error" &&
+                  location.state.canRetry && (
+                    <button
+                      type="button"
+                      onClick={location.locate}
+                      className="min-h-11 rounded-lg px-2 text-sm font-semibold text-fila-blue hover:bg-slate-100"
+                    >
+                      Tentar novamente
+                    </button>
+                  )}
+                <button
+                  type="button"
+                  onClick={removeLocation}
+                  className="min-h-11 rounded-lg px-2 text-sm font-semibold text-slate-700 underline underline-offset-2"
+                >
+                  {location.state.status === "loading"
+                    ? "Cancelar localização"
+                    : location.state.status === "success"
+                      ? "Remover localização"
+                      : "Fechar"}
+                </button>
+              </div>
+            </>
+          )}
+          {location.state.status === "success" && !isPositionInArea && (
+            <p className="px-2 text-sm leading-relaxed text-slate-700">
+              Você está fora da área filtrada
+              {deferredState === NationalStateCode.All
+                ? "."
+                : ` (${stateName(deferredState)}).`}
+            </p>
+          )}
+        </section>
+      )}
+
       {/* The mobile toolbar never expands when the layer is enabled. Longer
           controls live in an explicit modal, with native focus management. */}
       <dialog
@@ -300,7 +577,22 @@ export function MapPage() {
             value={stateCode}
             onChange={setStateCode}
             allOptionLabel={stateName(NationalStateCode.All)}
+            nearbySelected={nearbyEnabled}
+            canSelectNearby={currentOrigin !== null}
+            onSelectNearby={() => setNearbyEnabled(true)}
           />
+          {nearbyEnabled && activeRadiusKm !== null && (
+            <NearbyRadiusSelect
+              radiusKm={activeRadiusKm}
+              options={availableRadii}
+              onChange={setNearbyRadiusKm}
+            />
+          )}
+          {nearbyEnabled && activeRadiusKm !== null && (
+            <p className="text-sm leading-relaxed text-slate-700">
+              {countText}. A lista mostra unidades até esta distância em linha reta.
+            </p>
+          )}
           <OccupancyControls legendOpen={isLegendOpen} />
           {originNotice && (
             <p className="mt-4 text-xs leading-relaxed text-slate-700">
@@ -311,6 +603,11 @@ export function MapPage() {
       </dialog>
 
       <UnitsMap
+        locationPanelRef={locationPanelRef}
+        userPosition={userPosition}
+        nearbyRadiusKm={activeRadiusKm ?? undefined}
+        isPositionInArea={isPositionInArea}
+        filterKey={`${deferredState}|${deferredQuery}|${simulatedFilter ? "simulated" : ""}|${nearbyEnabled ? activeRadiusKm ?? "nearby" : ""}`}
         units={filteredUnits}
         selectedUnitId={selectedUnitId}
         linkSearch={search}
