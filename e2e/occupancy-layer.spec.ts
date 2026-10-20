@@ -350,7 +350,7 @@ for (const viewport of [
       panel.getByText("Leitos fictícios. Não representam filas."),
     ).toBeVisible();
     const open = panel.getByRole("button", {
-      name: /^Abrir filtros e legenda/,
+      name: /^Filtros e legenda/,
     });
     await expect(open).toBeInViewport();
     await expect(page.getByRole("contentinfo")).toBeInViewport({ ratio: 1 });
@@ -506,9 +506,9 @@ for (const viewport of [
       ),
     ).toBe(true);
 
-    const open = page.getByRole("button", { name: /^Abrir filtros e legenda/ });
+    const open = page.getByRole("button", { name: /^Filtros e legenda/ });
     await expect(open).toHaveAccessibleName(
-      "Abrir filtros e legenda: São Paulo",
+      "Filtros e legenda: São Paulo",
     );
     await open.click();
     const dialog = page.getByRole("dialog", { name: "Filtros e legenda" });
@@ -521,10 +521,10 @@ for (const viewport of [
       exact: true,
     });
     await stateSelect.selectOption("ALL");
-    await expect(open).toHaveAccessibleName("Abrir filtros e legenda");
+    await expect(open).toHaveAccessibleName("Filtros e legenda");
     await stateSelect.selectOption("SP");
     await expect(open).toHaveAccessibleName(
-      "Abrir filtros e legenda: São Paulo",
+      "Filtros e legenda: São Paulo",
     );
     await dialog
       .getByText("Legenda da ocupação de leitos", { exact: true })
@@ -607,7 +607,7 @@ for (const viewport of [
       }
       await expect(dialog).not.toBeVisible();
       await expect(
-        panel.getByRole("button", { name: /^Abrir filtros e legenda/ }),
+        panel.getByRole("button", { name: /^Filtros e legenda/ }),
       ).toBeFocused();
     });
   }

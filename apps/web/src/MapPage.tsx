@@ -31,6 +31,7 @@ import {
   distancesFrom,
   filterUnitsWithinRadius,
   initialSearchRadiusKm,
+  nearbyUnavailableReason,
 } from "./geo";
 import { NearbyRadiusSelect } from "./NearbyRadiusSelect";
 
@@ -229,7 +230,13 @@ export function MapPage() {
         ? `${formatCount(mappableCount, "resultado", "resultados")} ${nearbyEnabled && activeRadiusKm !== null ? `dentro de ${activeRadiusKm} km de você` : `no mapa em ${stateName(deferredState)}`}`
         : "";
 
+  const [removedAnnouncement, setRemovedAnnouncement] = useState("");
   function removeLocation() {
+    setRemovedAnnouncement(
+      nearbyEnabled
+        ? "Localização removida. O filtro Ao redor de você foi desativado."
+        : "Localização removida.",
+    );
     location.clear();
     // The panel goes away with the position; keep focus on the page.
     titleRef.current?.focus();
@@ -243,7 +250,10 @@ export function MapPage() {
         ? location.state.message
         : location.state.status === "success" && !location.state.refining
           ? `Localização encontrada, precisão de cerca de ${formatAccuracy(location.state.position.accuracy)} m.`
-          : "";
+          : location.state.status === "removed"
+            ? removedAnnouncement
+            : "";
+  const nearbyHint = nearbyUnavailableReason(location.state);
 
   // The map's floor follows the height, not the width: a short screen (a phone
   // held sideways, a browser bar) fills the space left, and only a very short
@@ -284,6 +294,7 @@ export function MapPage() {
               nearbySelected={nearbyEnabled}
               canSelectNearby={currentOrigin !== null}
               onSelectNearby={() => setNearbyEnabled(true)}
+              nearbyHint={nearbyHint}
             />
             {nearbyEnabled && activeRadiusKm !== null && (
               <div className="mt-2">
@@ -316,15 +327,17 @@ export function MapPage() {
             ref={filtersButtonRef}
             type="button"
             onClick={() => openFilters()}
+            // Starts with the visible word, for voice control.
             aria-label={
               nearbyEnabled
-                ? `Abrir filtros e legenda: até ${activeRadiusKm ?? ""} km ao redor de você`
+                ? `Filtros e legenda: até ${activeRadiusKm ?? ""} km ao redor de você`
                 : stateCode === NationalStateCode.All
-                ? "Abrir filtros e legenda"
-                : `Abrir filtros e legenda: ${stateName(stateCode)}`
+                ? "Filtros e legenda"
+                : `Filtros e legenda: ${stateName(stateCode)}`
             }
             aria-haspopup="dialog"
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-fila-blue map-wide:hidden"
+            // The chip goes under the word, so the search keeps its width.
+            className="inline-flex min-h-11 flex-col items-center justify-center rounded-lg border border-slate-300 px-3 text-sm font-semibold leading-tight text-fila-blue map-wide:hidden"
           >
             Filtros
             {(nearbyEnabled || stateCode !== NationalStateCode.All) && (
@@ -529,7 +542,9 @@ export function MapPage() {
                   className="min-h-11 rounded-lg px-2 text-sm font-semibold text-slate-700 underline underline-offset-2"
                 >
                   {location.state.status === "loading"
-                    ? "Cancelar localização"
+                    ? location.state.previous
+                      ? "Remover localização"
+                      : "Cancelar localização"
                     : location.state.status === "success"
                       ? "Remover localização"
                       : "Fechar"}
@@ -553,6 +568,19 @@ export function MapPage() {
       <dialog
         ref={filtersRef}
         aria-labelledby={filtersTitleId}
+        // A tap on the backdrop (outside the sheet) goes back to the map.
+        onClick={(event) => {
+          const box = event.currentTarget.getBoundingClientRect();
+          if (
+            event.target === event.currentTarget &&
+            (event.clientY < box.top ||
+              event.clientY > box.bottom ||
+              event.clientX < box.left ||
+              event.clientX > box.right)
+          ) {
+            event.currentTarget.close();
+          }
+        }}
         onClose={() => {
           setLegendOpen(false);
           if (
@@ -563,24 +591,27 @@ export function MapPage() {
           }
           filtersOpenerRef.current = null;
         }}
-        className="fixed inset-x-0 bottom-0 top-auto m-0 max-h-[85dvh] w-full max-w-none overflow-y-auto overscroll-contain rounded-t-2xl border border-slate-200 bg-white p-0 text-slate-900 backdrop:bg-slate-900/40"
+        // A fixed height: the top, with "Voltar ao mapa", stays put while the
+        // content changes.
+        className="fixed inset-x-0 bottom-0 top-auto m-0 h-[min(85dvh,36rem)] w-full max-w-none overflow-y-auto overscroll-contain rounded-t-2xl border border-slate-200 bg-white p-0 text-slate-900 backdrop:bg-slate-900/40"
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 py-2">
-          <h2 id={filtersTitleId} className="text-lg font-semibold">
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2">
+          <h2 id={filtersTitleId} className="text-base font-semibold sm:text-lg">
             Filtros e legenda
           </h2>
           <button
             type="button"
             onClick={() => filtersRef.current?.close()}
-            className="min-h-11 rounded-lg px-3 font-semibold text-fila-blue"
+            className="min-h-11 shrink-0 whitespace-nowrap rounded-lg px-2 font-semibold text-fila-blue"
           >
             Voltar ao mapa
           </button>
         </div>
         <div className="space-y-4 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          {state.status === "success" && (
-            <p className="text-sm text-slate-700">{countText}</p>
-          )}
+          {state.status === "success" &&
+            !(nearbyEnabled && activeRadiusKm !== null) && (
+              <p className="text-sm text-slate-700">{countText}</p>
+            )}
           <BrazilianStateSelect
             value={stateCode}
             onChange={setStateCode}
@@ -588,6 +619,7 @@ export function MapPage() {
             nearbySelected={nearbyEnabled}
             canSelectNearby={currentOrigin !== null}
             onSelectNearby={() => setNearbyEnabled(true)}
+            nearbyHint={nearbyHint}
           />
           {nearbyEnabled && activeRadiusKm !== null && (
             <NearbyRadiusSelect

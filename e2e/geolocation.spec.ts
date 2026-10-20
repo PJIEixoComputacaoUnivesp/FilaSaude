@@ -382,7 +382,7 @@ for (const viewport of [
     // Updating also preserves the nearby area; cancelling clears it and
     // the retained position, including any callbacks still in flight.
     if (viewport.width < 640) {
-      await page.getByRole("button", { name: "Abrir filtros e legenda: São Paulo" }).click();
+      await page.getByRole("button", { name: "Filtros e legenda: São Paulo" }).click();
     }
     await page.getByRole("combobox", { name: "Estado" }).selectOption("NEARBY");
     if (viewport.width < 640) {
@@ -392,17 +392,17 @@ for (const viewport of [
     await expect.poll(() => page.evaluate("window.locationRequests")).toBe(6);
     if (viewport.width < 640) {
       await expect(page.getByRole("button", {
-        name: "Abrir filtros e legenda: até 500 km ao redor de você",
+        name: "Filtros e legenda: até 500 km ao redor de você",
       })).toBeVisible();
     } else {
       await expect(page.getByRole("combobox", { name: "Estado" })).toHaveValue("NEARBY");
     }
-    await page.getByRole("button", { name: "Cancelar localização" }).click();
+    await page.getByRole("button", { name: "Remover localização" }).click();
     await resolveReading(page, 4, 60);
     await resolveReading(page, 5, 30);
     await expect(marker).toHaveCount(0);
     if (viewport.width < 640) {
-      await page.getByRole("button", { name: "Abrir filtros e legenda", exact: true }).click();
+      await page.getByRole("button", { name: "Filtros e legenda", exact: true }).click();
     }
     await expect(page.getByRole("combobox", { name: "Estado" })).toHaveValue("ALL");
   });
@@ -711,4 +711,65 @@ test("mantém a posição visível após a resposta tardia do catálogo e a rota
       })
       .toBe(true);
   }
+});
+
+test("a folha de filtros mantém o topo, fecha pelo fundo e não quebra o cabeçalho", async ({
+  page,
+  context,
+}) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await context.setGeolocation({ latitude: -23.55, longitude: -46.63, accuracy: 80 });
+  await context.grantPermissions(["geolocation"]);
+  await page.goto("/?uf=SP");
+  await expect(page.locator(".user-location-marker")).toBeVisible();
+  const open = page.getByRole("button", { name: /^Filtros e legenda/ });
+  // The chip goes under the word and leaves the search its width.
+  expect((await page.getByRole("searchbox").boundingBox())!.width).toBeGreaterThanOrEqual(150);
+  await open.click();
+  const dialog = page.getByRole("dialog", { name: "Filtros e legenda" });
+  const back = dialog.getByRole("button", { name: "Voltar ao mapa" });
+  await expect(back).toBeFocused();
+  expect((await back.boundingBox())!.height).toBeLessThanOrEqual(48);
+  const top = (await dialog.boundingBox())!.y;
+  await dialog.getByRole("combobox", { name: "Estado" }).selectOption("NEARBY");
+  await expect(dialog.getByRole("combobox", { name: "Distância" })).toBeVisible();
+  expect((await dialog.boundingBox())!.y).toBe(top);
+  // The count is said once, next to the radius.
+  await expect(dialog.getByText(/de você, em linha reta/)).toHaveCount(1);
+  await page.mouse.click(160, 20);
+  await expect(dialog).toBeHidden();
+  await expect(open).toBeFocused();
+});
+
+test("explica por que Ao redor de você está indisponível", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockLocation(page, 1);
+  await page.goto("/");
+  await expect.poll(() => page.evaluate("window.locationRequests")).toBe(2);
+  await page.getByRole("button", { name: "Filtros e legenda", exact: true }).click();
+  await expect(
+    page.getByRole("dialog").getByRole("combobox", { name: "Estado" }),
+  ).toHaveAccessibleDescription(/precisa da sua localização/);
+  await page.goto("/units");
+  await expect(
+    page.getByRole("combobox", { name: "Estado" }),
+  ).toHaveAccessibleDescription(/precisa da sua localização/);
+});
+
+test("anuncia a remoção da localização e do filtro ao redor", async ({
+  page,
+  context,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await context.setGeolocation({ latitude: -23.55, longitude: -46.63, accuracy: 80 });
+  await context.grantPermissions(["geolocation"]);
+  await page.goto("/");
+  await page.getByRole("combobox", { name: "Estado" }).selectOption("NEARBY");
+  await page.getByRole("button", { name: "Remover localização" }).click();
+  await expect(
+    page.getByRole("status").filter({
+      hasText: "Localização removida. O filtro Ao redor de você foi desativado.",
+    }),
+  ).toBeAttached();
+  await expect(page.getByRole("combobox", { name: "Estado" })).toHaveValue("ALL");
 });

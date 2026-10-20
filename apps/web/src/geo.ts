@@ -131,6 +131,23 @@ export function distanceOrigin(state: LocationState): Coordinate | null {
     : null;
 }
 
+/** Why "Ao redor de você" cannot be chosen now; null when it can. */
+export function nearbyUnavailableReason(state: LocationState): string | null {
+  if (distanceOrigin(state)) return null;
+  switch (state.status) {
+    case "loading":
+      return "“Ao redor de você” fica disponível quando sua localização for obtida.";
+    case "success":
+      return "A localização obtida não é precisa o bastante para medir distâncias.";
+    case "removed":
+      return "Você removeu sua localização. Para usar “Ao redor de você”, recarregue a página.";
+    case "error":
+      return "Não foi possível obter sua localização, necessária para “Ao redor de você”.";
+    default:
+      return "“Ao redor de você” precisa da sua localização. Permita o acesso nas configurações do navegador.";
+  }
+}
+
 /** Straight-line distance, said as such; never a suggestion of where to go. */
 export function formatUnitDistance(
   unit: HealthUnit,

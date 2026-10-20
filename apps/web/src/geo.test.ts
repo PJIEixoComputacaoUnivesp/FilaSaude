@@ -5,6 +5,7 @@ import {
   distancesFrom,
   distanceOrigin,
   filterUnitsWithinRadius,
+  nearbyUnavailableReason,
   formatDistanceKm,
   initialSearchRadiusKm,
   sortByDistance,
@@ -42,6 +43,31 @@ function unit(
 }
 
 const saoPauloCenter = { latitude: -23.5505, longitude: -46.6333 };
+
+describe("nearbyUnavailableReason", () => {
+  it("explains why the nearby filter is unavailable", () => {
+    const position = { ...saoPauloCenter, accuracy: 80 };
+    expect(
+      nearbyUnavailableReason({ status: "success", position, refining: false }),
+    ).toBeNull();
+    expect(nearbyUnavailableReason({ status: "loading" })).toMatch(
+      /quando sua localização for obtida/,
+    );
+    expect(nearbyUnavailableReason({ status: "denied" })).toMatch(
+      /configurações do navegador/,
+    );
+    expect(nearbyUnavailableReason({ status: "removed" })).toMatch(
+      /recarregue a página/,
+    );
+    expect(
+      nearbyUnavailableReason({
+        status: "success",
+        position: { ...saoPauloCenter, accuracy: 6_000 },
+        refining: false,
+      }),
+    ).toMatch(/não é precisa o bastante/);
+  });
+});
 
 describe("distanceOrigin", () => {
   it("keeps a precise previous position usable during refresh", () => {

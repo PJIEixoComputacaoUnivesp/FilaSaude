@@ -9,6 +9,7 @@ import {
   filterUnitsWithinRadius,
   formatUnitDistance,
   initialSearchRadiusKm,
+  nearbyUnavailableReason,
   sortByDistance,
   type Coordinate,
 } from "./geo";
@@ -423,6 +424,7 @@ export function UnitsPage() {
             nearbySelected={nearbyEnabled}
             canSelectNearby={currentOrigin !== null}
             onSelectNearby={() => setNearbyEnabled(true)}
+            nearbyHint={nearbyUnavailableReason(location.state)}
           />
           {nearbyEnabled && activeRadiusKm !== null && (
             <NearbyRadiusSelect
