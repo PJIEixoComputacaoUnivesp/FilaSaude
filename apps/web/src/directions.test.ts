@@ -51,6 +51,15 @@ describe("directionsLink", () => {
     );
   });
 
+  it("escapes parentheses, which geo: reads as the label", () => {
+    const named = { ...unit("source"), name: "UPA 24h (Zona Norte)" };
+    expect(directionsLink(named, "android")).toBe(
+      "geo:-23.5505,-46.6333?q=-23.5505,-46.6333(UPA%2024h%20%28Zona%20Norte%29)",
+    );
+    const approximate = { ...unit("municipality"), name: "PA (Centro)" };
+    expect(directionsLink(approximate, "android")).not.toMatch(/[()]/);
+  });
+
   it("routes to the point on Google Maps elsewhere, with no origin", () => {
     const link = new URL(directionsLink(unit("manual"), "web"));
     expect(link.origin + link.pathname).toBe(

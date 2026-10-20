@@ -1,6 +1,14 @@
-import { hasLocation, type HealthUnit } from "./units";
+import { addressParts, hasLocation, type HealthUnit } from "./units";
 
 export type DirectionsTarget = "android" | "web";
+
+/**
+ * In a geo: query, parentheses mark the pin's label, and encodeURIComponent
+ * leaves them as they are; a name like "UPA 24h (Zona Norte)" would cut it.
+ */
+function encodeGeo(value: string): string {
+  return encodeURIComponent(value).replace(/\(/g, "%28").replace(/\)/g, "%29");
+}
 
 /** Android hands a `geo:` link to the maps app the person chose. */
 export function directionsTarget(
@@ -25,20 +33,12 @@ export function directionsLink(
     hasLocation(unit) && precision !== "municipality"
       ? `${latitude},${longitude}`
       : null;
-  const { street, number, district, city, state } = unit.address;
-  const query = [
-    unit.name,
-    [street, number].filter(Boolean).join(", "),
-    district,
-    `${city} - ${state}`,
-  ]
-    .filter(Boolean)
-    .join(", ");
+  const query = [unit.name, ...addressParts(unit.address)].join(", ");
 
   if (target === "android") {
     return point
-      ? `geo:${point}?q=${point}(${encodeURIComponent(unit.name)})`
-      : `geo:0,0?q=${encodeURIComponent(query)}`;
+      ? `geo:${point}?q=${point}(${encodeGeo(unit.name)})`
+      : `geo:0,0?q=${encodeGeo(query)}`;
   }
   const params = new URLSearchParams({
     api: "1",

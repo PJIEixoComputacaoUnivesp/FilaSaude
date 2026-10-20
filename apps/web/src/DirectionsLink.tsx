@@ -1,6 +1,10 @@
 import { directionsLink, directionsTarget } from "./directions";
 import type { HealthUnit } from "./units";
 
+// The browser does not change during a visit.
+const target = directionsTarget();
+const isAndroid = target === "android";
+
 const linkClass =
   "inline-flex min-h-11 items-center font-semibold text-fila-blue underline underline-offset-2";
 
@@ -9,8 +13,6 @@ const linkClass =
  * there, never a suggestion of which unit to go to.
  */
 export function DirectionsLink({ unit }: { unit: HealthUnit }) {
-  const target = directionsTarget();
-  const isAndroid = target === "android";
   return (
     <a
       href={directionsLink(unit, target)}
