@@ -363,6 +363,8 @@ test("ao redor de você no celular, estado e raio lado a lado e o primeiro resul
   await stateSelect.selectOption("NEARBY");
   const radius = page.getByRole("combobox", { name: "Distância" });
   await expect(radius).toBeVisible();
+  // The nearby search reloads the list; measure once it has answered.
+  await expect(page.getByRole("article")).toHaveCount(3);
   const [a, b] = await Promise.all([
     stateSelect.boundingBox(),
     radius.boundingBox(),
@@ -371,6 +373,9 @@ test("ao redor de você no celular, estado e raio lado a lado e o primeiro resul
   await page
     .getByRole("combobox", { name: "Ordenar por" })
     .selectOption("distance");
+  await expect(
+    page.getByRole("status").filter({ hasText: "ordenados por distância" }),
+  ).toBeAttached();
   const first = page.getByRole("article").first();
   expect((await first.boundingBox())!.y).toBeLessThan(844);
 });
