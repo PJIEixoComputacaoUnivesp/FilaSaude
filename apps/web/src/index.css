@@ -17,6 +17,8 @@
      about 3:1, so it stays for fills and graphics, never for small text. */
   --color-fila-green-ink: #007a68;
   --color-fila-cyan: #00a5e3;
+  /* Outer ring of the location marker: 5:1 or more on the map tiles. */
+  --color-fila-cyan-ink: #0c4a6e;
   --color-fila-bg: var(--color-slate-50);
 
   /* Simulated occupancy: one violet scale plus gray, never the colors of
@@ -138,4 +140,52 @@
    as the rest of the interface. */
 .leaflet-container {
   font-family: var(--font-sans);
+}
+
+/* "You are here": a cyan dot with a white and a dark ring, distinct from the
+   blue, violet and gray unit discs by size and shape. The halo pulses twice
+   when the position arrives, then rests (WCAG 2.2.2). Keep the colors in step
+   with userLocationColor in UnitsMap.tsx. */
+/* Leaflet's own `.leaflet-marker-icon { display: block }` loads later. */
+.leaflet-marker-icon.user-location-marker {
+  display: grid;
+  place-items: center;
+}
+
+.user-location-marker::before {
+  content: "";
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-fila-cyan) 35%, transparent);
+  opacity: 0;
+  animation: user-location-pulse 2s ease-out 2;
+}
+
+.user-location-marker span {
+  grid-area: 1 / 1;
+  width: 18px;
+  height: 18px;
+  border: 3px solid white;
+  border-radius: 50%;
+  background: var(--color-fila-cyan);
+  box-shadow: 0 0 0 2px var(--color-fila-cyan-ink);
+}
+
+@keyframes user-location-pulse {
+  from {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .user-location-marker::before {
+    animation: none;
+  }
 }

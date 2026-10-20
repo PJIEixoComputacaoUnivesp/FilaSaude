@@ -13,6 +13,7 @@ import { Logo } from "./Logo";
 import { MapPage } from "./MapPage";
 import { OccupancyLayerProvider } from "./OccupancyLayerProvider";
 import { SearchFiltersProvider } from "./SearchFiltersProvider";
+import { UserLocationProvider } from "./UserLocationProvider";
 import { UnitDetailPage } from "./UnitDetailPage";
 import { UnitsPage } from "./UnitsPage";
 import { useSearchFilters } from "./useSearchFilters";
@@ -86,32 +87,34 @@ export default function App() {
     <BrowserRouter>
       <SearchFiltersProvider>
         <OccupancyLayerProvider>
-          <div className="relative flex min-h-dvh flex-col bg-fila-bg font-sans">
-            <a
-              href="#conteudo"
-              className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[1100] focus:rounded-lg focus:border focus:border-slate-300 focus:bg-white focus:px-4 focus:py-3 focus:font-semibold focus:text-fila-blue"
-            >
-              Ir para o conteúdo
-            </a>
-            <Header />
-            <main
-              id="conteudo"
-              tabIndex={-1}
-              className="flex flex-1 flex-col focus:outline-none"
-            >
-              <Routes>
-                <Route path="/" element={<MapPage />} />
-                <Route path="/units" element={<UnitsPage />} />
-                <Route path="/units/:unitId" element={<UnitDetailPage />} />
-                <Route path="/map" element={<RedirectToMap />} />
-                <Route path="/about" element={<AboutPage />} />
-                {/* Not in the navigation: only the team is meant to find it. */}
-                <Route path="/admin" element={<AdminPage />} />
-                <Route path="*" element={<RedirectToMap />} />
-              </Routes>
-            </main>
-            <Footer />
-          </div>
+          <UserLocationProvider>
+            <div className="relative flex min-h-dvh flex-col bg-fila-bg font-sans">
+              <a
+                href="#conteudo"
+                className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[1100] focus:rounded-lg focus:border focus:border-slate-300 focus:bg-white focus:px-4 focus:py-3 focus:font-semibold focus:text-fila-blue"
+              >
+                Ir para o conteúdo
+              </a>
+              <Header />
+              <main
+                id="conteudo"
+                tabIndex={-1}
+                className="flex flex-1 flex-col focus:outline-none"
+              >
+                <Routes>
+                  <Route path="/" element={<MapPage />} />
+                  <Route path="/units" element={<UnitsPage />} />
+                  <Route path="/units/:unitId" element={<UnitDetailPage />} />
+                  <Route path="/map" element={<RedirectToMap />} />
+                  <Route path="/about" element={<AboutPage />} />
+                  {/* Not in the navigation: only the team is meant to find it. */}
+                  <Route path="/admin" element={<AdminPage />} />
+                  <Route path="*" element={<RedirectToMap />} />
+                </Routes>
+              </main>
+              <Footer />
+            </div>
+          </UserLocationProvider>
         </OccupancyLayerProvider>
       </SearchFiltersProvider>
     </BrowserRouter>

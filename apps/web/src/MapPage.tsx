@@ -17,11 +17,21 @@ import { useOccupancyLayer } from "./useOccupancyLayer";
 import { useSearchFilters } from "./useSearchFilters";
 import { useUnits } from "./useUnits";
 import { SELECTED_UNIT_PARAM } from "./unitLinks";
+import { useUserLocation } from "./useUserLocation";
 
 const title = "Mapa das unidades de pronto atendimento";
 
+function formatAccuracy(meters: number) {
+  return Math.ceil(meters).toLocaleString("pt-BR");
+}
+
 export function MapPage() {
+  const location = useUserLocation();
+  const locationDescriptionId = useId();
+  const locationPanelRef = useRef<HTMLElement>(null);
   const headingRef = usePageHeading(title);
+  // Always the h1, also when a selected unit keeps it from taking focus on mount.
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const { stateCode, query, setStateCode, setQuery, flush, search } =
     useSearchFilters();
   const [searchParams] = useSearchParams();
@@ -79,6 +89,29 @@ export function MapPage() {
     deferredState === NationalStateCode.All &&
     deferredQuery === "" &&
     simulatedFilter === null;
+
+  const userPosition =
+    location.state.status === "success" ? location.state.position : undefined;
+  // The person's position frames the map only where the filtered units are
+  // (with a margin of about 25 km), so a UF far away still shows its units.
+  // Before the list answers, or with no unit to show, there is nothing to
+  // compare with.
+  const isPositionInArea = useMemo(() => {
+    if (!userPosition || isCountryWide || state.status !== "success") {
+      return true;
+    }
+    const located = filteredUnits.filter(hasLocation);
+    if (located.length === 0) return true;
+    const margin = 0.25;
+    const latitudes = located.map((unit) => unit.location.latitude!);
+    const longitudes = located.map((unit) => unit.location.longitude!);
+    return (
+      userPosition.latitude >= Math.min(...latitudes) - margin &&
+      userPosition.latitude <= Math.max(...latitudes) + margin &&
+      userPosition.longitude >= Math.min(...longitudes) - margin &&
+      userPosition.longitude <= Math.max(...longitudes) + margin
+    );
+  }, [userPosition, isCountryWide, state.status, filteredUnits]);
   const originNotice =
     state.status === "success"
       ? dataOriginNotice(state.response.metadata)
@@ -97,10 +130,27 @@ export function MapPage() {
         ? `${formatCount(mappableCount, "resultado", "resultados")} no mapa em ${stateName(deferredState)}`
         : "";
 
+  function removeLocation() {
+    location.clear();
+    // The panel goes away with the position; keep focus on the page.
+    titleRef.current?.focus();
+  }
+  const locationAnnouncement =
+    location.state.status === "loading"
+      ? "Obtendo sua localização."
+      : location.state.status === "error"
+        ? location.state.message
+        : location.state.status === "success" && !location.state.refining
+          ? `Localização encontrada, precisão de cerca de ${formatAccuracy(location.state.position.accuracy)} m.`
+          : "";
+
   return (
     <div className="relative min-h-[28rem] w-full flex-1">
       <h1
-        ref={selectedUnitId ? undefined : headingRef}
+        ref={(element) => {
+          titleRef.current = element;
+          if (!selectedUnitId) headingRef.current = element;
+        }}
         tabIndex={-1}
         className="sr-only"
       >
@@ -210,6 +260,86 @@ export function MapPage() {
         )}
       </section>
 
+      {/* Always mounted, apart from the panel, so each change is announced
+          once: the precise reading is announced when it settles, not on
+          every improvement. */}
+      <p role="status" className="sr-only">
+        {locationAnnouncement}
+      </p>
+
+      {(location.state.status === "loading" ||
+        location.state.status === "success" ||
+        location.state.status === "error") && (
+        <section
+          ref={locationPanelRef}
+          aria-label="Sua localização"
+          aria-describedby={locationDescriptionId}
+          className="absolute bottom-10 right-3 z-[900] max-h-[45%] max-w-[calc(100%-5.5rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 sm:right-6 sm:max-w-72"
+        >
+          <p id={locationDescriptionId} className="sr-only">
+            Sua posição fica apenas nesta aba.
+          </p>
+          {location.state.status === "success" && !location.state.refining ? (
+            // Settled: one line, so the panel takes little of the map.
+            <div className="flex flex-wrap items-center gap-x-2">
+              <p className="px-2 text-sm text-slate-700">
+                Sua localização (±{" "}
+                {formatAccuracy(location.state.position.accuracy)} m)
+              </p>
+              <button
+                type="button"
+                aria-label="Remover localização"
+                onClick={removeLocation}
+                className="min-h-11 rounded-lg px-2 text-sm font-semibold text-slate-700 underline underline-offset-2"
+              >
+                Remover
+              </button>
+            </div>
+          ) : (
+            <>
+              <p className="px-2 text-sm leading-relaxed text-slate-700">
+                {location.state.status === "success"
+                  ? `Sua localização está marcada no mapa. Precisão aproximada: ${formatAccuracy(location.state.position.accuracy)} m. Ajustando a precisão…`
+                  : location.state.status === "error"
+                    ? location.state.message
+                    : "Obtendo sua localização para mostrar sua posição no mapa. Se o navegador perguntar, escolha Permitir."}
+              </p>
+              <div className="flex flex-wrap items-center gap-x-3">
+                {location.state.status === "error" &&
+                  location.state.canRetry && (
+                    <button
+                      type="button"
+                      onClick={location.locate}
+                      className="min-h-11 rounded-lg px-2 text-sm font-semibold text-fila-blue hover:bg-slate-100"
+                    >
+                      Tentar novamente
+                    </button>
+                  )}
+                <button
+                  type="button"
+                  onClick={removeLocation}
+                  className="min-h-11 rounded-lg px-2 text-sm font-semibold text-slate-700 underline underline-offset-2"
+                >
+                  {location.state.status === "loading"
+                    ? "Cancelar localização"
+                    : location.state.status === "success"
+                      ? "Remover localização"
+                      : "Fechar"}
+                </button>
+              </div>
+            </>
+          )}
+          {location.state.status === "success" && !isPositionInArea && (
+            <p className="px-2 text-sm leading-relaxed text-slate-700">
+              Você está fora da área filtrada
+              {deferredState === NationalStateCode.All
+                ? "."
+                : ` (${stateName(deferredState)}).`}
+            </p>
+          )}
+        </section>
+      )}
+
       {/* The mobile toolbar never expands when the layer is enabled. Longer
           controls live in an explicit modal, with native focus management. */}
       <dialog
@@ -217,7 +347,10 @@ export function MapPage() {
         aria-labelledby={filtersTitleId}
         onClose={() => {
           setLegendOpen(false);
-          if (filtersOpenerRef.current && !filtersOpenerRef.current.isConnected) {
+          if (
+            filtersOpenerRef.current &&
+            !filtersOpenerRef.current.isConnected
+          ) {
             filtersButtonRef.current?.focus();
           }
           filtersOpenerRef.current = null;
@@ -255,6 +388,10 @@ export function MapPage() {
       </dialog>
 
       <UnitsMap
+        locationPanelRef={locationPanelRef}
+        userPosition={userPosition}
+        isPositionInArea={isPositionInArea}
+        filterKey={`${deferredState}|${deferredQuery}|${simulatedFilter ? "simulated" : ""}`}
         units={filteredUnits}
         selectedUnitId={selectedUnitId}
         listSearch={search}

@@ -153,6 +153,23 @@
 
 ## Initial patterns
 
+- Geolocation is requested when the person enters the app (not on /admin),
+  with no button to ask for it. A refusal is silent; a permission granted
+  later in the browser brings the position without a reload. A quick network
+  reading frames the map at once and a precise one replaces it when more
+  accurate ("Ajustando a precisão…" meanwhile), never taking back a view the
+  person moved or a selected unit. The position frames the map only inside
+  the filtered area; elsewhere the panel says the person is outside it.
+- Status lives in a separate control at the bottom of the map, shown while
+  locating, after a failure (with a retry when one can help) or with a
+  position, then collapsed to one line once the precise reading settles.
+  Screen readers hear one announcement per change, from a status region
+  apart from the panel. Text never names the marker's color.
+- Marker: cyan dot (`fila-cyan`) with a white and a `fila-cyan-ink` ring,
+  18px, distinct from unit discs by size and shape; its halo pulses twice on
+  arrival and rests. Accuracy in text and as a circle on the map. Preserve
+  filters and keep the position only in tab memory.
+
 - Product status: compact bordered pill with explicit text.
 - Safety notice: amber-tinted surface with a strong left border and direct label
   where it needs emphasis; a short plain footer paragraph elsewhere.
