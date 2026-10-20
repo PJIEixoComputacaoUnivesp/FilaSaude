@@ -730,9 +730,9 @@ function FitUnits({
   return null;
 }
 
-// A dot with a halo distinguishes the person's position from the flat
-// health-unit discs, also by shape and shadow, not only by color (fila-cyan,
-// see index.css).
+// A cyan dot with a white and a dark ring distinguishes the person's position
+// from the unit discs by size and shape, not only by color, and keeps 3:1 on
+// any tile. Values as in index.css (canvas paths do not read CSS variables).
 const userLocationColor = "#00a5e3";
 const userLocationIcon = L.divIcon({
   className: "user-location-marker",
