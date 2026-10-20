@@ -78,7 +78,9 @@ for (const viewport of [
     await page.goto("/?uf=SP&q=Centro");
     const marker = page.locator(".user-location-marker");
     await expect(
-      page.getByRole("status").filter({ hasText: "Precisão aproximada: 80 m" }),
+      page
+        .getByRole("status")
+        .filter({ hasText: "Localização encontrada, precisão de cerca de 80 m." }),
     ).toBeVisible();
     await expect(marker).toBeVisible();
     await expect(page).toHaveURL(/\?uf=SP&q=Centro$/);
@@ -120,7 +122,7 @@ for (const viewport of [
 
 async function mockLocation(
   page: Page,
-  mode: "pending" | "unsupported" | "insecure" | "throw" | number,
+  mode: "pending" | "success" | "unsupported" | "insecure" | "throw" | number,
 ) {
   await page.addInitScript((mode) => {
     if (mode === "insecure") {
@@ -135,9 +137,18 @@ async function mockLocation(
       locationRequests: number;
       completeLocation: () => void;
       readings: { success: PositionCallback; options?: PositionOptions }[];
+      mockMode: typeof mode;
+      permission: EventTarget & { state: string };
     };
     state.locationRequests = 0;
     state.readings = [];
+    state.mockMode = mode;
+    state.permission = Object.assign(new EventTarget(), {
+      state: mode === 1 ? "denied" : "granted",
+    });
+    Object.defineProperty(navigator, "permissions", {
+      value: { query: async () => state.permission },
+    });
     Object.defineProperty(navigator, "geolocation", {
       value: {
         getCurrentPosition(
@@ -147,6 +158,9 @@ async function mockLocation(
         ) {
           state.locationRequests += 1;
           state.readings.push({ success, options });
+          // Read on each call, so a test can change it (e.g. a permission
+          // granted later).
+          const mode = state.mockMode;
           if (mode === "throw") throw new Error("Blocked");
           state.completeLocation = () =>
             success({
@@ -157,7 +171,9 @@ async function mockLocation(
               },
             } as GeolocationPosition);
           if (mode === "pending") return;
-          if (mode === 4) {
+          if (mode === "success") {
+            state.completeLocation();
+          } else if (mode === 4) {
             success({
               coords: { latitude: 48.85, longitude: 2.35, accuracy: 10 },
             } as GeolocationPosition);
@@ -226,7 +242,7 @@ test("solicita ao abrir e ignora a resposta após cancelar", async ({
   expect(await page.evaluate("window.locationRequests")).toBe(2);
 });
 
-test("encerra uma solicitação sem resposta e permite nova tentativa", async ({
+test("avisa a demora e aceita a posição que chega depois", async ({
   page,
 }) => {
   await mockLocation(page, "pending");
@@ -236,15 +252,65 @@ test("encerra uma solicitação sem resposta e permite nova tentativa", async ({
   await expect(
     page.getByRole("status").filter({ hasText: "A localização demorou" }),
   ).toBeVisible();
-  await page.evaluate("window.completeLocation()");
-  await expect(page.locator(".user-location-marker")).toHaveCount(0);
-  await page.getByRole("button", { name: "Tentar novamente" }).click();
+  // A late "Permitir": the position replaces the warning.
   await page.evaluate("window.completeLocation()");
   await expect(page.locator(".user-location-marker")).toBeVisible();
-  expect(await page.evaluate("window.locationRequests")).toBe(4);
+  await expect(
+    page.getByRole("region", { name: "Sua localização", exact: true }),
+  ).not.toContainText("A localização demorou");
   await page.reload();
   await expect(page.locator(".user-location-marker")).toHaveCount(0);
   await expect.poll(() => page.evaluate("window.locationRequests")).toBe(2);
+});
+
+test("tentar novamente depois da demora faz um novo pedido", async ({
+  page,
+}) => {
+  await mockLocation(page, "pending");
+  await page.clock.install();
+  await page.goto("/");
+  await page.clock.fastForward(20_001);
+  await page.getByRole("button", { name: "Tentar novamente" }).click();
+  expect(await page.evaluate("window.locationRequests")).toBe(4);
+  await page.evaluate("window.completeLocation()");
+  await expect(page.locator(".user-location-marker")).toBeVisible();
+});
+
+test("retoma sozinha quando a permissão é concedida depois", async ({
+  page,
+}) => {
+  await mockLocation(page, 1);
+  await page.goto("/");
+  await expect.poll(() => page.evaluate("window.locationRequests")).toBe(2);
+  await expect(page.locator(".user-location-marker")).toHaveCount(0);
+  await page.evaluate(() => {
+    const state = window as unknown as {
+      mockMode: unknown;
+      permission: EventTarget & { state: string };
+    };
+    state.mockMode = "success";
+    state.permission.state = "granted";
+    state.permission.dispatchEvent(new Event("change"));
+  });
+  await expect(page.locator(".user-location-marker")).toBeVisible();
+});
+
+test("remover a posição não volta a pedir mesmo se a permissão mudar", async ({
+  page,
+}) => {
+  await mockLocation(page, "success");
+  await page.goto("/");
+  await expect(page.locator(".user-location-marker")).toBeVisible();
+  await page.getByRole("button", { name: "Remover localização" }).click();
+  await page.evaluate(() => {
+    const { permission } = window as unknown as {
+      permission: EventTarget & { state: string };
+    };
+    permission.state = "granted";
+    permission.dispatchEvent(new Event("change"));
+  });
+  await expect(page.locator(".user-location-marker")).toHaveCount(0);
+  expect(await page.evaluate("window.locationRequests")).toBe(2);
 });
 
 async function resolveReading(page: Page, index: number, accuracy: number) {
@@ -275,15 +341,26 @@ test("marca a posição rápida e depois a ajusta com a leitura precisa", async 
     ),
   ).toEqual([false, true]);
   await resolveReading(page, 0, 2000);
-  const status = page
-    .getByRole("region", { name: "Sua localização", exact: true })
-    .getByRole("status");
-  await expect(status).toContainText("Precisão aproximada: 2.000 m.");
-  await expect(status).toContainText("Ajustando a precisão");
+  const panel = page.getByRole("region", {
+    name: "Sua localização",
+    exact: true,
+  });
+  await expect(panel).toContainText("Precisão aproximada: 2.000 m.");
+  await expect(panel).toContainText("Ajustando a precisão");
   await expect(page.locator(".user-location-marker")).toBeVisible();
+  // The rough reading is not announced; only the settled one is.
+  const announcement = page.getByRole("status").filter({ hasText: "Localização" });
+  await expect(announcement).toHaveCount(0);
   await resolveReading(page, 1, 15);
-  await expect(status).toContainText("Precisão aproximada: 15 m.");
-  await expect(status).not.toContainText("Ajustando");
+  // Settled: one line with the accuracy and the button to remove it.
+  await expect(panel).toContainText("Sua localização (± 15 m)");
+  await expect(panel).not.toContainText("Ajustando");
+  await expect(
+    panel.getByRole("button", { name: "Remover localização" }),
+  ).toBeVisible();
+  await expect(announcement).toHaveText(
+    "Localização encontrada, precisão de cerca de 15 m.",
+  );
 });
 
 test("uma leitura precisa pior não substitui a rápida", async ({ page }) => {
@@ -292,11 +369,12 @@ test("uma leitura precisa pior não substitui a rápida", async ({ page }) => {
   await expect.poll(() => page.evaluate("window.locationRequests")).toBe(2);
   await resolveReading(page, 0, 40);
   await resolveReading(page, 1, 900);
-  const status = page
-    .getByRole("region", { name: "Sua localização", exact: true })
-    .getByRole("status");
-  await expect(status).toContainText("Precisão aproximada: 40 m.");
-  await expect(status).not.toContainText("Ajustando");
+  const panel = page.getByRole("region", {
+    name: "Sua localização",
+    exact: true,
+  });
+  await expect(panel).toContainText("Sua localização (± 40 m)");
+  await expect(panel).not.toContainText("Ajustando");
 });
 
 test("o ajuste preciso não desfaz um movimento do mapa", async ({ page }) => {
@@ -329,7 +407,7 @@ test("o ajuste preciso não desfaz um movimento do mapa", async ({ page }) => {
     .toBe(true);
   await resolveReading(page, 1, 15);
   await expect(
-    page.getByRole("status").filter({ hasText: "Precisão aproximada: 15 m." }),
+    page.getByRole("status").filter({ hasText: "precisão de cerca de 15 m" }),
   ).toBeVisible();
   expect(await pane.getAttribute("style")).toBe(moved);
 });
@@ -379,9 +457,86 @@ test("um filtro escolhido depois da posição volta a enquadrar as unidades", as
   // A later precise reading does not take the view back to the person.
   await resolveReading(page, 1, 15);
   await expect(
-    page.getByRole("status").filter({ hasText: "Precisão aproximada: 15 m." }),
+    page.getByRole("status").filter({ hasText: "precisão de cerca de 15 m" }),
   ).toBeVisible();
   await expect.poll(tileZoom).toBeLessThan(7);
+});
+
+test("fora da UF filtrada, o mapa mostra as unidades e avisa", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.route("**/api/units?*", (route) =>
+    route.fulfill({
+      json: {
+        data: [
+          {
+            id: "7654321",
+            name: "SPA Joventina Dias",
+            unitType: "PRONTO ATENDIMENTO",
+            address: {
+              street: "Rua Ajuricaba",
+              number: "s/n",
+              district: "Cachoeirinha",
+              postalCode: "69065-110",
+              city: "Manaus",
+              state: "AM",
+            },
+            location: {
+              latitude: -3.1209,
+              longitude: -60.0057,
+              precision: "source",
+              original: null,
+              referenceMonth: null,
+              correctedAt: null,
+            },
+            serviceHours: null,
+            lastUpdatedAt: "2026-09-20",
+            sources: [
+              {
+                name: "Cadastro Nacional de Estabelecimentos de Saúde (CNES)",
+                url: "https://cnes.datasus.gov.br/",
+                fields: ["identity", "address", "location"],
+                lastUpdatedAt: "2026-09-20",
+              },
+            ],
+          },
+        ],
+        metadata: {
+          count: 1,
+          state: "BR",
+          dataOrigin: "live",
+          isStale: false,
+          retrievedAt: "2026-10-19T12:00:00Z",
+          latestSourceUpdate: "2026-10-19",
+          source: { name: "CNES", url: "https://cnes.datasus.gov.br/" },
+        },
+      },
+    }),
+  );
+  // The person is in São Paulo.
+  await mockLocation(page, "success");
+  await page.goto("/?uf=AM");
+  await expect(
+    page.getByRole("region", { name: "Sua localização", exact: true }),
+  ).toContainText("Você está fora da área filtrada (Amazonas).");
+  // The unit in Manaus is in view; the person in São Paulo is not.
+  const map = page.locator(".leaflet-container");
+  await expect
+    .poll(async () => {
+      const [box, marker] = await Promise.all([
+        map.boundingBox(),
+        page.locator(".user-location-marker").boundingBox(),
+      ]);
+      if (!box || !marker) return "missing";
+      const inside =
+        marker.x > box.x &&
+        marker.x < box.x + box.width &&
+        marker.y > box.y &&
+        marker.y < box.y + box.height;
+      return inside ? "person in view" : "person out of view";
+    })
+    .toBe("person out of view");
 });
 
 test("mantém a posição visível após a resposta tardia do catálogo e a rotação", async ({

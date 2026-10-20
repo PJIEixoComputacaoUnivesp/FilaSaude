@@ -302,6 +302,8 @@ interface UnitsMapProps {
   locationPanelRef?: RefObject<HTMLElement | null>;
   /** Changes when the person changes the filters (see FitUnits). */
   filterKey?: string;
+  /** Whether the position is where the filtered units are (see MapPage). */
+  isPositionInArea?: boolean;
   units: HealthUnit[];
   className?: string;
   selectedUnitId?: string;
@@ -645,14 +647,15 @@ function FitUnits({
   units,
   overlayRef,
   hasSelection,
-  hasUserPosition,
+  framesUserPosition,
   filterKey,
 }: {
   units: HealthUnit[];
   overlayRef?: RefObject<HTMLElement | null>;
   /** A selected unit frames the map itself (see UnitMarker). */
   hasSelection: boolean;
-  hasUserPosition: boolean;
+  /** The person's position is known and inside the filtered area. */
+  framesUserPosition: boolean;
   /** Changes when the person changes the filters (UF, text, simulated). */
   filterKey: string;
 }) {
@@ -663,12 +666,12 @@ function FitUnits({
   const positionFilterKey = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!hasUserPosition) positionFilterKey.current = null;
+    if (!framesUserPosition) positionFilterKey.current = null;
     else if (positionFilterKey.current === null) {
       positionFilterKey.current = filterKey;
     }
-    if (hasUserPosition && positionFilterKey.current === filterKey) return;
-    if (hasUserPosition) positionFilterKey.current = "";
+    if (framesUserPosition && positionFilterKey.current === filterKey) return;
+    if (framesUserPosition) positionFilterKey.current = "";
     const coordinates = units
       .filter(hasLocation)
       .map(
@@ -725,7 +728,7 @@ function FitUnits({
       observer.disconnect();
       map.off("moveend", remember);
     };
-  }, [map, overlayRef, units, hasSelection, hasUserPosition, filterKey]);
+  }, [map, overlayRef, units, hasSelection, framesUserPosition, filterKey]);
 
   return null;
 }
@@ -746,8 +749,11 @@ function UserLocation({
   overlayRef,
   locationPanelRef,
   hasSelection,
+  frame,
 }: {
   position: UserPosition;
+  /** False when the person is outside the filtered area: only drawn. */
+  frame: boolean;
   /** A selected unit keeps the view; the position is only drawn. */
   hasSelection: boolean;
   overlayRef?: RefObject<HTMLElement | null>;
@@ -759,7 +765,7 @@ function UserLocation({
   // the target; it does not take the view back.
   const following = useRef(!hasSelection);
   useEffect(() => {
-    if (!following.current) return;
+    if (!frame || !following.current) return;
     map.closePopup();
     const bounds = L.latLng(latitude, longitude).toBounds(
       Math.max(accuracy * 2, 100),
@@ -819,6 +825,7 @@ function UserLocation({
     accuracy,
     overlayRef,
     locationPanelRef,
+    frame,
   ]);
 
   return (
@@ -949,6 +956,7 @@ export function UnitsMap({
   userPosition,
   locationPanelRef,
   filterKey = "",
+  isPositionInArea = true,
   units,
   className = "",
   overlayRef,
@@ -1002,7 +1010,7 @@ export function UnitsMap({
         zoomOutTitle="Afastar o mapa"
       />
       <FitUnits
-        hasUserPosition={userPosition !== undefined}
+        framesUserPosition={userPosition !== undefined && isPositionInArea}
         filterKey={filterKey}
         units={unitsToFit}
         overlayRef={overlayRef}
@@ -1023,6 +1031,7 @@ export function UnitsMap({
           overlayRef={overlayRef}
           locationPanelRef={locationPanelRef}
           hasSelection={selectedUnitId !== undefined}
+          frame={isPositionInArea}
         />
       )}
     </MapContainer>

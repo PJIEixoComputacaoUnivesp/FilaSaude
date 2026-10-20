@@ -41,7 +41,8 @@ function isInsideMap({ latitude, longitude, accuracy }: UserPosition) {
 /**
  * Asks for the position as soon as the person enters the app, so the browser's
  * prompt is answered once instead of looking for a button. The map and the
- * list share the answer. A refusal is final: nothing asks again.
+ * list share the answer. After a refusal nothing asks again, unless the
+ * person allows it later in the browser settings.
  */
 export function UserLocationProvider({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
@@ -49,12 +50,12 @@ export function UserLocationProvider({ children }: { children: ReactNode }) {
   // getCurrentPosition cannot be cancelled. Ignore callbacks after removal,
   // navigation or a newer request.
   const requestId = useRef(0);
-  const pending = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const status = useRef(state.status);
+  status.current = state.status;
 
   function cancel() {
     requestId.current += 1;
-    pending.current = false;
     clearTimeout(timer.current);
   }
 
@@ -73,8 +74,33 @@ export function UserLocationProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => cancel, []);
 
+  // A permission granted later in the browser settings brings the position
+  // without a button or a reload. Not every browser reports the change.
+  useEffect(() => {
+    let permission: PermissionStatus | undefined;
+    let isMounted = true;
+    const onChange = () => {
+      if (permission?.state === "granted" && status.current === "denied") {
+        locate();
+      }
+    };
+    navigator.permissions
+      ?.query({ name: "geolocation" })
+      .then((result) => {
+        if (!isMounted) return;
+        permission = result;
+        permission.addEventListener("change", onChange);
+      })
+      .catch(() => {
+        // Without the Permissions API, a refusal stays until the next visit.
+      });
+    return () => {
+      isMounted = false;
+      permission?.removeEventListener("change", onChange);
+    };
+  }, []);
+
   function locate() {
-    if (pending.current) return;
     cancel();
     if (!window.isSecureContext) {
       setState({
@@ -94,7 +120,6 @@ export function UserLocationProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    pending.current = true;
     const currentRequest = requestId.current;
     let best: UserPosition | undefined;
     let preciseDone = false;
@@ -117,7 +142,6 @@ export function UserLocationProvider({ children }: { children: ReactNode }) {
       if (precise) preciseDone = true;
       if (best) {
         setState({ status: "success", position: best, refining: !preciseDone });
-        if (outstanding === 0) pending.current = false;
       } else if (outstanding === 0) {
         finish(lastError);
       }
@@ -144,7 +168,7 @@ export function UserLocationProvider({ children }: { children: ReactNode }) {
           if (!isCurrent()) return;
           // PERMISSION_DENIED: the person said no, so the map just goes on.
           if (code === 1) {
-            finish({ status: "idle" });
+            finish({ status: "denied" });
             return;
           }
           if (code === 3) {
@@ -160,12 +184,13 @@ export function UserLocationProvider({ children }: { children: ReactNode }) {
       );
 
     setState({ status: "loading" });
-    // Also bounds time waiting for a permission prompt left unanswered.
-    timer.current = setTimeout(
-      () =>
-        finish({ status: "error", message: timeoutMessage, canRetry: true }),
-      20_000,
-    );
+    // Also bounds time waiting for a permission prompt left unanswered. Only
+    // says so: a position that still arrives (a late "Permitir") replaces it.
+    timer.current = setTimeout(() => {
+      if (isCurrent() && !best) {
+        setState({ status: "error", message: timeoutMessage, canRetry: true });
+      }
+    }, 20_000);
 
     try {
       read(quickOptions, false);
@@ -182,7 +207,7 @@ export function UserLocationProvider({ children }: { children: ReactNode }) {
 
   function clear() {
     cancel();
-    setState({ status: "idle" });
+    setState({ status: "removed" });
   }
 
   const value = useMemo(() => ({ state, locate, clear }), [state]);

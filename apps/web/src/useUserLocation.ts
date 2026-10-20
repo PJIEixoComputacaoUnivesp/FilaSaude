@@ -7,7 +7,12 @@ export interface UserPosition {
 }
 
 export type LocationState =
+  /** Not asked yet. */
   | { status: "idle" }
+  /** The browser refused; asked again only if the permission changes. */
+  | { status: "denied" }
+  /** The person removed or dismissed it; not asked again in this visit. */
+  | { status: "removed" }
   | { status: "loading" }
   /** `refining` while the precise reading may still improve the position. */
   | { status: "success"; position: UserPosition; refining: boolean }
@@ -18,7 +23,7 @@ export interface UserLocationValue {
   state: LocationState;
   /** Asks again, after a failure that a new attempt may solve. */
   locate: () => void;
-  /** Forgets the position for the rest of the visit. */
+  /** Forgets the position (or a failure) for the rest of the visit. */
   clear: () => void;
 }
 
