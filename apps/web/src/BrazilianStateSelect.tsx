@@ -5,6 +5,9 @@ interface BrazilianStateSelectProps {
   onChange: (value: string) => void;
   compact?: boolean;
   allOptionLabel?: string;
+  nearbySelected?: boolean;
+  canSelectNearby?: boolean;
+  onSelectNearby?: () => void;
 }
 
 export function BrazilianStateSelect({
@@ -12,6 +15,9 @@ export function BrazilianStateSelect({
   onChange,
   compact = false,
   allOptionLabel,
+  nearbySelected = false,
+  canSelectNearby = false,
+  onSelectNearby,
 }: BrazilianStateSelectProps) {
   return (
     <label className="block">
@@ -21,12 +27,20 @@ export function BrazilianStateSelect({
         Estado
       </span>
       <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
+        value={nearbySelected ? "NEARBY" : value}
+        onChange={(event) => {
+          if (event.target.value === "NEARBY") onSelectNearby?.();
+          else onChange(event.target.value);
+        }}
         className={`min-h-11 w-full border border-slate-300 bg-white text-slate-900 focus-visible:border-fila-blue ${compact ? "rounded-lg px-2 py-2 sm:px-3" : "rounded-xl px-4 py-3"}`}
       >
         {allOptionLabel && (
           <option value={NationalStateCode.All}>{allOptionLabel}</option>
+        )}
+        {onSelectNearby && (
+          <option value="NEARBY" disabled={!canSelectNearby}>
+            Ao redor de você
+          </option>
         )}
         {brazilianStates.map((state) => (
           <option key={state.abbreviation} value={state.abbreviation}>

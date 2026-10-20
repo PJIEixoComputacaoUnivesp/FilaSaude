@@ -3,9 +3,13 @@ import { createContext, useContext } from "react";
 export interface SearchFiltersValue {
   stateCode: string;
   query: string;
+  nearbyEnabled: boolean;
+  nearbyRadiusKm: number | null;
   /** `?uf=SP&q=osasco` or an empty string, ready for a link's `search`. */
   search: string;
   setStateCode: (value: string) => void;
+  setNearbyEnabled: (value: boolean) => void;
+  setNearbyRadiusKm: (value: number) => void;
   setQuery: (value: string) => void;
   /** Writes a pending query to the URL now, for example on blur. */
   flush: () => void;

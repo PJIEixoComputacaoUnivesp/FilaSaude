@@ -60,6 +60,28 @@ export function AboutPage() {
         </p>
       </section>
 
+      <section className="flex flex-col gap-3" aria-labelledby="sobre-localizacao">
+        <h2 id="sobre-localizacao" className="text-xl font-bold text-slate-900">
+          Sua localização no mapa
+        </h2>
+        <p className="text-base leading-relaxed text-slate-700">
+          Ao entrar no FilaSaúde, o navegador pede sua permissão para obter uma
+          posição aproximada por GPS ou outras fontes do dispositivo. Se você
+          recusar, o mapa continua mostrando o Brasil; se depois permitir nas
+          configurações do navegador, sua posição aparece sem recarregar a
+          página. Primeiro aparece uma posição rápida, que é ajustada quando
+          chega uma leitura mais precisa. Um ponto com anel indica sua posição
+          e o círculo mostra a precisão informada pelo navegador. A posição
+          fica apenas na memória desta aba, pode ser removida e não é enviada à
+          API do FilaSaúde nem incluída na URL.
+        </p>
+        <p className="text-base leading-relaxed text-slate-700">
+          O mapa carrega imagens do OpenStreetMap conforme a área visualizada.
+          A localização exige conexão segura e pode falhar ou ser imprecisa.
+          Você pode continuar consultando por cidade ou unidade.
+        </p>
+      </section>
+
       <section className="flex flex-col gap-3" aria-labelledby="sobre-limites">
         <h2 id="sobre-limites" className="text-xl font-bold text-slate-900">
           O que o FilaSaúde não faz
