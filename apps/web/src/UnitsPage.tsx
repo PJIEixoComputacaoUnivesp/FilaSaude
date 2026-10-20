@@ -288,6 +288,9 @@ export function UnitsPage() {
   // it is being read. Removing the position goes back to the default order.
   const [sortOrigin, setSortOrigin] = useState<Coordinate | null>(null);
   const currentOrigin = distanceOrigin(location.state);
+  if (!currentOrigin && sortOrigin) {
+    setSortOrigin(null);
+  }
   useEffect(() => {
     if (nearbyEnabled && !currentOrigin) setNearbyEnabled(false);
   }, [nearbyEnabled, currentOrigin, setNearbyEnabled]);

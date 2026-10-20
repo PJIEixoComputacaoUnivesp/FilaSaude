@@ -155,6 +155,60 @@ test("ordena por distância da posição real só quando a pessoa escolhe", asyn
   ]);
 });
 
+test("descarta a ordenação antiga quando perde a posição sem sair da lista", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const state = window as unknown as {
+      rejectLocation: () => void;
+      restoreLocation: () => void;
+    };
+    const permission = Object.assign(new EventTarget(), { state: "granted" });
+    let requests = 0;
+    let latitude = -23.5505;
+    let longitude = -46.6333;
+    Object.defineProperty(navigator, "permissions", {
+      value: { query: async () => permission },
+    });
+    Object.defineProperty(navigator, "geolocation", {
+      value: {
+        getCurrentPosition(success: PositionCallback, error: PositionErrorCallback) {
+          requests += 1;
+          // The quick reading succeeds; the pending precise reading may
+          // still report that permission was revoked in browser settings.
+          if (requests === 2) {
+            state.rejectLocation = () => {
+              permission.state = "denied";
+              error({ code: 1 } as GeolocationPositionError);
+            };
+            return;
+          }
+          success({ coords: { latitude, longitude, accuracy: 50 } } as GeolocationPosition);
+        },
+      },
+    });
+    state.restoreLocation = () => {
+      latitude = -23.65;
+      longitude = -46.75;
+      permission.state = "granted";
+      permission.dispatchEvent(new Event("change"));
+    };
+  });
+  await page.goto("/units");
+  const sort = page.getByRole("combobox", { name: "Ordenar por" });
+  await sort.selectOption("distance");
+  await expect(page.getByRole("article").first()).toContainText("Pronto Atendimento Central");
+
+  await page.evaluate("window.rejectLocation()");
+  await expect(sort).toHaveCount(0);
+  await page.evaluate("window.restoreLocation()");
+  await expect(sort).toHaveValue("default");
+  await expect(page.getByRole("article").first()).toContainText("UPA em outra UF");
+  await expect(
+    page.getByRole("article").filter({ hasText: "AMA Distante" }),
+  ).toContainText("menos de 0,5 km em linha reta");
+});
+
 test("sem permissão, explica como liberar e não oferece a distância", async ({
   page,
 }) => {
