@@ -157,14 +157,28 @@
 - Map overlays stay compact on narrow screens, and map fitting must keep points
   out from under them. In DOM order the search panel comes before the map, so
   keyboard users reach it first.
+- O popup de uma unidade fica livre do painel de busca, do cabeçalho, dos botões
+  de zoom, da atribuição e do painel “Sua localização”: o painel do popup fica
+  abaixo dos controles do Leaflet, então o espaço é descontado na geometria, e
+  o popup é reposicionado quando o conteúdo cresce depois de abrir. “Ver
+  detalhes” vem logo abaixo do nome; o restante rola dentro do popup em telas
+  baixas. Fora de `map-wide`, o painel “Sua localização” fica invisível
+  enquanto há um popup aberto e volta ao fechá-lo.
+- O painel “Sua localização” mantém “Atualizar” e “Remover” juntos na mesma
+  linha. Remover a posição é anunciado, inclusive quando desativa “Ao redor de
+  você”; quando a opção está indisponível, o campo Estado diz o motivo.
 - No celular, UF, contagem, filtro de unidades simuladas, procedência e legenda
   ficam em uma janela modal aberta por “Filtros”. O atalho “Legenda” junto do
-  interruptor abre a explicação expandida. “Voltar ao mapa” permanece visível
-  durante a rolagem; Escape fecha a janela e o foco retorna ao acionador.
+  interruptor abre a explicação expandida. A folha tem altura fixa, então
+  “Voltar ao mapa” não muda de lugar quando o conteúdo muda, e permanece
+  visível durante a rolagem; Escape ou um toque no fundo fecha a janela e o
+  foco retorna ao acionador. O selo do botão “Filtros” fica abaixo da palavra,
+  para não estreitar a busca.
   Preservar a área segura inferior do dispositivo e alvos de toque de 44 px.
 - Text fields are 16px or larger, and placeholders are `slate-500` or darker.
-- Na lista mobile, os controles secundários da simulação ficam em “Filtros e
-  legenda”, recolhidos por padrão. O interruptor e o aviso de dados fictícios
+- Na lista, fora de `map-wide` (celular em retrato ou paisagem), os controles
+  secundários da simulação ficam em “Filtros e legenda”, recolhidos por padrão.
+  Em “Ao redor de você”, Estado e Distância ficam lado a lado. O interruptor e o aviso de dados fictícios
   ficam visíveis; o acionador indica quando há filtro ativo.
 - No detalhe, os leitos por categoria usam blocos com rótulos e valores abaixo
   de `sm`; a tabela completa permanece em telas maiores. Ocupados, capacidade
