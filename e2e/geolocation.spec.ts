@@ -97,6 +97,7 @@ for (const viewport of [
         const centerX = point.x + point.width / 2;
         const centerY = point.y + point.height / 2;
         return (
+        centerY > 12 && centerY < viewport.height - 12 &&
           centerX > map.x &&
           centerX < map.x + map.width &&
           centerY > map.y &&

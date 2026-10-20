@@ -745,13 +745,21 @@ function UserLocation({
     const fit = () => {
       const mapBox = map.getContainer().getBoundingClientRect();
       const locationBox = locationPanelRef?.current?.getBoundingClientRect();
+      const padding = overlayPadding(map, overlayRef?.current);
+      const { x: left, y: top } = L.point(
+        padding.paddingTopLeft ?? padding.padding ?? [fitPadding, fitPadding],
+      );
       map.fitBounds(bounds, {
-        ...overlayPadding(map, overlayRef?.current),
+        ...padding,
+        // Short landscape screens can scroll because the map has a minimum
+        // height. Keep the position inside the visible part of that map too.
+        paddingTopLeft: [left, Math.max(top, fitPadding - mapBox.top)],
         paddingBottomRight: [
           fitPadding,
-          locationBox
-            ? mapBox.bottom - locationBox.top + fitPadding
-            : fitPadding,
+          Math.max(
+            locationBox ? mapBox.bottom - locationBox.top + fitPadding : fitPadding,
+            mapBox.bottom - window.innerHeight + fitPadding,
+          ),
         ],
         maxZoom: 16,
         animate: false,
