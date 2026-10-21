@@ -21,6 +21,7 @@ import {
   useMapEvents,
   ZoomControl,
 } from "react-leaflet";
+import { DirectionsLink } from "./DirectionsLink";
 import { MapFocusRing } from "./MapFocusRing";
 import type { UserPosition } from "./useUserLocation";
 import { useUnitDistance } from "./useUnitDistance";
@@ -468,13 +469,16 @@ function UnitMarker({
             {unit.name}
           </strong>
           {/* Right under the name: on a short screen the rest scrolls. */}
-          <Link
-            to={unitDetailLink(unit.id, linkSearch)}
-            className="inline-flex min-h-11 items-center font-semibold text-fila-blue underline underline-offset-2"
-          >
-            Ver detalhes
-            <span className="sr-only">: {unit.name}</span>
-          </Link>
+          <div className="flex flex-wrap gap-x-4">
+            <Link
+              to={unitDetailLink(unit.id, linkSearch)}
+              className="inline-flex min-h-11 items-center font-semibold text-fila-blue underline underline-offset-2"
+            >
+              Ver detalhes
+              <span className="sr-only">: {unit.name}</span>
+            </Link>
+            <DirectionsLink unit={unit} />
+          </div>
           {/* Leaflet's own paragraph margin would leave a gap under the link. */}
           <p className="mt-0! mb-2 text-sm text-slate-600">
             {formatAddress(unit.address)}

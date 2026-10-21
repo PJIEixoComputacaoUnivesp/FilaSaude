@@ -170,11 +170,16 @@ export async function fetchUnits(
   return parseUnitsResponse(await response.json());
 }
 
-export function formatAddress(address: UnitAddress): string {
+/** Street and number, district, and "city - UF", leaving out what is missing. */
+export function addressParts(address: UnitAddress): string[] {
   const street = [address.street, address.number].filter(Boolean).join(", ");
-  return [street, address.district, `${address.city} - ${address.state}`]
-    .filter(Boolean)
-    .join(" · ");
+  return [street, address.district, `${address.city} - ${address.state}`].filter(
+    (part): part is string => Boolean(part),
+  );
+}
+
+export function formatAddress(address: UnitAddress): string {
+  return addressParts(address).join(" · ");
 }
 
 /** Lowercases and strips accents so "sao paulo" finds "São Paulo". */

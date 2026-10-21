@@ -29,6 +29,14 @@
 - No detalhe, “Voltar à lista” e “Ver no mapa” ficam junto ao título, antes
   dos dados e do histórico. Tipo e código CNES aparecem uma vez no cabeçalho
   do registro.
+- “Como chegar” aparece igual em toda unidade, no detalhe e no popup ao lado de
+  “Ver detalhes”, nunca como sugestão de qual unidade procurar. No Android abre
+  um link `intent:` com esquema `geo`, que o sistema entrega ao app de mapas
+  escolhido, e cai no Google Maps na web quando não há app; nos demais
+  (iPhone e computador), o Google Maps em nova aba, que no iPhone abre o app
+  se estiver instalado. O link não leva origem: a rota parte da posição
+  que o app obtém. Posições aproximadas (centro do município) buscam por nome
+  e endereço, para a rota não terminar no centro da cidade.
 - Every unit has a stable detail route at `/units/:cnes`. Cards link to that
   detail and to a selected marker on the map. The marker popup links back to
   the same card, preserving the live UF and text filters; a target beyond the

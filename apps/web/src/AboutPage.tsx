@@ -77,6 +77,9 @@ export function AboutPage() {
         </p>
         <p className="text-base leading-relaxed text-slate-700">
           O mapa carrega imagens do OpenStreetMap conforme a área visualizada.
+          “Como chegar” abre o aplicativo de mapas do celular (no Android) ou o
+          Google Maps com o destino da unidade; a rota parte da posição que o
+          próprio aplicativo obtém, e a sua posição no FilaSaúde não é enviada.
           A localização exige conexão segura e pode falhar ou ser imprecisa.
           Você pode continuar consultando por cidade ou unidade.
         </p>

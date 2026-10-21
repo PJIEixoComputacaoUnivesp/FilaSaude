@@ -1,4 +1,5 @@
 import { Link, useParams } from "react-router-dom";
+import { DirectionsLink } from "./DirectionsLink";
 import { NationalStateCode } from "./brazilianStates";
 import { distanceOrigin, distanceToUnit, formatUnitDistance } from "./geo";
 import { LiveStatus } from "./LiveStatus";
@@ -64,7 +65,7 @@ export function UnitDetailPage() {
       {state.status === "success" && unit && (
         <nav
           aria-label="Navegação da unidade"
-          className="mt-4 flex flex-wrap gap-x-5 gap-y-2"
+          className="mt-4 flex flex-wrap gap-x-5"
         >
           <Link
             to={unitListLink(unit.id, search)}
@@ -81,6 +82,7 @@ export function UnitDetailPage() {
               <span className="sr-only">: {unit.name}</span>
             </Link>
           )}
+          <DirectionsLink unit={unit} />
         </nav>
       )}
 
