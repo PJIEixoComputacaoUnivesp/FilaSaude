@@ -75,6 +75,42 @@ describe('Occupancy webhook (e2e)', () => {
     expect(repository.insert).toHaveBeenCalledTimes(1);
   });
 
+  it('accepts a v2 snapshot with the attendance flow', async () => {
+    const rawBody = JSON.stringify({
+      eventId: '01K5T2S6C4TZ1K9TR6F89A2M7Y',
+      type: 'occupancy.snapshot.v2',
+      unitCnes: '1234567',
+      occurredAt: '2026-09-25T14:30:00-03:00',
+      observedAt: '2026-09-25T14:30:05-03:00',
+      categories: [{ code: 'observation', capacity: 20, occupied: 13 }],
+      attendance: {
+        waiting: 7,
+        inService: 4,
+        serviceSlots: 4,
+        completed: {
+          count: 86,
+          periodStart: '2026-09-25T00:00:00-03:00',
+          periodEnd: '2026-09-26T00:00:00-03:00',
+        },
+      },
+    });
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const signature = createHmac('sha256', secret)
+      .update(`${timestamp}.${rawBody}`)
+      .digest('hex');
+
+    await request(app.getHttpServer())
+      .post('/webhooks/v1/occupancy')
+      .set('Content-Type', 'application/json')
+      .set('X-Webhook-Source', 'occupancy-feed')
+      .set('X-Webhook-Timestamp', timestamp)
+      .set('X-Webhook-Signature', `sha256=${signature}`)
+      .send(rawBody)
+      .expect(202);
+
+    expect(repository.insert).toHaveBeenCalled();
+  });
+
   it('rejects an invalid signature without exposing details', async () => {
     const rawBody = JSON.stringify({
       eventId: '01K5T2S6C4TZ1K9TR6F89A2M7X',

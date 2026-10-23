@@ -100,6 +100,23 @@ Fontes: [processador](../apps/api/src/occupancy/occupancy-processor.service.ts),
   verifica expiração a cada 15 s, ajustando seu relógio pelo `generatedAt` da
   resposta; isso não é polling nem sincronização completa de relógios.
 
+## Espera, atendimento e síntese da cor
+
+- `attendance` vem do snapshot v2. Campo ausente é “não informado”; um snapshot
+  mais recente sem `attendance` grava `NULL` na projeção, nunca zero.
+- Espera por posto = `waiting / serviceSlots`. Faixa baixa abaixo de 1; moderada
+  de 1 até menos de 3; alta a partir de 3. Sem `waiting` ou sem `serviceSlots`,
+  o indicador de espera fica `null`.
+- `level` é a faixa mais alta entre `indicators.beds` e `indicators.waiting`.
+  `levelDrivers` lista os indicadores com essa faixa (os dois, em empate).
+  `percentage` continua sendo o percentual de leitos.
+- Confirmação vencida retira todas as faixas, inclusive a de espera.
+- `completed.count` não participa da cor. A projeção guarda o total do snapshot
+  mais recente; reenvios não somam e um evento atrasado não substitui o total.
+- Cores: verde (baixa), amarelo (moderada), vermelho (alta), com anel escuro;
+  sempre acompanhadas do texto da faixa e do indicador que a definiu
+  ([ADR 0007](adr/0007-attendance-flow-and-color-synthesis.md)).
+
 Fontes: [resumo](../apps/api/src/occupancy/occupancy-status.ts),
 [histórico da API](../apps/api/src/occupancy/occupancy.service.ts),
 [gráfico/tabela](../apps/web/src/occupancyHistory.ts),

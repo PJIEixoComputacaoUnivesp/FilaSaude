@@ -1,4 +1,8 @@
-import { OCCUPANCY_EXPLANATION, SIMULATION_NOTICE } from "./occupancy";
+import {
+  COLOR_NOTICE,
+  OCCUPANCY_EXPLANATION,
+  SIMULATION_NOTICE,
+} from "./occupancy";
 import { Link } from "react-router-dom";
 import { usePageHeading } from "./usePageHeading";
 import { useSearchFilters } from "./useSearchFilters";
@@ -43,20 +47,24 @@ export function AboutPage() {
 
       <section className="flex flex-col gap-3" aria-labelledby="sobre-leitos">
         <h2 id="sobre-leitos" className="text-xl font-bold text-slate-900">
-          O que significa a ocupação simulada de leitos
+          O que significa a ocupação simulada
         </h2>
         <p className="text-base leading-relaxed text-slate-700">
           Quando disponível, essa camada apresenta uma demonstração acadêmica.
-          As capacidades e quantidades ocupadas são geradas pelo simulador; não
-          vêm do cadastro de leitos de cada unidade. {SIMULATION_NOTICE}
+          Leitos, pessoas esperando, pessoas em atendimento e atendimentos
+          concluídos são gerados pelo simulador; não vêm do cadastro de cada
+          unidade. {SIMULATION_NOTICE}
         </p>
         <p className="text-base leading-relaxed text-slate-700">
-          {OCCUPANCY_EXPLANATION} O detalhe mostra os valores por categoria. As
-          faixas de cor são convenções da simulação.
+          {OCCUPANCY_EXPLANATION} {COLOR_NOTICE} O detalhe mostra cada valor
+          separado e diz qual indicador definiu a cor. As faixas são
+          convenções da simulação.
         </p>
         <p className="text-base leading-relaxed text-slate-700">
-          Esta entrega não informa pessoas em espera, pessoas em atendimento ou
-          atendimentos concluídos.
+          Esperando e em atendimento são pessoas no momento do último envio.
+          Atendimentos concluídos são o total do dia, em horário de Brasília, e
+          contam atendimentos, não pessoas diferentes. Nada disso estima tempo
+          de espera.
         </p>
       </section>
 

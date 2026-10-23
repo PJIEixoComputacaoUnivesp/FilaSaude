@@ -6,6 +6,14 @@ export interface OccupancyCategoryValue {
   occupied: number;
 }
 
+/** Attendance flow as sent in occupancy.snapshot.v2; absent means not informed. */
+export interface OccupancyAttendanceValue {
+  waiting?: number;
+  inService?: number;
+  serviceSlots?: number;
+  completed?: { count: number; periodStart: string; periodEnd: string };
+}
+
 @Entity({ name: 'occupancy_current' })
 export class OccupancyCurrentEntity {
   @PrimaryColumn({ name: 'unit_cnes', type: 'varchar', length: 7 })
@@ -19,6 +27,9 @@ export class OccupancyCurrentEntity {
 
   @Column({ type: 'jsonb' })
   categories!: OccupancyCategoryValue[];
+
+  @Column({ type: 'jsonb', nullable: true })
+  attendance!: OccupancyAttendanceValue | null;
 
   @Column({ name: 'occurred_at', type: 'timestamptz' })
   occurredAt!: Date;

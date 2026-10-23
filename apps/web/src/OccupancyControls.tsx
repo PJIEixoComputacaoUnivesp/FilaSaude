@@ -4,6 +4,7 @@ import { OccupancySwatch } from "./OccupancySwatch";
 import { SimulationPill } from "./SimulationPill";
 import {
   formatTime,
+  COLOR_NOTICE,
   OCCUPANCY_STATUSES,
   OCCUPANCY_EXPLANATION,
   SIMULATION_NOTICE,
@@ -14,7 +15,7 @@ import { formatCount } from "./units";
 import { useOccupancyLayer } from "./useOccupancyLayer";
 
 /**
- * Switch, filter, legend and simulation notice of the "Ocupação simulada de leitos"
+ * Switch, filter, legend and simulation notice of the "Ocupação simulada"
  * layer. Renders nothing when the server has the demonstration turned off.
  * The compact variant sits inside the map panel; the list uses a card.
  */
@@ -47,8 +48,8 @@ export function OccupancyControls({
   const unitCount = response?.data.length ?? 0;
   const simulatedText = `${formatCount(
     unitCount,
-    "unidade com ocupação simulada de leitos",
-    "unidades com ocupação simulada de leitos",
+    "unidade com ocupação simulada",
+    "unidades com ocupação simulada",
   )} no Brasil`;
   const announcement =
     announceCount && layer.isEnabled && response ? `${simulatedText}.` : "";
@@ -85,14 +86,14 @@ export function OccupancyControls({
           <span
             className={`text-sm font-semibold text-slate-900 ${compact ? "sr-only map-wide:not-sr-only" : ""}`}
           >
-            Ocupação simulada de leitos
+            Ocupação simulada
           </span>
           {compact && (
             <span
               aria-hidden="true"
               className="text-sm font-semibold text-slate-900 map-wide:hidden"
             >
-              Leitos simulados
+              Simulação
             </span>
           )}
         </label>
@@ -121,7 +122,7 @@ export function OccupancyControls({
           aria-hidden={collapsible ? true : undefined}
           className="text-xs leading-relaxed text-slate-700 map-wide:hidden"
         >
-          Leitos fictícios. Não representam filas.
+          Leitos e filas fictícios.
         </p>
       )}
       <LiveStatus message={announcement} delay={0} />
@@ -153,7 +154,7 @@ export function OccupancyControls({
               onChange={(event) => layer.setOnlySimulated(event.target.checked)}
               className="h-5 w-5 shrink-0 accent-occupancy-control"
             />
-            Mostrar só unidades com ocupação simulada de leitos
+            Mostrar só unidades com ocupação simulada
           </label>
           <details
             ref={legendRef}
@@ -161,7 +162,7 @@ export function OccupancyControls({
             className="group scroll-mt-20 text-xs text-slate-700"
           >
             <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 text-sm font-semibold text-fila-blue underline underline-offset-2 [&::-webkit-details-marker]:hidden">
-              Legenda da ocupação de leitos
+              Legenda da situação simulada
               <svg
                 aria-hidden="true"
                 focusable="false"
@@ -199,8 +200,8 @@ export function OccupancyControls({
               )}
             </ul>
             <p className="mt-2 leading-relaxed">
-              {OCCUPANCY_EXPLANATION} As faixas são convenções da demonstração e
-              não indicam qual unidade procurar.
+              {OCCUPANCY_EXPLANATION} {COLOR_NOTICE} As faixas são convenções
+              da demonstração e não indicam qual unidade procurar.
               {response &&
                 ` Sem envio por mais de ${response.metadata.staleAfterMinutes} minutos, a faixa deixa de ser mostrada. Dados atualizados às ${formatTime(response.metadata.generatedAt)}.`}
             </p>

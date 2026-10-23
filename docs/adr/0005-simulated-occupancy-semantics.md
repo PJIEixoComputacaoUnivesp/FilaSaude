@@ -1,6 +1,7 @@
 # ADR 0005: Semântica da demonstração de ocupação de leitos
 
 - Status: aceita (registro da implementação existente)
+- Complementada por: [ADR 0007](0007-attendance-flow-and-color-synthesis.md)
 - Data do registro: 2026-10-17
 - Origem: [proposta 0001](../proposals/0001-operational-occupancy-simulation.md)
 

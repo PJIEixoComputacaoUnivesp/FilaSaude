@@ -13,13 +13,30 @@ export interface OccupancyCategory {
   occupied: number;
 }
 
+/** Indicators that can set the level of a unit. */
+export type OccupancyIndicator = "beds" | "waiting";
+
+/** Absent fields are "not informed", never zero. */
+export interface UnitAttendance {
+  waiting?: number;
+  inService?: number;
+  serviceSlots?: number;
+  completed?: { count: number; periodStart: string; periodEnd: string };
+}
+
 export interface UnitOccupancy {
   unitCnes: string;
   /** Present in current API responses; optional for older snapshots. */
   eventId?: string;
+  /** Bed occupancy, sum of occupied over sum of capacity. */
   percentage: number | null;
+  /** Highest level among the informed indicators. */
   level: OccupancyLevel | null;
   confirmation: "recent" | "stale";
+  /** Optional: an API without the attendance flow does not send them. */
+  indicators?: Partial<Record<OccupancyIndicator, OccupancyLevel | null>>;
+  levelDrivers?: OccupancyIndicator[];
+  attendance?: UnitAttendance | null;
   categories: OccupancyCategory[];
   occurredAt: string;
   observedAt: string;
@@ -41,6 +58,8 @@ export interface OccupancyResponse {
 export interface OccupancyHistoryPoint {
   percentage: number | null;
   level: OccupancyLevel | null;
+  levelDrivers?: OccupancyIndicator[];
+  attendance?: UnitAttendance | null;
   categories: OccupancyCategory[];
   occurredAt: string;
   observedAt: string;
@@ -71,18 +90,26 @@ export const OCCUPANCY_STATUSES: readonly OccupancyStatus[] = [
 ];
 
 export const STATUS_LABELS: Record<OccupancyStatus, string> = {
-  low: "Ocupação baixa",
-  moderate: "Ocupação moderada",
-  high: "Ocupação alta",
-  unknown: "Ocupação não informada",
+  low: "Situação baixa",
+  moderate: "Situação moderada",
+  high: "Situação alta",
+  unknown: "Situação não informada",
   stale: "Sem confirmação recente",
 };
 
-/** Short legend texts for the thresholds the API uses (60% and 85%). */
+/**
+ * Short legend texts for the thresholds the API uses: beds at 60% and 85%,
+ * and 1 and 3 people waiting per active service slot. The worst one wins.
+ */
 export const STATUS_RANGES: Partial<Record<OccupancyStatus, string>> = {
-  low: "abaixo de 60%",
-  moderate: "de 60% a 84%",
-  high: "85% ou mais",
+  low: "leitos abaixo de 60% e menos de 1 pessoa esperando por posto",
+  moderate: "leitos de 60% a 84% ou de 1 a menos de 3 esperando por posto",
+  high: "leitos a partir de 85% ou 3 ou mais esperando por posto",
+};
+
+export const INDICATOR_LABELS: Record<OccupancyIndicator, string> = {
+  beds: "leitos",
+  waiting: "espera",
 };
 
 export const CATEGORY_LABELS: Record<OccupancyCategoryCode, string> = {
@@ -92,21 +119,25 @@ export const CATEGORY_LABELS: Record<OccupancyCategoryCode, string> = {
 };
 
 /**
- * One violet scale, light to dark, with the same dark ring (9:1 or more on
- * any map tile), plus gray. It never reuses the colors of clinical risk
- * classification (red, orange, yellow, green and blue), so a level cannot
- * read as a triage priority. "Not informed" is a solid gray disc, so it does
- * not look like the hollow ring of an approximate position; "stale" is a
- * dashed hollow ring. Canvas markers do not resolve CSS variables, so the
- * values live here and in index.css.
+ * Green, yellow and red, as a traffic light, with the same dark ring (12:1 or
+ * more on any map tile), plus gray. The red is dark, so it also differs from
+ * the green in lightness (about 2.7:1) for people who do not tell red from
+ * green apart. These are also the colors of clinical
+ * risk classification, so the level is never shown by color alone: the popup,
+ * the list and the legend always say "situação simulada" and which indicator
+ * set it, and the legend says it is not a risk classification (ADR 0007).
+ * "Not informed" is a solid gray disc, so it does not look like the hollow
+ * ring of an approximate position; "stale" is a dashed hollow ring. Canvas
+ * markers do not resolve CSS variables, so the values live here and in
+ * index.css.
  */
 export const STATUS_COLORS: Record<
   OccupancyStatus,
   { fill: string; stroke: string; hollow: boolean }
 > = {
-  low: { fill: "#ddd6fe", stroke: "#2e1065", hollow: false },
-  moderate: { fill: "#8b5cf6", stroke: "#2e1065", hollow: false },
-  high: { fill: "#4c1d95", stroke: "#2e1065", hollow: false },
+  low: { fill: "#16a34a", stroke: "#0f172a", hollow: false },
+  moderate: { fill: "#facc15", stroke: "#0f172a", hollow: false },
+  high: { fill: "#991b1b", stroke: "#0f172a", hollow: false },
   unknown: { fill: "#94a3b8", stroke: "#334155", hollow: false },
   stale: { fill: "#ffffff", stroke: "#475569", hollow: true },
 };
@@ -116,22 +147,72 @@ export const NEUTRAL_MARKER = { fill: "#1266cc", stroke: "#ffffff" };
 
 /** One name for the synthetic data in every screen. */
 export const SIMULATION_NOTICE =
-  "Dados fictícios de ocupação de leitos. Não representam fila, tempo de espera nem capacidade de atendimento da unidade.";
+  "Dados fictícios de leitos, pessoas em espera e atendimentos. Não representam a situação real da unidade, não estimam tempo de espera e não indicam qual unidade procurar.";
 
-/** The current color summarizes simulated beds, not patient flow. */
+/** How the color is chosen; completed attendances never take part. */
 export const OCCUPANCY_EXPLANATION =
-  "A cor e o percentual representam o total de leitos ocupados dividido pelo total de leitos simulados das categorias informadas: observação, estabilização e internação.";
+  "A cor é a faixa mais alta entre dois indicadores: leitos (total ocupado dividido pelo total simulado de observação, estabilização e internação) e espera (pessoas esperando por posto de atendimento ativo). Atendimentos concluídos não mudam a cor. Não é classificação de risco.";
+
+/** Legend note: the colors are the same as those of clinical triage. */
+export const COLOR_NOTICE =
+  "Verde, amarelo e vermelho indicam só a situação simulada da unidade, não a gravidade de uma pessoa nem a ordem de atendimento.";
 
 export function occupancyStatus(occupancy: UnitOccupancy): OccupancyStatus {
   if (occupancy.confirmation === "stale") return "stale";
   return occupancy.level ?? "unknown";
 }
 
-/** Visible and spoken summary, e.g. "Ocupação alta (90%)". */
+/** People waiting per active slot, or `null` without both values. */
+export function waitingPerSlot(
+  attendance: UnitAttendance | null | undefined,
+): number | null {
+  if (attendance?.waiting === undefined || !attendance.serviceSlots)
+    return null;
+  return attendance.waiting / attendance.serviceSlots;
+}
+
+const decimalFormat = new Intl.NumberFormat("pt-BR", {
+  maximumFractionDigits: 1,
+});
+
+export function formatDecimal(value: number): string {
+  return decimalFormat.format(value);
+}
+
+/** Values of the indicators that set the level, e.g. "leitos 90%". */
+function driverDetail(
+  occupancy: UnitOccupancy,
+  indicator: OccupancyIndicator,
+): string {
+  if (indicator === "beds") return `leitos ${occupancy.percentage}%`;
+  const ratio = waitingPerSlot(occupancy.attendance);
+  return `espera ${ratio === null ? "não informada" : `${formatDecimal(ratio)} por posto`}`;
+}
+
+/** Indicators that set the color; older responses only know the beds. */
+export function levelDrivers(occupancy: UnitOccupancy): OccupancyIndicator[] {
+  return occupancy.levelDrivers ?? (occupancy.level ? ["beds"] : []);
+}
+
+/**
+ * Visible and spoken summary with the indicator that set the color, e.g.
+ * "Situação alta, por espera 3,5 por posto".
+ */
 export function describeOccupancy(occupancy: UnitOccupancy): string {
   const status = occupancyStatus(occupancy);
   if (status === "stale" || status === "unknown") return STATUS_LABELS[status];
-  return `${STATUS_LABELS[status]} (${occupancy.percentage}%)`;
+  const drivers = levelDrivers(occupancy);
+  if (drivers.length === 0) return STATUS_LABELS[status];
+  return `${STATUS_LABELS[status]}, por ${drivers
+    .map((indicator) => driverDetail(occupancy, indicator))
+    .join(" e ")}`;
+}
+
+/** Explicit period of the completed attendances, in Brasília time. */
+export function describeCompletedPeriod(
+  completed: NonNullable<UnitAttendance["completed"]>,
+): string {
+  return `de ${formatDateTime(completed.periodStart)} a ${formatDateTime(completed.periodEnd)} (horário de Brasília, fim não incluído)`;
 }
 
 const timeFormat = new Intl.DateTimeFormat("pt-BR", {
@@ -172,6 +253,31 @@ function isCategory(value: unknown): value is OccupancyCategory {
   );
 }
 
+function isCount(value: unknown): boolean {
+  return value === undefined || (Number.isInteger(value) && Number(value) >= 0);
+}
+
+function isDateTime(value: unknown): boolean {
+  return typeof value === "string" && !Number.isNaN(Date.parse(value));
+}
+
+function isAttendance(value: unknown): boolean {
+  if (value === undefined || value === null) return true;
+  if (!isRecord(value)) return false;
+  const { completed } = value;
+  return (
+    isCount(value.waiting) &&
+    isCount(value.inService) &&
+    isCount(value.serviceSlots) &&
+    (completed === undefined ||
+      (isRecord(completed) &&
+        isCount(completed.count) &&
+        completed.count !== undefined &&
+        isDateTime(completed.periodStart) &&
+        isDateTime(completed.periodEnd)))
+  );
+}
+
 function isLevel(value: unknown): value is OccupancyLevel | null {
   return (
     value === null ||
@@ -188,6 +294,7 @@ function isSnapshot(value: unknown): boolean {
     isLevel(value.level) &&
     Array.isArray(value.categories) &&
     value.categories.every(isCategory) &&
+    isAttendance(value.attendance) &&
     typeof value.occurredAt === "string" &&
     typeof value.observedAt === "string"
   );

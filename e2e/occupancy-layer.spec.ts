@@ -169,7 +169,7 @@ test("sem a demonstração na API, a camada não aparece", async ({ page }) => {
 
   await expect(page.getByText("3 unidades encontradas")).toBeVisible();
   await expect(
-    page.getByRole("switch", { name: "Ocupação simulada de leitos" }),
+    page.getByRole("switch", { name: "Ocupação simulada" }),
   ).toHaveCount(0);
 });
 
@@ -259,9 +259,9 @@ test("mantém o popup do norte visível ao abrir e ligar a ocupação", async ({
   // The map stays put instead of trying to pan the popup into view.
   expect(await panePosition()).toBe(before);
   const panel = page.getByRole("region", { name: "Controles do mapa" });
-  await panel.getByText("Ocupação simulada de leitos", { exact: true }).click();
+  await panel.getByText("Ocupação simulada", { exact: true }).click();
   await expect(
-    popup.getByText("Ocupação alta (90%)", { exact: true }),
+    popup.getByText("Situação alta, por leitos 90%", { exact: true }),
   ).toBeVisible();
   await expect
     .poll(async () => {
@@ -342,12 +342,12 @@ for (const viewport of [
     await page.goto("/?uf=SP&unidade=1234567");
     const panel = page.getByRole("region", { name: "Controles do mapa" });
     const toggle = panel.getByRole("switch", {
-      name: "Ocupação simulada de leitos",
+      name: "Ocupação simulada",
     });
-    await panel.getByText("Leitos simulados", { exact: true }).click();
+    await panel.getByText("Simulação", { exact: true }).click();
     await expect(toggle).toBeChecked();
     await expect(
-      panel.getByText("Leitos fictícios. Não representam filas."),
+      panel.getByText("Leitos e filas fictícios."),
     ).toBeVisible();
     const open = panel.getByRole("button", {
       name: /^Filtros e legenda/,
@@ -446,7 +446,7 @@ test("a página do mapa não rola em celular com a barra do navegador ou deitado
 
     const toggle = page
       .getByRole("region", { name: "Controles do mapa" })
-      .getByRole("switch", { name: "Ocupação simulada de leitos" });
+      .getByRole("switch", { name: "Ocupação simulada" });
     for (const checked of [false, true]) {
       // The layer choice lasts for the session, across the viewports.
       if (checked !== (await toggle.isChecked())) {
@@ -483,14 +483,14 @@ for (const viewport of [
 
     const panel = page.getByRole("region", { name: "Controles do mapa" });
     const toggle = panel.getByRole("switch", {
-      name: "Ocupação simulada de leitos",
+      name: "Ocupação simulada",
     });
     const before = await panel.boundingBox();
     await toggle.focus();
     await page.keyboard.press("Space");
     await expect(toggle).toBeChecked();
     await expect(
-      panel.getByText("Leitos fictícios. Não representam filas."),
+      panel.getByText("Leitos e filas fictícios."),
     ).toBeVisible();
 
     const after = await panel.boundingBox();
@@ -527,14 +527,14 @@ for (const viewport of [
       "Filtros e legenda: São Paulo",
     );
     await dialog
-      .getByText("Legenda da ocupação de leitos", { exact: true })
+      .getByText("Legenda da situação simulada", { exact: true })
       .click();
     await expect(
-      dialog.getByText(/A cor e o percentual representam/),
+      dialog.getByText(/A cor é a faixa mais alta entre dois indicadores/),
     ).toBeVisible();
     await dialog
       .getByRole("checkbox", {
-        name: "Mostrar só unidades com ocupação simulada de leitos",
+        name: "Mostrar só unidades com ocupação simulada",
       })
       .check();
     await dialog.getByRole("button", { name: "Voltar ao mapa" }).click();
@@ -548,7 +548,7 @@ for (const viewport of [
     await expect(open).toBeFocused();
     await panel.getByRole("button", { name: "Legenda", exact: true }).click();
     await expect(
-      dialog.getByText(/A cor e o percentual representam/),
+      dialog.getByText(/A cor é a faixa mais alta entre dois indicadores/),
     ).toBeVisible();
     await expect(
       dialog.getByRole("button", { name: "Voltar ao mapa" }),
@@ -559,7 +559,7 @@ for (const viewport of [
     ).toBeFocused();
     await panel.getByRole("button", { name: "Legenda", exact: true }).click();
     await expect(
-      dialog.getByText(/A cor e o percentual representam/),
+      dialog.getByText(/A cor é a faixa mais alta entre dois indicadores/),
     ).toBeVisible();
     await page.keyboard.press("Escape");
     expect(
@@ -582,7 +582,7 @@ for (const viewport of [
 
       const panel = page.getByRole("region", { name: "Controles do mapa" });
       const toggle = panel.getByRole("switch", {
-        name: "Ocupação simulada de leitos",
+        name: "Ocupação simulada",
       });
       await toggle.focus();
       await page.keyboard.press("Space");
@@ -591,7 +591,7 @@ for (const viewport of [
 
       const dialog = page.getByRole("dialog", { name: "Filtros e legenda" });
       const dialogToggle = dialog.getByRole("switch", {
-        name: "Ocupação simulada de leitos",
+        name: "Ocupação simulada",
       });
       await dialogToggle.focus();
       await page.keyboard.press("Space");
@@ -620,10 +620,10 @@ test("a camada começa desligada e mostra só dados cadastrais", async ({
   await page.goto("/units?uf=SP");
 
   const toggle = page.getByRole("switch", {
-    name: "Ocupação simulada de leitos",
+    name: "Ocupação simulada",
   });
   await expect(toggle).not.toBeChecked();
-  await expect(page.getByText("Dado simulado de leitos")).toHaveCount(0);
+  await expect(page.getByText("Dado simulado")).toHaveCount(0);
 });
 
 test("ligada, mostra a faixa em texto, a marca de simulação e filtra a amostra", async ({
@@ -634,15 +634,15 @@ test("ligada, mostra a faixa em texto, a marca de simulação e filtra a amostra
 
   // Keyboard: the switch is a native checkbox.
   await page
-    .getByRole("switch", { name: "Ocupação simulada de leitos" })
+    .getByRole("switch", { name: "Ocupação simulada" })
     .focus();
   await page.keyboard.press("Space");
 
   const mariana = page
     .getByRole("article")
     .filter({ hasText: "UPA Vila Mariana" });
-  await expect(mariana.getByText("Ocupação alta (90%)")).toBeVisible();
-  await expect(mariana.getByText("Dado simulado de leitos")).toBeVisible();
+  await expect(mariana.getByText("Situação alta, por leitos 90%")).toBeVisible();
+  await expect(mariana.getByText("Dado simulado")).toBeVisible();
 
   const mooca = page.getByRole("article").filter({ hasText: "UPA Mooca" });
   await expect(mooca.getByText("Sem confirmação recente")).toBeVisible();
@@ -651,11 +651,11 @@ test("ligada, mostra a faixa em texto, a marca de simulação e filtra a amostra
   const osasco = page
     .getByRole("article")
     .filter({ hasText: "Pronto Atendimento Osasco" });
-  await expect(osasco.getByText("Dado simulado de leitos")).toHaveCount(0);
+  await expect(osasco.getByText("Dado simulado")).toHaveCount(0);
 
   await page
     .getByRole("checkbox", {
-      name: "Mostrar só unidades com ocupação simulada de leitos",
+      name: "Mostrar só unidades com ocupação simulada",
     })
     .check();
   await expect(page.getByText("2 unidades encontradas")).toBeVisible();
@@ -667,7 +667,7 @@ test("o detalhe traz as categorias e o histórico em tabela", async ({
   await mockApi(page);
   await page.goto("/units?uf=SP");
   await page
-    .getByText("Ocupação simulada de leitos", { exact: true })
+    .getByText("Ocupação simulada", { exact: true })
     .first()
     .click();
   await page
@@ -677,12 +677,12 @@ test("o detalhe traz as categorias e o histórico em tabela", async ({
     .click();
 
   const section = page.getByRole("region", {
-    name: "Ocupação simulada de leitos",
+    name: "Ocupação e atendimento simulados",
   });
   await expect(section.getByText("Dados simulados")).toBeVisible();
   await expect(
     section.getByText(
-      /Não representam fila, tempo de espera nem capacidade de atendimento/,
+      /Não representam a situação real da unidade, não estimam tempo de espera/,
     ),
   ).toBeVisible();
   await expect(
@@ -702,7 +702,7 @@ test("o detalhe traz as categorias e o histórico em tabela", async ({
     .locator("summary", { hasText: "Ver histórico em tabela" })
     .click();
   await expect(
-    section.getByRole("cell", { name: "Ocupação baixa" }),
+    section.getByRole("cell", { name: "Situação baixa" }),
   ).toBeVisible();
 });
 
@@ -752,7 +752,7 @@ test("filtros locais preservam a leitura nacional sem controlar as fontes", asyn
 
   await page.goto("/units?uf=SP");
   await page
-    .getByRole("switch", { name: "Ocupação simulada de leitos" })
+    .getByRole("switch", { name: "Ocupação simulada" })
     .focus();
   await page.keyboard.press("Space");
   await expect(
@@ -762,17 +762,17 @@ test("filtros locais preservam a leitura nacional sem controlar as fontes", asyn
     page
       .getByRole("article")
       .filter({ hasText: "UPA Vila Mariana" })
-      .getByText("Ocupação alta (90%)"),
+      .getByText("Situação alta, por leitos 90%"),
   ).toBeVisible();
   await expect(
-    page.getByText(/3 unidades com ocupação simulada de leitos no Brasil$/),
+    page.getByText(/3 unidades com ocupação simulada no Brasil$/),
   ).toBeVisible();
   await page.getByRole("combobox", { name: "Estado" }).selectOption("RJ");
   await expect(
     page
       .getByRole("article")
       .filter({ hasText: rio.name })
-      .getByText("Ocupação baixa (40%)"),
+      .getByText("Situação baixa, por leitos 40%"),
   ).toBeVisible();
 
   // Sources keep producing while the visitor looks at a different state.
@@ -795,7 +795,7 @@ test("filtros locais preservam a leitura nacional sem controlar as fontes", asyn
     page
       .getByRole("article")
       .filter({ hasText: rio.name })
-      .getByText("Ocupação alta (95%)"),
+      .getByText("Situação alta, por leitos 95%"),
   ).toBeVisible();
   expect(occupancyRequests).toHaveLength(requestsBefore);
   expect(
@@ -820,14 +820,14 @@ test("SSE reconecta pela consulta REST e encerra ao desligar a camada", async ({
   });
   await page.goto("/units?uf=SP");
   const toggle = page.getByRole("switch", {
-    name: "Ocupação simulada de leitos",
+    name: "Ocupação simulada",
   });
   await toggle.focus();
   await page.keyboard.press("Space");
   const card = page
     .getByRole("article")
     .filter({ hasText: "UPA Vila Mariana" });
-  await expect(card.getByText("Ocupação alta (90%)")).toBeVisible();
+  await expect(card.getByText("Situação alta, por leitos 90%")).toBeVisible();
   const beforeReconnect = reads;
   await emitOccupancyEvent(page, "error");
   await expect(
@@ -835,7 +835,7 @@ test("SSE reconecta pela consulta REST e encerra ao desligar a camada", async ({
   ).toBeVisible();
   percentage = 95;
   await emitOccupancyEvent(page, "open");
-  await expect(card.getByText("Ocupação alta (95%)")).toBeVisible();
+  await expect(card.getByText("Situação alta, por leitos 95%")).toBeVisible();
   expect(reads).toBeGreaterThan(beforeReconnect);
   await expect(toggle).toBeFocused();
   await page.keyboard.press("Space");
@@ -866,7 +866,7 @@ test("SSE atualiza o histórico da unidade mesmo quando o estado atual não muda
   });
   await page.goto("/units?uf=SP");
   await page
-    .getByRole("switch", { name: "Ocupação simulada de leitos" })
+    .getByRole("switch", { name: "Ocupação simulada" })
     .focus();
   await page.keyboard.press("Space");
   await page
@@ -875,7 +875,7 @@ test("SSE atualiza o histórico da unidade mesmo quando o estado atual não muda
     .getByRole("link", { name: /Ver detalhes/ })
     .click();
   const section = page.getByRole("region", {
-    name: "Ocupação simulada de leitos",
+    name: "Ocupação e atendimento simulados",
   });
   await section
     .locator("summary", { hasText: "Ver histórico em tabela" })
@@ -899,7 +899,7 @@ test("SSE atualiza o histórico da unidade mesmo quando o estado atual não muda
     section.locator("details").getByRole("cell", { name: "20%", exact: true }),
   ).toBeVisible();
   expect(reads).toBeGreaterThan(beforeUpdate);
-  await expect(section.getByText("Ocupação alta (90%)")).toBeVisible();
+  await expect(section.getByText("Situação alta, por leitos 90%")).toBeVisible();
 });
 
 for (const viewport of [
@@ -965,7 +965,7 @@ test("mostra todos os valores por categoria sem arrastar em 320px", async ({
   await mockApi(page);
   await page.goto("/units?uf=SP");
   await page
-    .getByText("Ocupação simulada de leitos", { exact: true })
+    .getByText("Ocupação simulada", { exact: true })
     .first()
     .click();
   await page
@@ -974,7 +974,7 @@ test("mostra todos os valores por categoria sem arrastar em 320px", async ({
     .getByRole("link", { name: /Ver detalhes/ })
     .click();
   const section = page.getByRole("region", {
-    name: "Ocupação simulada de leitos",
+    name: "Ocupação e atendimento simulados",
   });
   const category = section
     .getByRole("heading", { name: "Observação", exact: true })
@@ -1011,7 +1011,7 @@ test("a lista mobile mostra resultados e permite expandir filtros secundários",
   await mockApi(page);
   await page.goto("/units?uf=SP");
   await page
-    .getByText("Ocupação simulada de leitos", { exact: true })
+    .getByText("Ocupação simulada", { exact: true })
     .first()
     .click();
   const expand = page.getByRole("button", {
@@ -1019,10 +1019,10 @@ test("a lista mobile mostra resultados e permite expandir filtros secundários",
   });
   await expect(expand).toHaveAttribute("aria-expanded", "false");
   await expect(
-    page.getByText("Leitos fictícios. Não representam filas."),
+    page.getByText("Leitos e filas fictícios."),
   ).toBeVisible();
   const simulated = page.getByRole("checkbox", {
-    name: "Mostrar só unidades com ocupação simulada de leitos",
+    name: "Mostrar só unidades com ocupação simulada",
   });
   await expect(simulated).toBeHidden();
   await expect(
@@ -1048,7 +1048,7 @@ test("as ações do detalhe mobile ficam visíveis junto do título", async ({
   await mockApi(page);
   await page.goto("/units?uf=SP");
   await page
-    .getByText("Ocupação simulada de leitos", { exact: true })
+    .getByText("Ocupação simulada", { exact: true })
     .first()
     .click();
   await page
@@ -1188,11 +1188,11 @@ for (const viewport of [
       name: "Sua localização",
       exact: true,
     });
-    await panel.getByText("Leitos simulados", { exact: true }).click();
+    await panel.getByText("Simulação", { exact: true }).click();
     await expect(location.getByRole("button", { name: "Remover localização" })).toBeVisible();
     // The notice is required while the layer is on: never cut by the panel.
     await expect(
-      panel.getByText("Leitos fictícios. Não representam filas."),
+      panel.getByText("Leitos e filas fictícios."),
     ).toBeInViewport({ ratio: 1 });
     await expect
       .poll(() =>
@@ -1258,4 +1258,64 @@ test("o erro do catálogo deixa a nova tentativa visível em paisagem", async ({
     retry.boundingBox(),
   ]);
   expect(button!.y + button!.height).toBeLessThanOrEqual(box!.y + box!.height);
+});
+
+test("a espera por posto pode definir a cor e os concluídos ficam no período", async ({
+  page,
+}) => {
+  const queued = {
+    ...highOccupancy,
+    percentage: 40,
+    level: "high",
+    indicators: { beds: "low", waiting: "high" },
+    levelDrivers: ["waiting"],
+    categories: [{ code: "observation", capacity: 20, occupied: 8 }],
+    attendance: {
+      waiting: 7,
+      inService: 2,
+      serviceSlots: 2,
+      completed: {
+        count: 86,
+        periodStart: "2026-10-15T00:00:00-03:00",
+        periodEnd: "2026-10-16T00:00:00-03:00",
+      },
+    },
+  };
+  await mockApi(page);
+  // Registered later, so it answers before the default mock.
+  await page.route("**/api/occupancy", (route) =>
+    route.fulfill({ json: { data: [queued], metadata } }),
+  );
+  await page.route("**/api/units/1234567/occupancy-history", (route) =>
+    route.fulfill({
+      json: {
+        data: { unitCnes: "1234567", current: queued, history: [] },
+        metadata: { ...metadata, periodHours: 24 },
+      },
+    }),
+  );
+  await page.goto("/units?uf=SP");
+  await page.getByText("Ocupação simulada", { exact: true }).first().click();
+
+  const card = page
+    .getByRole("article")
+    .filter({ hasText: "UPA Vila Mariana" });
+  await expect(
+    card.getByText("Situação alta, por espera 3,5 por posto"),
+  ).toBeVisible();
+  await expect(
+    card.getByText("Leitos 40% · Esperando 7 · Em atendimento 2"),
+  ).toBeVisible();
+
+  await card.getByRole("link", { name: /Ver detalhes/ }).click();
+  const section = page.getByRole("region", {
+    name: "Ocupação e atendimento simulados",
+  });
+  const now = section.getByRole("definition");
+  await expect(now.filter({ hasText: /^7$/ })).toHaveCount(1);
+  await expect(now.filter({ hasText: /^3,5$/ })).toHaveCount(1);
+  await expect(
+    section.getByText(/86\s+atendimentos concluídos de 15\/10 às 00:00/),
+  ).toBeVisible();
+  await expect(section.getByText(/não muda a cor/)).toBeVisible();
 });

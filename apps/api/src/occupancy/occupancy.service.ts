@@ -1,10 +1,15 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { OccupancyCategoryValue } from '../database/entities/occupancy-current.entity.js';
+import type {
+  OccupancyAttendanceValue,
+  OccupancyCategoryValue,
+} from '../database/entities/occupancy-current.entity.js';
 import { OccupancyRepository } from '../database/repositories/occupancy.repository.js';
 import {
   OCCUPANCY_THRESHOLDS,
-  summarizeOccupancy,
+  WAITING_THRESHOLDS,
+  summarizeUnitStatus,
   type OccupancyConfirmation,
+  type OccupancyIndicator,
   type OccupancyLevel,
 } from './occupancy-status.js';
 import {
@@ -15,10 +20,16 @@ import {
 export interface UnitOccupancy {
   unitCnes: string;
   eventId: string;
+  /** Bed occupancy: sum of occupied over sum of capacity. */
   percentage: number | null;
+  /** Highest level among the informed indicators. */
   level: OccupancyLevel | null;
   confirmation: OccupancyConfirmation;
+  indicators: Record<OccupancyIndicator, OccupancyLevel | null>;
+  levelDrivers: OccupancyIndicator[];
   categories: OccupancyCategoryValue[];
+  /** `null` when the source does not inform the attendance flow. */
+  attendance: OccupancyAttendanceValue | null;
   occurredAt: string;
   observedAt: string;
   receivedAt: string;
@@ -27,7 +38,9 @@ export interface UnitOccupancy {
 export interface OccupancyHistoryPoint {
   percentage: number | null;
   level: OccupancyLevel | null;
+  levelDrivers: OccupancyIndicator[];
   categories: OccupancyCategoryValue[];
+  attendance: OccupancyAttendanceValue | null;
   occurredAt: string;
   observedAt: string;
   receivedAt: string;
@@ -43,6 +56,7 @@ export interface OccupancyMetadata {
   generatedAt: string;
   staleAfterMinutes: number;
   thresholds: { moderate: number; high: number };
+  waitingThresholds: { moderate: number; high: number };
 }
 
 export interface OccupancyResponse {
@@ -60,9 +74,9 @@ export interface OccupancyHistoryResponse {
 }
 
 const SOURCE = {
-  name: 'Simulador de ocupação de leitos do FilaSaúde',
+  name: 'Simulador de ocupação e atendimento do FilaSaúde',
   description:
-    'Dados sintéticos de ocupação de leitos para demonstração acadêmica. Não representam fila, tempo de espera, capacidade de atendimento nem o inventário real de leitos das unidades.',
+    'Dados sintéticos de leitos, pessoas em espera, pessoas em atendimento e atendimentos concluídos para demonstração acadêmica. Não representam a situação real das unidades, não estimam tempo de espera e não recomendam unidades.',
 };
 
 @Injectable()
@@ -107,8 +121,9 @@ export class OccupancyService {
         current: current ? this.toUnitOccupancy(current, now) : null,
         // Each point is read as it was when observed, so it is never stale.
         history: history.map((row) => {
-          const { percentage, level } = summarizeOccupancy(
+          const { percentage, level, levelDrivers } = summarizeUnitStatus(
             row.categories,
+            row.attendance,
             row.observedAt,
             row.observedAt,
             this.settings.staleAfterMs,
@@ -116,7 +131,9 @@ export class OccupancyService {
           return {
             percentage,
             level,
+            levelDrivers,
             categories: row.categories,
+            attendance: row.attendance,
             occurredAt: row.occurredAt.toISOString(),
             observedAt: row.observedAt.toISOString(),
             receivedAt: row.receivedAt.toISOString(),
@@ -135,6 +152,7 @@ export class OccupancyService {
       unitCnes: string;
       eventId: string;
       categories: OccupancyCategoryValue[];
+      attendance: OccupancyAttendanceValue | null;
       occurredAt: Date;
       observedAt: Date;
       receivedAt: Date;
@@ -144,8 +162,9 @@ export class OccupancyService {
     return {
       unitCnes: row.unitCnes,
       eventId: row.eventId,
-      ...summarizeOccupancy(
+      ...summarizeUnitStatus(
         row.categories,
+        row.attendance,
         row.observedAt,
         now,
         this.settings.staleAfterMs,
@@ -155,6 +174,7 @@ export class OccupancyService {
         capacity,
         occupied,
       })),
+      attendance: row.attendance ?? null,
       occurredAt: row.occurredAt.toISOString(),
       observedAt: row.observedAt.toISOString(),
       receivedAt: row.receivedAt.toISOString(),
@@ -168,6 +188,7 @@ export class OccupancyService {
       generatedAt: now.toISOString(),
       staleAfterMinutes: Math.round(this.settings.staleAfterMs / 60_000),
       thresholds: { ...OCCUPANCY_THRESHOLDS },
+      waitingThresholds: { ...WAITING_THRESHOLDS },
     };
   }
 }

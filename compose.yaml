@@ -74,6 +74,9 @@ services:
       SIMULATOR_ALLOW_LOAD_TEST: "true"
       SIMULATOR_ALLOW_NONLOCAL_TARGET: "true"
       SIMULATOR_INTERVAL_SECONDS: ${SIMULATOR_INTERVAL_SECONDS:-120}
+      # Sends occupancy.snapshot.v2 with waiting, in service and completed.
+      SIMULATOR_ATTENDANCE: ${SIMULATOR_ATTENDANCE:-true}
+      SIMULATOR_ATTENDANCE_SCENARIO: ${SIMULATOR_ATTENDANCE_SCENARIO:-normal}
       WEBHOOK_SOURCE_CONFIG: ${WEBHOOK_SOURCE_CONFIG:-}
     depends_on:
       api:
