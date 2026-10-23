@@ -91,7 +91,7 @@ pnpm --filter @filasaude/api dev
 curl --fail http://127.0.0.1:3000/health
 pnpm --filter @filasaude/web dev --host 127.0.0.1 --port 5173 --strictPort
 # Em outra tarefa, com o mesmo ambiente:
-pnpm --filter @filasaude/simulador dev --scenario national --duration-seconds 0 --allow-load-test
+pnpm --filter @filasaude/simulador dev --scenario national --duration-seconds 0 --allow-load-test --attendance
 ```
 
 Com as mesmas variáveis, a alternativa em contêineres é:
