@@ -1,3 +1,4 @@
+import { ATTENDANCE_SCENARIOS, type AttendanceScenario } from './attendance.ts';
 import {
   SIMULATION_CATEGORY_CODES,
   type SimulationCategoryCode,
@@ -40,6 +41,8 @@ export interface SimulatorConfig {
   reportIntervalSeconds: number;
   allowLoadTest: boolean;
   allowNonlocalTarget: boolean;
+  attendance: boolean;
+  attendanceScenario: AttendanceScenario;
 }
 
 export interface ParsedArguments {
@@ -54,7 +57,7 @@ const DEFAULT_INTERVAL_SECONDS = 120;
 const DEFAULT_NATIONAL_DURATION_SECONDS = 300;
 const DEFAULT_NATIONAL_CONCURRENCY = 10;
 const DEFAULT_REPORT_INTERVAL_SECONDS = 10;
-const BOOLEAN_ARGUMENTS = new Set(['allow-load-test', 'allow-nonlocal-target']);
+const BOOLEAN_ARGUMENTS = new Set(['allow-load-test', 'allow-nonlocal-target', 'attendance']);
 
 function readPositiveNumber(
   value: string | undefined,
@@ -132,6 +135,16 @@ function readNationalEventScenario(value: string | undefined): NationalEventScen
     );
   }
   return value as NationalEventScenario;
+}
+
+function readAttendanceScenario(value: string | undefined): AttendanceScenario {
+  if (!value) return 'normal';
+  if (!ATTENDANCE_SCENARIOS.includes(value as AttendanceScenario)) {
+    throw new Error(
+      `attendance-scenario deve ser um destes valores: ${ATTENDANCE_SCENARIOS.join(', ')}.`,
+    );
+  }
+  return value as AttendanceScenario;
 }
 
 function readNonNegativeNumber(value: string | undefined, name: string): number {
@@ -347,6 +360,10 @@ export function loadConfig(
       ) ?? DEFAULT_REPORT_INTERVAL_SECONDS,
     allowLoadTest,
     allowNonlocalTarget,
+    attendance: readBoolean(value('attendance', 'SIMULATOR_ATTENDANCE')),
+    attendanceScenario: readAttendanceScenario(
+      value('attendance-scenario', 'SIMULATOR_ATTENDANCE_SCENARIO'),
+    ),
   };
 }
 
@@ -376,6 +393,8 @@ Opções:
   --report-interval-seconds  Intervalo dos relatórios (padrão: 10)
   --allow-load-test          Autoriza o cenário national
   --allow-nonlocal-target    Permite destino não local em ambiente controlado
+  --attendance               Envia occupancy.snapshot.v2 com espera, atendimento e concluídos
+  --attendance-scenario NAME Fluxo: normal, demand-surge ou capacity-reduction
   --help                     Exibe esta ajuda
 
 As opções também podem ser informadas pelas variáveis SIMULATOR_* equivalentes.

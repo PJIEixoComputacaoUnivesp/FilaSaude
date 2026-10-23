@@ -21,9 +21,10 @@ categorias informadas. O detalhe discrimina os valores por categoria e identific
 o total agregado. Capacidade total zero significa não informado, nunca 0% de
 ocupação. As faixas são convenções da demonstração.
 
-O payload não informa pessoas em espera, pessoas em atendimento, atendimentos
-concluídos ou tempo de espera. Essas evoluções ficam nas issues #107, #108,
-#109 e #110; a clareza desta entrega corresponde à #106.
+O payload v1 não informa pessoas em espera, pessoas em atendimento, atendimentos
+concluídos ou tempo de espera. Espera, atendimento e concluídos estão no
+[`occupancy.snapshot.v2`](./occupancy-snapshot-v2.md); tempo de espera não é
+informado por nenhuma versão. A clareza desta entrega corresponde à #106.
 
 ## Cabeçalhos
 

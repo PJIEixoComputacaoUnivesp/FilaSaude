@@ -29,6 +29,8 @@ const config: SimulatorConfig = {
   reportIntervalSeconds: 10,
   allowLoadTest: false,
   allowNonlocalTarget: false,
+  attendance: false,
+  attendanceScenario: 'normal',
 };
 
 const units: SimulatorUnit[] = [

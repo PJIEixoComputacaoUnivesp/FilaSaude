@@ -51,6 +51,8 @@ const config: SimulatorConfig = {
   reportIntervalSeconds: 1,
   allowLoadTest: true,
   allowNonlocalTarget: false,
+  attendance: false,
+  attendanceScenario: 'normal',
 };
 
 test('envia unidades nacionais com fontes e métricas determinísticas', async () => {

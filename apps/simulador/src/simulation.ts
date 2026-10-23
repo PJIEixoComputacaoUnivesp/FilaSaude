@@ -1,7 +1,19 @@
 import { createHash } from 'node:crypto';
+import {
+  activeSlots,
+  dailyPeriod,
+  initialStock,
+  profileFor,
+  stepAttendance,
+  type AttendanceProfile,
+  type AttendanceScenario,
+  type AttendanceStock,
+} from './attendance.ts';
 import type { SimulatorUnit } from './units.ts';
 
 export const SIMULATOR_SNAPSHOT_TYPE = 'occupancy.snapshot.v1' as const;
+export const SIMULATOR_ATTENDANCE_SNAPSHOT_TYPE = 'occupancy.snapshot.v2' as const;
+const DEFAULT_STEP_SECONDS = 120;
 export const SIMULATION_CATEGORY_CODES = [
   'observation',
   'stabilization',
@@ -16,13 +28,35 @@ export interface SimulationCategory {
   occupied: number;
 }
 
+export interface CompletedAttendances {
+  count: number;
+  periodStart: string;
+  periodEnd: string;
+}
+
+export interface AttendanceSnapshot {
+  waiting: number;
+  inService: number;
+  serviceSlots: number;
+  completed: CompletedAttendances;
+}
+
 export interface OccupancySnapshot {
   eventId: string;
-  type: typeof SIMULATOR_SNAPSHOT_TYPE;
+  type: typeof SIMULATOR_SNAPSHOT_TYPE | typeof SIMULATOR_ATTENDANCE_SNAPSHOT_TYPE;
   unitCnes: string;
   occurredAt: string;
   observedAt: string;
   categories: SimulationCategory[];
+  attendance?: AttendanceSnapshot;
+}
+
+export interface SimulationOptions {
+  /** Sends `occupancy.snapshot.v2` with the attendance stocks. */
+  attendance?: boolean;
+  attendanceScenario?: AttendanceScenario;
+  /** Nominal duration of one step, normally the configured interval. */
+  stepSeconds?: number;
 }
 
 interface CategoryState {
@@ -30,8 +64,19 @@ interface CategoryState {
   occupied: number;
 }
 
+interface AttendanceState {
+  profile: AttendanceProfile;
+  stock: AttendanceStock;
+  /** Completions since the last snapshot, not yet assigned to a period. */
+  pendingCompleted: number;
+  periodStart: string | null;
+  periodEnd: string | null;
+  completedInPeriod: number;
+}
+
 interface UnitState {
   categories: Map<SimulationCategoryCode, CategoryState>;
+  attendance: AttendanceState;
 }
 
 const ULID_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
@@ -40,10 +85,20 @@ export class SimulationState {
   private readonly units = new Map<string, UnitState>();
   private sequence = 0;
   private readonly seed: string;
+  private readonly attendance: boolean;
+  private readonly attendanceScenario: AttendanceScenario;
+  private readonly stepSeconds: number;
 
-  constructor(seed: string) {
+  constructor(seed: string, options: SimulationOptions = {}) {
     if (!seed.trim()) throw new Error('seed deve ser preenchida.');
+    const stepSeconds = options.stepSeconds ?? DEFAULT_STEP_SECONDS;
+    if (!Number.isFinite(stepSeconds) || stepSeconds <= 0) {
+      throw new Error('stepSeconds deve ser um número positivo.');
+    }
     this.seed = seed;
+    this.attendance = options.attendance ?? false;
+    this.attendanceScenario = options.attendanceScenario ?? 'normal';
+    this.stepSeconds = stepSeconds;
   }
 
   snapshotFor(unit: SimulatorUnit, now = new Date()): OccupancySnapshot {
@@ -53,7 +108,7 @@ export class SimulationState {
     const sequence = this.sequence;
     this.sequence += 1;
 
-    return {
+    const snapshot: OccupancySnapshot = {
       eventId: createEventId(this.seed, unit.id, sequence, observedAt),
       type: SIMULATOR_SNAPSHOT_TYPE,
       unitCnes: unit.id,
@@ -63,6 +118,17 @@ export class SimulationState {
         code,
         ...state.categories.get(code)!,
       })),
+    };
+    if (!this.attendance) return snapshot;
+
+    return {
+      ...snapshot,
+      type: SIMULATOR_ATTENDANCE_SNAPSHOT_TYPE,
+      attendance: reportAttendance(
+        state.attendance,
+        activeSlots(state.attendance.profile, this.attendanceScenario),
+        occurredAt,
+      ),
     };
   }
 
@@ -92,6 +158,18 @@ export class SimulationState {
         Math.min(category.capacity, category.occupied + change),
       );
     }
+
+    if (!this.attendance) return;
+    const next = stepAttendance(state.attendance.stock, {
+      seed: this.seed,
+      unitCnes: unit.id,
+      occurrence,
+      stepSeconds: this.stepSeconds,
+      profile: state.attendance.profile,
+      scenario: this.attendanceScenario,
+    });
+    state.attendance.stock = next.stock;
+    state.attendance.pendingCompleted += next.transitions.completed;
   }
 
   setOccupied(
@@ -129,10 +207,50 @@ export class SimulationState {
       categories.set(code, { capacity, occupied });
     }
 
-    const state = { categories };
+    const profile = profileFor(this.seed, unitCnes);
+    const state: UnitState = {
+      categories,
+      attendance: {
+        profile,
+        stock: initialStock(this.seed, unitCnes, profile, this.attendanceScenario),
+        pendingCompleted: 0,
+        periodStart: null,
+        periodEnd: null,
+        completedInPeriod: 0,
+      },
+    };
     this.units.set(unitCnes, state);
     return state;
   }
+}
+
+// A completion is counted in the period of the first snapshot that reports it,
+// using occurredAt. The count is cumulative within the period, so resending a
+// snapshot never adds to it, and it restarts at the next period.
+function reportAttendance(
+  state: AttendanceState,
+  serviceSlots: number,
+  occurredAt: Date,
+): AttendanceSnapshot {
+  const period = dailyPeriod(occurredAt);
+  if (state.periodStart !== period.start) {
+    state.periodStart = period.start;
+    state.periodEnd = period.end;
+    state.completedInPeriod = 0;
+  }
+  state.completedInPeriod += state.pendingCompleted;
+  state.pendingCompleted = 0;
+
+  return {
+    waiting: state.stock.waiting,
+    inService: state.stock.inService,
+    serviceSlots,
+    completed: {
+      count: state.completedInPeriod,
+      periodStart: period.start,
+      periodEnd: period.end,
+    },
+  };
 }
 
 function capacityRange(code: SimulationCategoryCode): [number, number] {

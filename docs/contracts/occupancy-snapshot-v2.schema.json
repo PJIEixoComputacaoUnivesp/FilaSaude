@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://filasaude.example/contracts/occupancy-snapshot-v2.schema.json",
+  "title": "FilaSaúde occupancy snapshot v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "type",
+    "unitCnes",
+    "occurredAt",
+    "observedAt",
+    "categories"
+  ],
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "Identificador ULID estável durante todas as retentativas."
+    },
+    "type": {
+      "const": "occupancy.snapshot.v2"
+    },
+    "unitCnes": {
+      "type": "string",
+      "pattern": "^[0-9]{7}$",
+      "description": "Código CNES da unidade representada pelo snapshot."
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Momento em que o estado ocorreu na origem."
+    },
+    "observedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Momento em que a origem confirmou o estado."
+    },
+    "categories": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/category"
+      },
+      "description": "Categorias aplicáveis ou informadas para a unidade."
+    },
+    "attendance": {
+      "$ref": "#/$defs/attendance",
+      "description": "Contagens agregadas de pessoas e atendimentos. Ausente significa não informado."
+    }
+  },
+  "$defs": {
+    "category": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "capacity",
+        "occupied"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "observation",
+            "stabilization",
+            "inpatient"
+          ]
+        },
+        "capacity": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "occupied": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "attendance": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "waiting": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Pessoas aguardando o início do atendimento no instante observado."
+        },
+        "inService": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Pessoas com atendimento em curso no instante observado."
+        },
+        "serviceSlots": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Postos de atendimento simultâneo ativos no instante observado; referência para a espera."
+        },
+        "completed": {
+          "$ref": "#/$defs/completed"
+        }
+      }
+    },
+    "completed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "count",
+        "periodStart",
+        "periodEnd"
+      ],
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Atendimentos concluídos acumulados no período até observedAt; não conta pessoas únicas."
+        },
+        "periodStart": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Início do período, incluído."
+        },
+        "periodEnd": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Fim do período, excluído."
+        }
+      }
+    }
+  }
+}

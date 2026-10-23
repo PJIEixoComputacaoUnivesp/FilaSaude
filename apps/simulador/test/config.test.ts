@@ -132,3 +132,25 @@ test('preserva o segredo explícito como substituição para testes locais', () 
     'explicit-local-secret',
   );
 });
+
+test('configura o fluxo de atendimento sintético', () => {
+  const disabled = loadConfig([], {});
+  assert.equal(disabled.attendance, false);
+  assert.equal(disabled.attendanceScenario, 'normal');
+
+  const config = loadConfig(['--attendance', '--attendance-scenario', 'capacity-reduction'], {});
+  assert.equal(config.attendance, true);
+  assert.equal(config.attendanceScenario, 'capacity-reduction');
+
+  const fromEnvironment = loadConfig([], {
+    SIMULATOR_ATTENDANCE: 'true',
+    SIMULATOR_ATTENDANCE_SCENARIO: 'demand-surge',
+  });
+  assert.equal(fromEnvironment.attendance, true);
+  assert.equal(fromEnvironment.attendanceScenario, 'demand-surge');
+
+  assert.throws(
+    () => loadConfig(['--attendance-scenario', 'triage'], {}),
+    /attendance-scenario deve ser/,
+  );
+});
