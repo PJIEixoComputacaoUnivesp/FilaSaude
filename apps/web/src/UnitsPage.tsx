@@ -122,7 +122,7 @@ function UnitCard({
         {occupancy && (
           <div>
             <dt className="font-semibold text-slate-900">
-              Ocupação simulada de leitos
+              Ocupação simulada
             </dt>
             <dd className="mt-1">
               <OccupancyBadge occupancy={occupancy} />
@@ -576,7 +576,7 @@ export function UnitsPage() {
               <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-700">
                 <p>
                   {simulatedFilter
-                    ? "Nenhuma unidade com ocupação simulada de leitos corresponde a este filtro."
+                    ? "Nenhuma unidade com ocupação simulada corresponde a este filtro."
                     : nearbyEnabled && activeRadiusKm !== null
                       ? query.trim()
                         ? `Nenhuma unidade com “${query.trim()}” a até ${activeRadiusKm} km de você.`

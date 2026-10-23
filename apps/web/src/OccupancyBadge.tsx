@@ -8,9 +8,10 @@ import {
 } from "./occupancy";
 
 /**
- * Occupancy of one unit next to its registry data: the level in words, its
- * source, when it was sent and the simulation mark, never the color alone.
- * Divs, not paragraphs: Leaflet adds a large margin to paragraphs in popups.
+ * Situation of one unit next to its registry data: the level in words, the
+ * indicator that set it, the current counts, its source, when it was sent and
+ * the simulation mark, never the color alone. Divs, not paragraphs: Leaflet
+ * adds a large margin to paragraphs in popups.
  */
 export function OccupancyBadge({
   occupancy,
@@ -20,6 +21,15 @@ export function OccupancyBadge({
   className?: string;
 }) {
   const status = occupancyStatus(occupancy);
+  const attendance = occupancy.attendance;
+  // A stale snapshot keeps only its date here, as its level: the detail
+  // shows the last values with that warning.
+  const counts = status === "stale" ? [] : [
+    occupancy.percentage !== null && `Leitos ${occupancy.percentage}%`,
+    attendance?.waiting !== undefined && `Esperando ${attendance.waiting}`,
+    attendance?.inService !== undefined &&
+      `Em atendimento ${attendance.inService}`,
+  ].filter(Boolean);
   return (
     <div
       className={`rounded-lg border border-occupancy-border bg-occupancy-surface px-3 py-2 text-sm text-slate-800 ${className}`}
@@ -28,8 +38,13 @@ export function OccupancyBadge({
         <OccupancySwatch status={status} />
         {describeOccupancy(occupancy)}
       </div>
+      {counts.length > 0 && (
+        <div className="mt-1 text-xs tabular-nums text-slate-800">
+          {counts.join(" · ")}
+        </div>
+      )}
       <div className="mt-1 text-xs leading-relaxed text-slate-700">
-        <span className="font-semibold text-occupancy-ink">Dado simulado de leitos</span>{" "}
+        <span className="font-semibold text-occupancy-ink">Dado simulado</span>{" "}
         · Simulador do FilaSaúde ·{" "}
         {status === "stale" ? "último envio em " : "enviado às "}
         <time dateTime={occupancy.observedAt}>
