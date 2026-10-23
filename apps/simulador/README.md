@@ -1,4 +1,4 @@
-# Simulador de ocupação de leitos
+# Simulador de ocupação e atendimento
 
 O `@filasaude/simulador` é uma CLI para gerar snapshots sintéticos de ocupação
 e enviá-los à API por meio do webhook assinado. Ele existe para testes e
@@ -35,9 +35,9 @@ ocupado dividido pela capacidade total das categorias informadas; o detalhe
 mostra cada categoria. As capacidades não vêm do cadastro CNES e não representam
 o inventário real de cada unidade.
 
-Não são geradas pessoas em espera, pessoas em atendimento nem atendimentos
-concluídos, e o percentual não estima fila, espera ou capacidade de atendimento.
-Essas métricas ficam para as issues #107, #108, #109 e #110. Refs #106.
+O percentual de leitos não estima fila, espera ou capacidade de atendimento.
+Com `--attendance`, o simulador também gera o fluxo de atendimento descrito
+abaixo, em snapshots `occupancy.snapshot.v2`. Refs #106, #107, #108 e #109.
 
 ### Como a seed gera a ocupação
 
@@ -106,6 +106,83 @@ e [`src/national-runner.ts`](src/national-runner.ts).
 
 Essa variação não considera horário de pico, demanda real ou características
 clínicas da unidade.
+
+## Fluxo de atendimento sintético
+
+Com `--attendance` (ou `SIMULATOR_ATTENDANCE=true`), cada snapshot passa a ser
+um [`occupancy.snapshot.v2`](../../docs/contracts/occupancy-snapshot-v2.md) e
+inclui, além dos leitos:
+
+- `waiting`: pessoas aguardando o início do atendimento agora;
+- `inService`: pessoas com atendimento em curso agora;
+- `completed`: atendimentos concluídos no dia de Brasília, acumulados até o
+  snapshot, com início e fim do período.
+
+Sem a opção, o simulador envia o v1 exatamente como antes. O fluxo é calculado
+sempre, mas só é enviado quando ligado; a API precisa aceitar o v2.
+
+### Estados e ordem de cada passo
+
+O estado de cada CNES tem dois estoques, `waiting` e `inService`. Cada passo,
+no mesmo momento em que os leitos variam, aplica três transições nesta ordem
+([`src/attendance.ts`](src/attendance.ts)):
+
+1. **Conclusões**: cada atendimento em curso termina com chance
+   `passo / duração média`. Nunca terminam mais atendimentos do que os em curso.
+2. **Chegadas**: sorteio de Poisson com média `chegadas por hora × passo`.
+3. **Inícios**: quem espera, incluindo quem acabou de chegar, começa a ser
+   atendido enquanto houver postos livres na capacidade ativa.
+
+```text
+waiting   = waiting anterior   + chegadas  - iniciados
+inService = inService anterior + iniciados - concluídos
+```
+
+A fila não tem teto: se as chegadas superam o que os postos escoam, a espera
+cresce; quando a capacidade sobra, ela diminui. O limite está só no início de
+atendimentos, que depende dos postos e de haver pessoas esperando.
+
+A duração do passo é `--interval-seconds`. No cenário `national`, o intervalo
+real entre envios de uma unidade varia, mas sua média é esse mesmo valor.
+
+### Perfis e cenários
+
+Cada CNES recebe um de três perfis pelo hash de
+`${seed}:${cnes}:attendance:profile`. Os perfis são hipóteses da demonstração:
+não refletem porte, equipe ou capacidade reais da unidade, nem são deduzidos
+dos leitos.
+
+| Perfil | Postos | Duração média | Chegadas por hora (normal) |
+| --- | ---: | ---: | ---: |
+| `small` | 2 | 20 min | 4,5 |
+| `medium` | 4 | 20 min | 9 |
+| `large` | 8 | 20 min | 18 |
+
+No cenário normal, as chegadas usam 75% do que os postos atendem, então a fila
+escoa em média. `--attendance-scenario` (ou `SIMULATOR_ATTENDANCE_SCENARIO`)
+altera todas as unidades:
+
+| Cenário | Efeito |
+| --- | --- |
+| `normal` | Perfis como na tabela. |
+| `demand-surge` | Chegadas × 1,6; a espera tende a crescer. |
+| `capacity-reduction` | Metade dos postos (mínimo 1); a espera cresce mais. |
+
+Os estoques iniciais ficam entre zero e o número de postos do perfil. Os
+sorteios usam chaves `${seed}:${cnes}:attendance:...`, separadas das chaves dos
+leitos, então ligar o fluxo não muda a sequência de ocupação já documentada.
+
+### Concluídos por período
+
+Cada conclusão é contada no período do primeiro snapshot que a informa, pelo
+`occurredAt`. O total é cumulativo no dia de Brasília (`-03:00` fixo, período
+`[00:00, 24:00)`) e recomeça no dia seguinte. Reenviar o mesmo snapshot não
+altera o total, e a API substitui o valor em vez de somá-lo.
+
+O estado fica em memória. Reiniciar com a mesma seed repete a mesma sequência
+desde o início e recomeça o total do dia do zero; o consumidor substitui o
+valor anterior e não soma os dois. Os valores não estimam tempo de espera nem
+recomendam unidades.
 
 ## Pré-requisitos
 
@@ -237,6 +314,8 @@ parâmetros são:
 | `--report-interval-seconds` | `SIMULATOR_REPORT_INTERVAL_SECONDS` | `10` | Intervalo dos relatórios parciais |
 | `--allow-load-test` | `SIMULATOR_ALLOW_LOAD_TEST` | `false` | Autoriza a carga nacional |
 | `--allow-nonlocal-target` | `SIMULATOR_ALLOW_NONLOCAL_TARGET` | `false` | Permite destino não local em ambiente controlado |
+| `--attendance` | `SIMULATOR_ATTENDANCE` | `false` | Envia o v2 com espera, atendimento e concluídos |
+| `--attendance-scenario` | `SIMULATOR_ATTENDANCE_SCENARIO` | `normal` | Fluxo `normal`, `demand-surge` ou `capacity-reduction` |
 
 As unidades são selecionadas uma vez no início da execução e permanecem fixas.
 O estado é mantido somente em memória e é perdido ao encerrar o processo.
