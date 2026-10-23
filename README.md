@@ -144,11 +144,11 @@ aceita uma correspondência única e forte. Os critérios e as limitações est�
 [ADR 0001](docs/adr/0001-public-health-unit-data-source.md) e no
 [ADR 0002](docs/adr/0002-additional-public-data-sources.md).
 
-### Ocupação simulada de leitos
+### Ocupação e atendimento simulados
 
 ```mermaid
 flowchart LR
-  sim["Simulador nacional de leitos"] -->|"snapshot assinado"| hook["POST /webhooks/v1/occupancy"]
+  sim["Simulador nacional de leitos e atendimento"] -->|"snapshot assinado"| hook["POST /webhooks/v1/occupancy"]
   hook --> inbox[("Inbox")]
   inbox --> worker["Processador assíncrono"]
   worker --> atual[("Ocupação atual")]
@@ -158,12 +158,14 @@ flowchart LR
   pub -->|"REST inicial + deltas SSE"| mapa["Mapa, lista e detalhe"]
 ```
 
-As capacidades e quantidades ocupadas de leitos de observação, estabilização e
-internação são fictícias, geradas pelo simulador, e não vêm do cadastro CNES.
-A cor usa a soma dos ocupados dividida pela soma das capacidades das categorias
-informadas. O detalhe mostra cada categoria e identifica o total agregado.
-Isso não representa fila, tempo de espera, pessoas em atendimento ou capacidade
-de atendimento da unidade. As faixas são convenções da demonstração.
+Leitos de observação, estabilização e internação, pessoas esperando, pessoas
+em atendimento e atendimentos concluídos no dia são fictícios, gerados pelo
+simulador, e não vêm do cadastro CNES. A cor (verde, amarelo ou vermelho) é a
+faixa mais alta entre leitos (ocupados ÷ capacidade) e espera por posto de
+atendimento ativo; concluídos não entram na cor. O popup, a lista e o detalhe
+dizem qual indicador definiu a cor e mostram cada valor separado. Nada disso
+estima tempo de espera ou classifica risco, e as faixas são convenções da
+demonstração ([ADR 0007](docs/adr/0007-attendance-flow-and-color-synthesis.md)).
 
 A API persiste os eventos antes de responder `202 Accepted`, processa a inbox e
 publica o estado e o histórico. Com `OCCUPANCY_SIMULATION_ENABLED=true`, o site
@@ -171,8 +173,7 @@ oferece a camada, inicialmente desligada. A geração é nacional e contínua,
 independente dos filtros do visitante. SSE envia somente as unidades alteradas;
 REST recompõe o estado na carga inicial e na reconexão. Não há polling.
 
-Refs #78, #79 e #106. Métricas futuras de espera, atendimento e conclusões são
-tratadas em #107, #108, #109 e #110.
+Refs #78, #79, #106, #107, #108, #109 e #110.
 
 ### API
 
@@ -183,8 +184,8 @@ tratadas em #107, #108, #109 e #110.
 | `GET /boundaries/brazil?detail=low\|high` | Contorno do Brasil (IBGE) para a máscara do mapa; `low` por padrão | Implementado |
 | `POST /webhooks/v1/occupancy` | Recebe um snapshot de ocupação assinado | Implementado |
 | `GET /admin/me` e `/admin/location-corrections` | Administração de posições, com `Authorization: Bearer` | Implementado |
-| `GET /occupancy` | Ocupação simulada de leitos, separada do catálogo CNES | Implementado (#78) |
-| `GET /units/{cnes}/occupancy-history` | Histórico de leitos simulados das últimas 24 horas | Implementado (#78) |
+| `GET /occupancy` | Leitos, espera, atendimento e concluídos simulados, separados do catálogo CNES | Implementado (#78) |
+| `GET /units/{cnes}/occupancy-history` | Histórico simulado das últimas 24 horas | Implementado (#78) |
 | `GET /occupancy/stream` | Unidades alteradas por SSE | Implementado (#78) |
 
 Os detalhes das rotas, dos campos e dos cabeçalhos estão em
@@ -311,8 +312,10 @@ backups e o passo a passo.
 - [ADR 0004](docs/adr/0004-occupancy-inbox-processing.md): inbox e projeção assíncrona.
 - [ADR 0005](docs/adr/0005-simulated-occupancy-semantics.md): semântica da ocupação simulada.
 - [ADR 0006](docs/adr/0006-catalog-cache-and-fallback.md): cache e contingência cadastral.
+- [ADR 0007](docs/adr/0007-attendance-flow-and-color-synthesis.md): fluxo de atendimento simulado e cor pela pior faixa.
 - [Proposta 0001](docs/proposals/0001-operational-occupancy-simulation.md): simulação de ocupação operacional.
 - [Contrato do snapshot de ocupação v1](docs/contracts/occupancy-snapshot-v1.md) e seu [JSON Schema](docs/contracts/occupancy-snapshot-v1.schema.json).
+- [Contrato do snapshot v2, com o fluxo de atendimento](docs/contracts/occupancy-snapshot-v2.md) e seu [JSON Schema](docs/contracts/occupancy-snapshot-v2.schema.json).
 - [Roteiro de teste do `occupancy-feed`](docs/simulator-testing.md).
 - [Visão geral da pesquisa](docs/research/README.md).
 - [Sistema de interface](.interface-design/system.md): jornada, acessibilidade e mobile.

@@ -30,7 +30,9 @@ data: {"simulated":true,"serverTime":"2026-10-16T20:00:00.000Z"}
 
 ```
 
-O evento de atualização tem `data: {"data":[...],"metadata":{...}}`. Os itens
+O evento de atualização tem `data: {"data":[...],"metadata":{...}}`. Com o
+snapshot v2, cada item traz também `attendance`, `indicators` e `levelDrivers`,
+como em `GET /occupancy`. Os itens
 usam os campos do contrato REST de ocupação; o cliente substitui as unidades
 pelo CNES e preserva o restante do catálogo. Não há um GET nacional por evento.
 
