@@ -120,7 +120,9 @@ export const CATEGORY_LABELS: Record<OccupancyCategoryCode, string> = {
 
 /**
  * Green, yellow and red, as a traffic light, with the same dark ring (12:1 or
- * more on any map tile), plus gray. These are also the colors of clinical
+ * more on any map tile), plus gray. The red is dark, so it also differs from
+ * the green in lightness (about 2.7:1) for people who do not tell red from
+ * green apart. These are also the colors of clinical
  * risk classification, so the level is never shown by color alone: the popup,
  * the list and the legend always say "situação simulada" and which indicator
  * set it, and the legend says it is not a risk classification (ADR 0007).
@@ -135,7 +137,7 @@ export const STATUS_COLORS: Record<
 > = {
   low: { fill: "#16a34a", stroke: "#0f172a", hollow: false },
   moderate: { fill: "#facc15", stroke: "#0f172a", hollow: false },
-  high: { fill: "#dc2626", stroke: "#0f172a", hollow: false },
+  high: { fill: "#991b1b", stroke: "#0f172a", hollow: false },
   unknown: { fill: "#94a3b8", stroke: "#334155", hollow: false },
   stale: { fill: "#ffffff", stroke: "#475569", hollow: true },
 };

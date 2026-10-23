@@ -100,7 +100,7 @@ describe("STATUS_COLORS", () => {
   it("uses green, yellow and red with one dark ring for the levels", () => {
     expect(STATUS_COLORS.low.fill).toBe("#16a34a");
     expect(STATUS_COLORS.moderate.fill).toBe("#facc15");
-    expect(STATUS_COLORS.high.fill).toBe("#dc2626");
+    expect(STATUS_COLORS.high.fill).toBe("#991b1b");
     const rings = new Set(
       (["low", "moderate", "high"] as const).map(
         (level) => STATUS_COLORS[level].stroke,

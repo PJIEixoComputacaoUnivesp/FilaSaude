@@ -427,8 +427,8 @@ function HistoryChart({
   const last = points[points.length - 1];
   const guides = [
     { value: 0, label: "0%" },
-    { value: 60, label: "moderada ≥ 60%" },
-    { value: 85, label: "alta ≥ 85%" },
+    { value: 60, label: "leitos ≥ 60%" },
+    { value: 85, label: "leitos ≥ 85%" },
     { value: 100, label: "100%" },
   ];
 
