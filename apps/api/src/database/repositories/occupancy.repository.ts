@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import {
   OccupancyCurrentEntity,
+  type OccupancyAttendanceValue,
   type OccupancyCategoryValue,
 } from '../entities/occupancy-current.entity.js';
 
@@ -16,6 +17,7 @@ export interface ProcessedBatch {
 export interface OccupancyHistoryRow {
   eventId: string;
   categories: OccupancyCategoryValue[];
+  attendance: OccupancyAttendanceValue | null;
   occurredAt: Date;
   observedAt: Date;
   receivedAt: Date;
@@ -37,6 +39,10 @@ const ERROR_MAX_LENGTH = 500;
  * - every event of the batch is marked as processed, applied or not, so a
  *   duplicate or a late event never comes back.
  *
+ * The snapshot is complete, so a newer one without `attendance` (v1, or v2
+ * without the flow) clears it to NULL: "not informed", never zero. Completed
+ * totals are cumulative per period and replaced, never added up.
+ *
  * `$2` restricts the batch to one event, used to isolate a failing one.
  */
 const PROCESS_PENDING_SQL = `
@@ -55,13 +61,15 @@ latest AS (
 ),
 applied AS (
   INSERT INTO occupancy_current
-    (unit_cnes, event_id, source_id, categories, occurred_at, observed_at, received_at, updated_at)
-  SELECT unit_cnes, event_id, source_id, payload->'categories', occurred_at, observed_at, received_at, now()
+    (unit_cnes, event_id, source_id, categories, attendance, occurred_at, observed_at, received_at, updated_at)
+  SELECT unit_cnes, event_id, source_id, payload->'categories', payload->'attendance',
+         occurred_at, observed_at, received_at, now()
   FROM latest
   ON CONFLICT (unit_cnes) DO UPDATE SET
     event_id = EXCLUDED.event_id,
     source_id = EXCLUDED.source_id,
     categories = EXCLUDED.categories,
+    attendance = EXCLUDED.attendance,
     occurred_at = EXCLUDED.occurred_at,
     observed_at = EXCLUDED.observed_at,
     received_at = EXCLUDED.received_at,
@@ -162,7 +170,7 @@ export class OccupancyRepository {
   ): Promise<OccupancyHistoryRow[]> {
     const rows = (await this.repository.query(
       `SELECT event_id, payload->'categories' AS categories,
-              occurred_at, observed_at, received_at
+              payload->'attendance' AS attendance, occurred_at, observed_at, received_at
        FROM occupancy_webhook_inbox
        WHERE unit_cnes = $1 AND status = 'processed' AND occurred_at >= $2
        ORDER BY occurred_at DESC, observed_at DESC, received_at DESC, event_id DESC
@@ -171,6 +179,7 @@ export class OccupancyRepository {
     )) as {
       event_id: string;
       categories: OccupancyCategoryValue[];
+      attendance: OccupancyAttendanceValue | null;
       occurred_at: Date;
       observed_at: Date;
       received_at: Date;
@@ -179,6 +188,7 @@ export class OccupancyRepository {
     return rows.reverse().map((row) => ({
       eventId: row.event_id,
       categories: row.categories,
+      attendance: row.attendance ?? null,
       occurredAt: new Date(row.occurred_at),
       observedAt: new Date(row.observed_at),
       receivedAt: new Date(row.received_at),
