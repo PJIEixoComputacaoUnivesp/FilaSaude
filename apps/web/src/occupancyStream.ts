@@ -165,7 +165,14 @@ export function expireOccupancy(
         response.metadata.staleAfterMinutes * 60_000
     ) {
       changed = true;
-      return { ...unit, confirmation: "stale" as const, level: null };
+      // As the API does for a stale unit: no level from any indicator.
+      return {
+        ...unit,
+        confirmation: "stale" as const,
+        level: null,
+        indicators: { beds: null, waiting: null },
+        levelDrivers: [],
+      };
     }
     return unit;
   });

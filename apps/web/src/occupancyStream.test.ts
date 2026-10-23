@@ -137,6 +137,8 @@ describe("expireOccupancy", () => {
       confirmation: "stale",
       level: null,
       percentage: 90,
+      indicators: { beds: null, waiting: null },
+      levelDrivers: [],
     });
     expect(response.data[0].confirmation).toBe("recent");
   });

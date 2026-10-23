@@ -135,6 +135,18 @@ describe("parseOccupancyResponse", () => {
         metadata,
       }),
     ).toThrow();
+    expect(() =>
+      parseOccupancyResponse({
+        data: [
+          occupancy({
+            attendance: {
+              completed: { count: -5, periodStart: "x", periodEnd: "y" },
+            },
+          }),
+        ],
+        metadata,
+      }),
+    ).toThrow();
   });
 
   it("rejects operational data without the simulation mark", () => {

@@ -257,6 +257,10 @@ function isCount(value: unknown): boolean {
   return value === undefined || (Number.isInteger(value) && Number(value) >= 0);
 }
 
+function isDateTime(value: unknown): boolean {
+  return typeof value === "string" && !Number.isNaN(Date.parse(value));
+}
+
 function isAttendance(value: unknown): boolean {
   if (value === undefined || value === null) return true;
   if (!isRecord(value)) return false;
@@ -267,9 +271,10 @@ function isAttendance(value: unknown): boolean {
     isCount(value.serviceSlots) &&
     (completed === undefined ||
       (isRecord(completed) &&
-        Number.isInteger(completed.count) &&
-        typeof completed.periodStart === "string" &&
-        typeof completed.periodEnd === "string"))
+        isCount(completed.count) &&
+        completed.count !== undefined &&
+        isDateTime(completed.periodStart) &&
+        isDateTime(completed.periodEnd)))
   );
 }
 
