@@ -95,6 +95,22 @@ test('só inicia atendimentos de quem está esperando ou acabou de chegar', () =
   assert.equal(history[0]!.transitions.started, history[0]!.transitions.arrivals);
 });
 
+test('começa dentro dos postos ativos de cada cenário', () => {
+  for (let index = 0; index < 60; index += 1) {
+    const cnes = String(1_000_000 + index);
+    const cnesProfile = profileFor('demo-seed', cnes);
+    const stock = initialStock('demo-seed', cnes, cnesProfile, 'capacity-reduction');
+    assert.ok(stock.inService <= activeSlots(cnesProfile, 'capacity-reduction'));
+  }
+
+  const state = new SimulationState('demo-seed', {
+    attendance: true,
+    attendanceScenario: 'capacity-reduction',
+  });
+  const { attendance } = state.snapshotFor(unit, new Date());
+  assert.ok(attendance!.inService <= attendance!.serviceSlots);
+});
+
 test('distribui os perfis sintéticos por CNES e seed', () => {
   const codes = new Set<string>();
   for (let index = 0; index < 60; index += 1) {

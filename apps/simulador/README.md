@@ -169,7 +169,7 @@ altera todas as unidades:
 | `demand-surge` | Chegadas × 1,6; a espera tende a crescer. |
 | `capacity-reduction` | Metade dos postos (mínimo 1); a espera cresce mais. |
 
-Os estoques iniciais ficam entre zero e o número de postos do perfil. Os
+Os estoques iniciais ficam entre zero e o número de postos ativos no cenário. Os
 sorteios usam chaves `${seed}:${cnes}:attendance:...`, separadas das chaves dos
 leitos, então ligar o fluxo não muda a sequência de ocupação já documentada.
 

@@ -65,18 +65,17 @@ export function profileFor(seed: string, unitCnes: string): AttendanceProfile {
   return PROFILES[ATTENDANCE_PROFILE_CODES[index]!];
 }
 
+/** Starts within the active slots, so no unit begins over its capacity. */
 export function initialStock(
   seed: string,
   unitCnes: string,
   profile: AttendanceProfile,
+  scenario: AttendanceScenario = 'normal',
 ): AttendanceStock {
+  const slots = activeSlots(profile, scenario);
   return {
-    waiting: integerBetween(`${seed}:${unitCnes}:attendance:waiting`, 0, profile.serviceSlots),
-    inService: integerBetween(
-      `${seed}:${unitCnes}:attendance:in-service`,
-      0,
-      profile.serviceSlots,
-    ),
+    waiting: integerBetween(`${seed}:${unitCnes}:attendance:waiting`, 0, slots),
+    inService: integerBetween(`${seed}:${unitCnes}:attendance:in-service`, 0, slots),
   };
 }
 

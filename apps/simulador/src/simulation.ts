@@ -159,6 +159,7 @@ export class SimulationState {
       );
     }
 
+    if (!this.attendance) return;
     const next = stepAttendance(state.attendance.stock, {
       seed: this.seed,
       unitCnes: unit.id,
@@ -211,7 +212,7 @@ export class SimulationState {
       categories,
       attendance: {
         profile,
-        stock: initialStock(this.seed, unitCnes, profile),
+        stock: initialStock(this.seed, unitCnes, profile, this.attendanceScenario),
         pendingCompleted: 0,
         periodStart: null,
         periodEnd: null,
