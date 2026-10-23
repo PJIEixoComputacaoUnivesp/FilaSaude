@@ -18,6 +18,7 @@ describe('Occupancy (e2e)', () => {
         eventId: '01K5T2S6C4TZ1K9TR6F89A2M7X',
         sourceId: 'occupancy-feed',
         categories: [{ code: 'observation', capacity: 20, occupied: 18 }],
+        attendance: { waiting: 2, inService: 3, serviceSlots: 4 },
         occurredAt: observedAt,
         observedAt,
         receivedAt: observedAt,
@@ -76,12 +77,19 @@ describe('Occupancy (e2e)', () => {
 
     expect(response.headers['cache-control']).toBe('no-cache');
     expect(response.body.metadata.simulated).toBe(true);
+    expect(response.body.metadata.waitingThresholds).toEqual({
+      moderate: 1,
+      high: 3,
+    });
     expect(response.body.data).toEqual([
       expect.objectContaining({
         unitCnes: '1234567',
         percentage: 90,
         level: 'high',
         confirmation: 'recent',
+        indicators: { beds: 'high', waiting: 'low' },
+        levelDrivers: ['beds'],
+        attendance: { waiting: 2, inService: 3, serviceSlots: 4 },
       }),
     ]);
   });
