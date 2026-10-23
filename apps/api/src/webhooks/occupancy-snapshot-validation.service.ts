@@ -1,7 +1,8 @@
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import {
+  OCCUPANCY_ATTENDANCE_SNAPSHOT_TYPE,
   OCCUPANCY_CATEGORY_CODES,
-  OCCUPANCY_SNAPSHOT_TYPE,
+  OCCUPANCY_SNAPSHOT_TYPES,
   type OccupancySnapshot,
 } from './occupancy-snapshot.types.js';
 
@@ -19,6 +20,8 @@ export class OccupancySnapshotValidationService {
       throw invalidPayload(['body']);
     }
 
+    const attendanceAllowed =
+      payload.type === OCCUPANCY_ATTENDANCE_SNAPSHOT_TYPE;
     addUnknownFields(fields, payload, [
       'eventId',
       'type',
@@ -26,9 +29,12 @@ export class OccupancySnapshotValidationService {
       'occurredAt',
       'observedAt',
       'categories',
+      ...(attendanceAllowed ? ['attendance'] : []),
     ]);
     requireString(payload, 'eventId', fields, EVENT_ID_PATTERN);
-    if (payload.type !== OCCUPANCY_SNAPSHOT_TYPE) fields.push('type');
+    if (!OCCUPANCY_SNAPSHOT_TYPES.includes(payload.type as never)) {
+      fields.push('type');
+    }
     requireString(payload, 'unitCnes', fields, CNES_PATTERN);
     requireDateTime(payload, 'occurredAt', fields);
     requireDateTime(payload, 'observedAt', fields);
@@ -71,6 +77,10 @@ export class OccupancySnapshotValidationService {
       });
     }
 
+    if (attendanceAllowed && 'attendance' in payload) {
+      validateAttendance(payload.attendance, payload.occurredAt, fields);
+    }
+
     if (
       typeof payload.occurredAt === 'string' &&
       typeof payload.observedAt === 'string' &&
@@ -99,9 +109,81 @@ export class OccupancySnapshotValidationService {
 function invalidPayload(fields: string[]): UnprocessableEntityException {
   return new UnprocessableEntityException({
     code: 'invalid_occupancy_snapshot',
-    message: 'O snapshot não atende ao contrato v1.',
+    message: 'O snapshot não atende ao contrato de ocupação.',
     fields,
   });
+}
+
+/**
+ * Every field is optional, but the object needs at least one: absence means
+ * "not informed", so `null` and an empty object are rejected. The completed
+ * period is half-open and must contain occurredAt.
+ */
+function validateAttendance(
+  attendance: unknown,
+  occurredAt: unknown,
+  fields: string[],
+): void {
+  if (!isRecord(attendance) || Object.keys(attendance).length === 0) {
+    fields.push('attendance');
+    return;
+  }
+  addUnknownFields(
+    fields,
+    attendance,
+    ['waiting', 'inService', 'serviceSlots', 'completed'],
+    'attendance',
+  );
+  for (const field of ['waiting', 'inService'] as const) {
+    if (field in attendance && !isNonNegativeInteger(attendance[field])) {
+      fields.push(`attendance.${field}`);
+    }
+  }
+  if (
+    'serviceSlots' in attendance &&
+    (!isNonNegativeInteger(attendance.serviceSlots) ||
+      attendance.serviceSlots < 1)
+  ) {
+    fields.push('attendance.serviceSlots');
+  }
+  if (!('completed' in attendance)) return;
+
+  const completed = attendance.completed;
+  if (!isRecord(completed)) {
+    fields.push('attendance.completed');
+    return;
+  }
+  addUnknownFields(
+    fields,
+    completed,
+    ['count', 'periodStart', 'periodEnd'],
+    'attendance.completed',
+  );
+  if (!isNonNegativeInteger(completed.count)) {
+    fields.push('attendance.completed.count');
+  }
+  requireDateTime(completed, 'periodStart', fields, 'attendance.completed');
+  requireDateTime(completed, 'periodEnd', fields, 'attendance.completed');
+  if (
+    typeof completed.periodStart !== 'string' ||
+    typeof completed.periodEnd !== 'string' ||
+    !isValidDateTime(completed.periodStart) ||
+    !isValidDateTime(completed.periodEnd)
+  ) {
+    return;
+  }
+
+  const start = Date.parse(completed.periodStart);
+  const end = Date.parse(completed.periodEnd);
+  if (start >= end) {
+    fields.push('attendance.completed.periodEnd');
+  } else if (typeof occurredAt === 'string' && isValidDateTime(occurredAt)) {
+    const occurred = Date.parse(occurredAt);
+    if (occurred < start || occurred >= end) {
+      fields.push('attendance.completed.periodStart');
+      fields.push('attendance.completed.periodEnd');
+    }
+  }
 }
 
 function requireString(
@@ -119,9 +201,10 @@ function requireDateTime(
   payload: Record<string, unknown>,
   field: string,
   fields: string[],
+  prefix?: string,
 ): void {
   if (typeof payload[field] !== 'string' || !isValidDateTime(payload[field])) {
-    fields.push(field);
+    fields.push(prefix ? `${prefix}.${field}` : field);
   }
 }
 

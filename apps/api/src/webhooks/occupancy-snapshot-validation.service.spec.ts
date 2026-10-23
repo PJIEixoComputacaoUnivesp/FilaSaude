@@ -157,4 +157,107 @@ describe('OccupancySnapshotValidationService', () => {
       service.validate({ ...validSnapshot, unexpected: true }),
     ).toThrow(UnprocessableEntityException);
   });
+  describe('occupancy.snapshot.v2', () => {
+    const validV2 = {
+      ...validSnapshot,
+      type: 'occupancy.snapshot.v2',
+      attendance: {
+        waiting: 7,
+        inService: 4,
+        serviceSlots: 4,
+        completed: {
+          count: 86,
+          periodStart: '2026-09-25T00:00:00-03:00',
+          periodEnd: '2026-09-26T00:00:00-03:00',
+        },
+      },
+    };
+
+    function fieldsOf(payload: unknown): unknown {
+      try {
+        service.validate(payload);
+      } catch (error) {
+        return (error as UnprocessableEntityException).getResponse();
+      }
+      return null;
+    }
+
+    it('accepts the attendance flow, partial attendance and no attendance', () => {
+      expect(service.validate(validV2)).toEqual(validV2);
+      expect(
+        service.validate({ ...validV2, attendance: { waiting: 0 } }),
+      ).toBeTruthy();
+      const { attendance: _attendance, ...withoutAttendance } = validV2;
+      expect(service.validate(withoutAttendance)).toEqual(withoutAttendance);
+    });
+
+    it('keeps attendance out of v1', () => {
+      expect(
+        fieldsOf({ ...validSnapshot, attendance: validV2.attendance }),
+      ).toMatchObject({ fields: ['attendance'] });
+    });
+
+    it('rejects null, empty and negative counts instead of reading them as zero', () => {
+      expect(fieldsOf({ ...validV2, attendance: null })).toMatchObject({
+        fields: ['attendance'],
+      });
+      expect(fieldsOf({ ...validV2, attendance: {} })).toMatchObject({
+        fields: ['attendance'],
+      });
+      expect(
+        fieldsOf({
+          ...validV2,
+          attendance: {
+            waiting: -1,
+            inService: 1.5,
+            serviceSlots: 0,
+            triage: 3,
+          },
+        }),
+      ).toMatchObject({
+        fields: [
+          'attendance.triage',
+          'attendance.waiting',
+          'attendance.inService',
+          'attendance.serviceSlots',
+        ],
+      });
+    });
+
+    it('requires a half-open period that contains occurredAt', () => {
+      const completed = validV2.attendance.completed;
+      expect(
+        fieldsOf({
+          ...validV2,
+          attendance: {
+            completed: { ...completed, periodEnd: completed.periodStart },
+          },
+        }),
+      ).toMatchObject({ fields: ['attendance.completed.periodEnd'] });
+      expect(
+        fieldsOf({
+          ...validV2,
+          occurredAt: '2026-09-26T00:00:00-03:00',
+          observedAt: '2026-09-26T00:00:05-03:00',
+          attendance: { completed },
+        }),
+      ).toMatchObject({
+        fields: [
+          'attendance.completed.periodStart',
+          'attendance.completed.periodEnd',
+        ],
+      });
+      expect(
+        fieldsOf({
+          ...validV2,
+          attendance: { completed: { count: 1, periodStart: 'ontem' } },
+        }),
+      ).toMatchObject({
+        fields: [
+          'attendance.completed.periodStart',
+          'attendance.completed.periodEnd',
+        ],
+      });
+    });
+  });
 });
