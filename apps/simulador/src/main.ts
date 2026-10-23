@@ -19,7 +19,11 @@ async function main(): Promise<void> {
     ...config,
     national: config.scenario === 'national',
   });
-  const state = new SimulationState(config.seed);
+  const state = new SimulationState(config.seed, {
+    attendance: config.attendance,
+    attendanceScenario: config.attendanceScenario,
+    stepSeconds: config.intervalSeconds,
+  });
   const selectedCnes = new Set(selected.map((unit) => unit.id));
   for (const override of config.occupancyOverrides) {
     if (!selectedCnes.has(override.unitCnes)) {
@@ -45,6 +49,7 @@ async function main(): Promise<void> {
         sourceId: config.sourceId,
         seed: config.seed,
         intervalSeconds: config.intervalSeconds,
+        attendance: config.attendance ? config.attendanceScenario : false,
         units: selected.map(({ id, name, municipalityCode, city, state: unitState }) => ({
           id,
           name,
