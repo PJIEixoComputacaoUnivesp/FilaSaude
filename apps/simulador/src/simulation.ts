@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import {
+  activeSlots,
   dailyPeriod,
   initialStock,
   profileFor,
@@ -36,6 +37,7 @@ export interface CompletedAttendances {
 export interface AttendanceSnapshot {
   waiting: number;
   inService: number;
+  serviceSlots: number;
   completed: CompletedAttendances;
 }
 
@@ -122,7 +124,11 @@ export class SimulationState {
     return {
       ...snapshot,
       type: SIMULATOR_ATTENDANCE_SNAPSHOT_TYPE,
-      attendance: reportAttendance(state.attendance, occurredAt),
+      attendance: reportAttendance(
+        state.attendance,
+        activeSlots(state.attendance.profile, this.attendanceScenario),
+        occurredAt,
+      ),
     };
   }
 
@@ -220,7 +226,11 @@ export class SimulationState {
 // A completion is counted in the period of the first snapshot that reports it,
 // using occurredAt. The count is cumulative within the period, so resending a
 // snapshot never adds to it, and it restarts at the next period.
-function reportAttendance(state: AttendanceState, occurredAt: Date): AttendanceSnapshot {
+function reportAttendance(
+  state: AttendanceState,
+  serviceSlots: number,
+  occurredAt: Date,
+): AttendanceSnapshot {
   const period = dailyPeriod(occurredAt);
   if (state.periodStart !== period.start) {
     state.periodStart = period.start;
@@ -233,6 +243,7 @@ function reportAttendance(state: AttendanceState, occurredAt: Date): AttendanceS
   return {
     waiting: state.stock.waiting,
     inService: state.stock.inService,
+    serviceSlots,
     completed: {
       count: state.completedInPeriod,
       periodStart: period.start,

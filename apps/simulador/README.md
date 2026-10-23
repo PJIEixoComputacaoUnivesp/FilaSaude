@@ -115,6 +115,7 @@ inclui, além dos leitos:
 
 - `waiting`: pessoas aguardando o início do atendimento agora;
 - `inService`: pessoas com atendimento em curso agora;
+- `serviceSlots`: postos de atendimento ativos do perfil no cenário;
 - `completed`: atendimentos concluídos no dia de Brasília, acumulados até o
   snapshot, com início e fim do período.
 

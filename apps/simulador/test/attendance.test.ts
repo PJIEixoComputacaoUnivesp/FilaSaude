@@ -136,6 +136,7 @@ test('acumula concluídos no período e zera na virada do dia', () => {
   let total = 0;
 
   assert.equal(previous.type, 'occupancy.snapshot.v2');
+  assert.equal(previous.attendance!.serviceSlots, profileFor('demo-seed', unit.id).serviceSlots);
   assert.equal(previous.attendance!.completed.count, 0);
   for (let occurrence = 1; occurrence <= 30; occurrence += 1) {
     state.advanceUnit(unit, occurrence);

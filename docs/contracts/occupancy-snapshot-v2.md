@@ -28,6 +28,9 @@ stateDiagram-v2
 - `inService`: pessoas com atendimento em curso no instante observado.
 - `completed.count`: atendimentos concluídos no período informado, acumulados
   até o instante observado.
+- `serviceSlots`: quantos atendimentos a unidade sustenta ao mesmo tempo agora.
+  É a referência da espera (pessoas esperando por posto); não é teto da fila,
+  e `inService` pode ultrapassá-lo por pouco tempo quando os postos diminuem.
 
 Os estoques seguem:
 
@@ -50,6 +53,7 @@ um leito, mas o contrato não relaciona as duas contagens.
 | `attendance` | objeto | Opcional, com ao menos um campo. Campos desconhecidos são rejeitados. |
 | `attendance.waiting` | inteiro ≥ 0 | Opcional. |
 | `attendance.inService` | inteiro ≥ 0 | Opcional. |
+| `attendance.serviceSlots` | inteiro ≥ 1 | Opcional. Postos de atendimento simultâneo ativos agora. |
 | `attendance.completed` | objeto | Opcional; exige `count`, `periodStart` e `periodEnd`. |
 | `attendance.completed.count` | inteiro ≥ 0 | Total acumulado no período, não pessoas únicas. |
 | `attendance.completed.periodStart` | ISO 8601 | Início do período, incluído. |
@@ -99,6 +103,7 @@ de snapshots diferentes. Por isso:
   "attendance": {
     "waiting": 7,
     "inService": 4,
+    "serviceSlots": 4,
     "completed": {
       "count": 86,
       "periodStart": "2026-10-23T00:00:00-03:00",

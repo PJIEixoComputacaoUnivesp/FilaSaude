@@ -93,6 +93,11 @@
           "minimum": 0,
           "description": "Pessoas com atendimento em curso no instante observado."
         },
+        "serviceSlots": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Postos de atendimento simultâneo ativos no instante observado; referência para a espera."
+        },
         "completed": {
           "$ref": "#/$defs/completed"
         }
