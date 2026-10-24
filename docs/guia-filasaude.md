@@ -26,9 +26,11 @@ A pergunta que guia o projeto é:
 > Como facilitar a consulta de informações sobre unidades públicas de pronto
 > atendimento disponíveis em determinada região?
 
-Os dados existem, mas estão espalhados em cadastros oficiais pensados para
-gestores, não para quem quer saber rapidamente onde fica a unidade mais perto
-de casa e em que horário ela atende.
+As informações sobre essas unidades já são públicas: o Ministério da Saúde as
+publica no CNES. Mas o CNES foi feito para quem administra o sistema de saúde,
+com códigos e telas de consulta pouco práticas. Para quem só quer saber "qual é
+a UPA mais perto de mim e em que horário ela atende?", é difícil achar a
+resposta lá.
 
 ### A proposta
 
