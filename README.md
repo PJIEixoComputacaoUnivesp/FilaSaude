@@ -20,6 +20,9 @@ quando é.
 O mapa é a porta de entrada. A lista deve trazer as mesmas informações do mapa
 e é o caminho para quem navega por teclado ou leitor de tela.
 
+Para uma explicação sem termos técnicos, do projeto e de como usar o site,
+veja o [Guia do FilaSaúde](docs/guia-filasaude.md).
+
 ## O que o FilaSaúde não faz
 
 O FilaSaúde não é uma plataforma de orientação médica. Ele não faz diagnóstico,
@@ -303,6 +306,7 @@ backups e o passo a passo.
 
 ## Documentação
 
+- [Guia do FilaSaúde](docs/guia-filasaude.md): o projeto e o uso do site, sem termos técnicos.
 - [Fluxo completo](docs/architecture-flow.md): cadastro, jobs, simulador, webhook, processamento e frontend.
 - [Referência de regras e limites](docs/behavior-reference.md): cálculos, ordenação, cache, histórico e retentativas.
 - [Operação e diagnóstico](docs/operations.md): backlog, falhas, retenção e conexões PostgreSQL.
