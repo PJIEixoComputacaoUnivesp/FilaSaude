@@ -40,7 +40,9 @@ O FilaSaúde busca esses dados públicos, organiza e apresenta de forma simples:
 - **uma lista** com as mesmas informações, que funciona bem com teclado e
   leitor de tela;
 - **a fonte e a data** de cada informação, para que a pessoa saiba de onde ela
-  veio e se pode estar desatualizada.
+  veio e se pode estar desatualizada;
+- **um canal de integração** para que os sistemas das unidades informem a
+  ocupação e a fila em tempo real.
 
 O site não pede cadastro, senha nem dados pessoais.
 
@@ -63,20 +65,44 @@ por causa da posição.
 Se o cadastro oficial estiver fora do ar, o site continua funcionando com uma
 **cópia de segurança** e mostra um aviso com a data dessa cópia.
 
-### A ocupação simulada
+### A integração com as unidades e a ocupação simulada
 
 Não existe hoje uma fonte pública nacional que informe, em tempo real, quantos
-leitos estão ocupados ou quantas pessoas estão esperando em cada unidade. Para
-mostrar como uma plataforma desse tipo poderia funcionar, o projeto tem uma
-**demonstração com dados fictícios**, ligada só por quem quiser vê-la.
+leitos estão ocupados ou quantas pessoas estão esperando em cada unidade. Quem
+tem essa informação são os sistemas das próprias unidades e das secretarias de
+saúde.
 
-Um programa do próprio projeto, o simulador, faz o papel dos sistemas das
-unidades e envia, a cada poucos minutos, números inventados de:
+Por isso, a ideia central do FilaSaúde é oferecer **um canal de integração
+pronto** para que esses sistemas enviem a situação de cada unidade de forma
+simples. Esse canal é um *webhook*: um endereço na internet para o qual o
+sistema da unidade manda uma mensagem sempre que a situação muda ou, no mínimo,
+a cada poucos minutos. O FilaSaúde recebe, guarda e mostra no mapa.
 
-- **leitos ocupados** (observação, estabilização e internação);
+O canal já vem padronizado, para que a integração seja rápida e confiável:
+
+- **Formato combinado**: a mensagem segue um modelo publicado, com os mesmos
+  campos para todas as unidades. Basta o sistema preencher o modelo, sem
+  adaptações caso a caso.
+- **Segurança**: cada sistema autorizado tem uma chave própria e "assina" as
+  mensagens, para que ninguém consiga enviar dados em nome de uma unidade.
+- **Tolerância a falhas**: se a conexão cair e o sistema reenviar a mesma
+  mensagem, ela não é contada duas vezes. Uma mensagem atrasada também não
+  apaga uma informação mais nova.
+- **Sem dados de pacientes**: o canal só aceita números agregados, como
+  "7 pessoas esperando", nunca nomes ou informações de saúde de alguém.
+
+O modelo inclui:
+
+- **leitos ocupados** e a capacidade (observação, estabilização e internação);
 - **pessoas esperando** atendimento;
-- **pessoas em atendimento**;
+- **pessoas em atendimento** e quantos postos de atendimento estão ativos;
 - **atendimentos concluídos no dia**.
+
+Como nenhuma unidade está conectada ainda, um programa do próprio projeto, o
+**simulador**, faz o papel dos sistemas das unidades. Ele usa exatamente o mesmo
+canal que uma unidade real usaria e envia números inventados. Assim é possível
+demonstrar a plataforma funcionando de ponta a ponta. Essa **demonstração com
+dados fictícios** só aparece para quem ligar a opção no site.
 
 O simulador acompanha cada pessoa fictícia pelos estados chegada → espera →
 atendimento → saída. As contas sempre fecham: quem começa a ser atendido sai da
@@ -130,8 +156,11 @@ a telas pequenas, a celulares deitados e a fontes maiores.
 
 - Os dados cadastrais dependem do CNES: endereço e horário podem ter mudado
   desde a última atualização da unidade.
-- A ocupação é uma demonstração acadêmica. Com uma integração real com
-  secretarias de saúde, o mesmo caminho poderia receber dados verdadeiros.
+- Por enquanto, a ocupação e a fila são uma demonstração acadêmica com dados
+  fictícios. O canal de integração já está pronto: quando uma unidade ou
+  secretaria de saúde se conectar, os dados reais entram pelo mesmo caminho.
+  Basta autorizar o sistema dela e ajustar o site, que hoje marca toda a
+  ocupação como simulada.
 - Filtros por características da unidade estão planejados.
 
 ## Parte 2 — Como usar
