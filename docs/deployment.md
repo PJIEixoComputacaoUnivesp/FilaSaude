@@ -144,6 +144,16 @@ serve apenas a catálogos pequenos: as 1.793 unidades do teste nacional usam 24
 fontes e cadência média de 120 segundos por unidade para respeitar o limite por
 fonte. Revise as partições e a quantidade de fontes quando o catálogo mudar.
 
+Os eventos processados ficam na inbox por `OCCUPANCY_RETENTION_HOURS` horas
+(padrão 168) e a API apaga os mais antigos uma vez por hora. Na carga nacional,
+de cerca de 15 eventos/s, isso dá uns 2,2 GB de banco por dia de retenção; em
+Droplet de 24 GB, use a variável de Actions `OCCUPANCY_RETENTION_HOURS` (ex.
+`48`) e faça um novo deploy. O valor não pode ser menor que
+`OCCUPANCY_HISTORY_HOURS` (24). O PostgreSQL reaproveita o espaço apagado, mas
+não o devolve ao disco. Ao reduzir a retenção de uma rodada em andamento, apague
+antes o excedente em lotes, para a primeira limpeza da API não remover milhões
+de linhas num só comando.
+
 - O simulador usa a rede interna do Compose. A autorização de execução nacional
   e de destino interno é explícita no serviço.
 - O serviço inicia após a versão estar saudável e fora do `--wait`: se falhar,
