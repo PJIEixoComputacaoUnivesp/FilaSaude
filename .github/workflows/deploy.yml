@@ -188,6 +188,9 @@ jobs:
           # starts the simulator; anything else keeps both off.
           OCCUPANCY_SIMULATION_ENABLED: ${{ vars.OCCUPANCY_SIMULATION_ENABLED }}
           SIMULATOR_SOURCE_IDS: ${{ vars.SIMULATOR_SOURCE_IDS }}
+          # Optional repository variable: hours of occupancy events kept in the
+          # inbox (API default: 168).
+          OCCUPANCY_RETENTION_HOURS: ${{ vars.OCCUPANCY_RETENTION_HOURS }}
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
           set -eu
@@ -211,6 +214,9 @@ jobs:
             if [ "$OCCUPANCY_SIMULATION_ENABLED" = "true" ]; then
               printf 'OCCUPANCY_SIMULATION_ENABLED=true\n'
               printf 'SIMULATOR_SOURCE_IDS=%s\n' "${SIMULATOR_SOURCE_IDS:-occupancy-feed}"
+            fi
+            if [ -n "$OCCUPANCY_RETENTION_HOURS" ]; then
+              printf 'OCCUPANCY_RETENTION_HOURS=%s\n' "$OCCUPANCY_RETENTION_HOURS"
             fi
           } > "$RUNNER_TEMP/production.env"
 

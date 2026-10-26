@@ -38,6 +38,9 @@ services:
       # Optional. "true" publishes the simulated occupancy to the site; the
       # deploy also starts the simulator (see deploy.sh).
       OCCUPANCY_SIMULATION_ENABLED: ${OCCUPANCY_SIMULATION_ENABLED:-false}
+      # Optional. Hours that processed occupancy events stay in the inbox; the
+      # sweep runs every hour. Keep it at or above OCCUPANCY_HISTORY_HOURS (24).
+      OCCUPANCY_RETENTION_HOURS: ${OCCUPANCY_RETENTION_HOURS:-168}
     expose:
       - "3000"
     healthcheck:
