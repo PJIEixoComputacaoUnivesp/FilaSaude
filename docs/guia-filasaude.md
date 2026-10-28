@@ -114,14 +114,20 @@ Com a demonstração ligada, cada unidade ganha uma cor:
 
 | Cor | Situação | Quando aparece |
 | --- | --- | --- |
-| Verde | Baixa | Leitos abaixo de 60% **e** menos de 1 pessoa esperando por posto de atendimento |
-| Amarelo | Moderada | Leitos de 60% a 84% **ou** de 1 a menos de 3 pessoas esperando por posto |
-| Vermelho | Alta | Leitos a partir de 85% **ou** 3 ou mais pessoas esperando por posto |
+| Verde | Espera baixa | Menos de 1 pessoa esperando por posto de atendimento ativo |
+| Amarelo | Espera moderada | De 1 a menos de 3 pessoas esperando por posto de atendimento ativo |
+| Vermelho | Espera alta | 3 ou mais pessoas esperando por posto de atendimento ativo |
 
-A cor é sempre a pior das duas situações, e o site diz qual delas definiu a cor
-(por exemplo, "Situação alta, por espera 3,5 por posto"). Os atendimentos
-concluídos não mudam a cor: eles contam o que já aconteceu no dia, não o que
-está acontecendo agora.
+A cor depende apenas das pessoas esperando por posto de atendimento ativo
+(por exemplo, "Espera alta, 3,5 por posto"). Sem a quantidade de pessoas
+esperando ou sem postos ativos informados, aparece **"Espera não informada"**
+em cinza. Zero pessoas esperando é diferente de dado ausente.
+
+O resumo no mapa e na lista destaca pessoas esperando e em atendimento. A
+ocupação de leitos fica como informação complementar nos detalhes da unidade:
+mesmo com leitos cheios, ela não aumenta a faixa de espera. Pessoas em atendimento
+e atendimentos concluídos também não mudam a cor. As faixas são convenções da
+simulação e não estimam quanto tempo uma pessoa vai esperar.
 
 Tudo isso aparece marcado como **"Dados simulados"**. Os números não descrevem
 nenhuma unidade de verdade, e as cores **não são classificação de risco**.
@@ -218,8 +224,9 @@ ganham as cores verde, amarelo e vermelho; as demais continuam em azul.
 
 ![Mapa da capital paulista com as cores da ocupação simulada](evidencias/fluxo-atendimento-mapa-1280x800.png)
 
-Ao abrir uma unidade, o resumo diz a situação e o que a definiu, além dos
-leitos ocupados, das pessoas esperando e das pessoas em atendimento.
+Ao abrir uma unidade, o resumo mostra a faixa de espera, as pessoas esperando
+e as pessoas em atendimento, com fonte e horário do envio. Leitos ficam nos
+detalhes da unidade. Dados ausentes aparecem como não informados.
 
 ![Resumo de uma unidade com a situação simulada](evidencias/fluxo-atendimento-popup-390x844.png)
 

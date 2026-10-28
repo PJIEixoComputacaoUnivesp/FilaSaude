@@ -54,15 +54,15 @@
   characteristic is a feature of its own (#29).
 - Results have a neutral order (UF, city, name). Nothing ranks, highlights or
   recommends a unit. That holds when the map becomes the entry point and when
-  it shows occupancy: ranges are always text plus color, and never reuse the
-  colors of clinical risk classification.
+  it shows occupancy: ranges always pair text with color and explain that
+  they do not represent clinical risk classification.
 - The national query is answered from the local CNES copy by design, so it is
   shown as plain text ("Cópia nacional do CNES, atualizada até…"). Only a real
   outage of the official source gets the amber `role="status"` notice.
 
 ## Simulated occupancy
 
-- The "Ocupação simulada de leitos" layer (proposal 0001) exists only when the API
+- The "Ocupação simulada" layer (proposal 0001) exists only when the API
   answers `GET /occupancy`; it starts off and the choice lasts for the session.
   The map, the list and the unit detail share it (`OccupancyLayerProvider`).
 - Fontes nacionais alimentam a ocupação continuamente, independentemente de
@@ -70,17 +70,18 @@
   afetam apenas a visualização de cada visitante. Não há seletor público nem
   endpoint de escrita para controlar as fontes; cenários de teste ficam na CLI
   do operador.
-- Nesta entrega, "ocupação" significa leitos sintéticos, e não movimento de
-  pessoas. A legenda explica que a cor usa a soma dos ocupados dividida pela
-  soma das capacidades das categorias informadas; o detalhe discrimina cada
-  categoria. As capacidades são geradas pelo simulador e não são inventário
-  real do CNES. Espera, atendimento e conclusões ficam fora desta entrega.
-- Palette: one violet scale with the same dark ring (`occupancy-ring`
-  #2E1065) for low, moderate and high, a solid gray disc for "não informada"
-  and a dashed hollow gray ring for "sem confirmação recente". Never the
-  colors of clinical risk classification. Controls of the layer use
-  `occupancy-control` (#5B21B6), not the color of a level. Values live in
-  `occupancy.ts` (canvas) and `index.css` (tokens); keep them in step.
+- Mapa, lista e resumo do detalhe priorizam pessoas esperando e em atendimento.
+  A cor usa apenas pessoas esperando por posto ativo: baixa abaixo de 1,
+  moderada de 1 a menos de 3, alta a partir de 3. São convenções da simulação.
+  Sem espera ou postos ativos informados, mostrar “Espera não informada”; zero
+  pessoas esperando é um valor válido. Não usar leitos como fallback.
+- Leitos por categoria e histórico de ocupação ficam como informações
+  complementares no detalhe. A faixa de espera da tabela histórica usa a mesma
+  regra do mapa. Leitos, pessoas em atendimento e conclusões não mudam a cor.
+- Paleta de espera: verde, amarelo e vermelho com anel escuro, cinza sólido
+  para dado não informado e anel cinza tracejado sem confirmação recente.
+  Texto acompanha a cor; a legenda explica que não é classificação de risco.
+  Controles permanecem violetas. Manter `occupancy.ts` e `index.css` coerentes.
 - Every simulated value carries the "Dados simulados" pill or the "Dado
   simulado · Simulador do FilaSaúde" line, the time it was sent and the level
   in words. The notice "Dados fictícios… não são a ocupação real" stays
