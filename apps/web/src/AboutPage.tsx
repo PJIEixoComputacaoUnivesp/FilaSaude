@@ -57,7 +57,7 @@ export function AboutPage() {
         </p>
         <p className="text-base leading-relaxed text-slate-700">
           {OCCUPANCY_EXPLANATION} {COLOR_NOTICE} O detalhe mostra cada valor
-          separado e diz qual indicador definiu a cor. As faixas são
+          separado, com leitos como informação complementar. As faixas são
           convenções da simulação.
         </p>
         <p className="text-base leading-relaxed text-slate-700">

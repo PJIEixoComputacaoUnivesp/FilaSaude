@@ -12,6 +12,7 @@ import {
   formatDateTime,
   formatTime,
   occupancyStatus,
+  waitingStatus,
   STATUS_LABELS,
   waitingPerSlot,
   type OccupancyHistoryPoint,
@@ -283,7 +284,7 @@ function CategoryTable({
     <div className="mt-4 sm:max-w-lg">
       <div className="sm:hidden">
         <p className="mb-2 text-sm font-semibold text-slate-900">
-          Último envio por categoria, às {formatTime(occupancy.observedAt)}
+          Leitos por categoria, às {formatTime(occupancy.observedAt)}
           {isStale && " (sem confirmação recente)"}
         </p>
         <div className="divide-y divide-slate-200 rounded-xl border border-slate-200 px-3">
@@ -319,7 +320,7 @@ function CategoryTable({
       <div className="hidden overflow-x-auto sm:block">
         <table className="w-full min-w-[18rem] text-left text-sm text-slate-700">
           <caption className="mb-2 text-left text-sm font-semibold text-slate-900">
-            Último envio por categoria, às {formatTime(occupancy.observedAt)}
+            Leitos por categoria, às {formatTime(occupancy.observedAt)}
             {isStale && " (sem confirmação recente)"}
           </caption>
           <thead>
@@ -356,7 +357,7 @@ function CategoryTable({
               </tr>
             ))}
           </tbody>
-          {/* The level is computed on this total, not on each category. */}
+          {/* Bed totals are complementary; they do not set the queue color. */}
           <tfoot>
             <tr className="border-t-2 border-slate-300 font-semibold text-slate-900">
               <th scope="row" className="py-2 pr-4">
@@ -553,7 +554,7 @@ function HistoryChart({
                   Esperando
                 </th>
                 <th scope="col" className="py-2 font-semibold">
-                  Faixa
+                  Faixa de espera
                 </th>
               </tr>
             </thead>
@@ -572,7 +573,7 @@ function HistoryChart({
                     {row.attendance?.waiting ?? "—"}
                   </td>
                   <td className="py-2">
-                    {STATUS_LABELS[row.level ?? "unknown"]}
+                    {STATUS_LABELS[waitingStatus(row.attendance)]}
                   </td>
                 </tr>
               ))}

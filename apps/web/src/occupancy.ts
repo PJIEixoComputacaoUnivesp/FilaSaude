@@ -30,7 +30,7 @@ export interface UnitOccupancy {
   eventId?: string;
   /** Bed occupancy, sum of occupied over sum of capacity. */
   percentage: number | null;
-  /** Highest level among the informed indicators. */
+  /** API aggregate of beds and waiting; presentation uses attendance instead. */
   level: OccupancyLevel | null;
   confirmation: "recent" | "stale";
   /** Optional: an API without the attendance flow does not send them. */
@@ -76,8 +76,8 @@ export interface OccupancyHistoryResponse {
 
 /**
  * What a unit shows on the layer. `unknown` is a recent snapshot without
- * capacity; `stale` is a snapshot older than the confirmation limit, whose
- * level is no longer shown.
+ * a waiting count or active service slots; `stale` is a snapshot older than
+ * the confirmation limit, whose level is no longer shown.
  */
 export type OccupancyStatus = OccupancyLevel | "unknown" | "stale";
 
@@ -90,26 +90,18 @@ export const OCCUPANCY_STATUSES: readonly OccupancyStatus[] = [
 ];
 
 export const STATUS_LABELS: Record<OccupancyStatus, string> = {
-  low: "Situação baixa",
-  moderate: "Situação moderada",
-  high: "Situação alta",
-  unknown: "Situação não informada",
+  low: "Espera baixa",
+  moderate: "Espera moderada",
+  high: "Espera alta",
+  unknown: "Espera não informada",
   stale: "Sem confirmação recente",
 };
 
-/**
- * Short legend texts for the thresholds the API uses: beds at 60% and 85%,
- * and 1 and 3 people waiting per active service slot. The worst one wins.
- */
+/** Demonstration thresholds in people waiting per active service slot. */
 export const STATUS_RANGES: Partial<Record<OccupancyStatus, string>> = {
-  low: "leitos abaixo de 60% e menos de 1 pessoa esperando por posto",
-  moderate: "leitos de 60% a 84% ou de 1 a menos de 3 esperando por posto",
-  high: "leitos a partir de 85% ou 3 ou mais esperando por posto",
-};
-
-export const INDICATOR_LABELS: Record<OccupancyIndicator, string> = {
-  beds: "leitos",
-  waiting: "espera",
+  low: "menos de 1 pessoa esperando por posto",
+  moderate: "de 1 a menos de 3 pessoas esperando por posto",
+  high: "3 ou mais pessoas esperando por posto",
 };
 
 export const CATEGORY_LABELS: Record<OccupancyCategoryCode, string> = {
@@ -124,8 +116,8 @@ export const CATEGORY_LABELS: Record<OccupancyCategoryCode, string> = {
  * the green in lightness (about 2.7:1) for people who do not tell red from
  * green apart. These are also the colors of clinical
  * risk classification, so the level is never shown by color alone: the popup,
- * the list and the legend always say "situação simulada" and which indicator
- * set it, and the legend says it is not a risk classification (ADR 0007).
+ * the list and the legend describe the simulated queue and the legend says
+ * it is not a risk classification (ADR 0007).
  * "Not informed" is a solid gray disc, so it does not look like the hollow
  * ring of an approximate position; "stale" is a dashed hollow ring. Canvas
  * markers do not resolve CSS variables, so the values live here and in
@@ -151,7 +143,7 @@ export const SIMULATION_NOTICE =
 
 /** How the color is chosen; completed attendances never take part. */
 export const OCCUPANCY_EXPLANATION =
-  "A cor é a faixa mais alta entre dois indicadores: leitos (total ocupado dividido pelo total simulado de observação, estabilização e internação) e espera (pessoas esperando por posto de atendimento ativo). Atendimentos concluídos não mudam a cor. Não é classificação de risco.";
+  "A cor indica apenas a espera simulada: pessoas esperando por posto de atendimento ativo. Sem esses dados, a espera aparece como não informada. Leitos ficam nos detalhes da unidade e não mudam a cor, assim como pessoas em atendimento e atendimentos concluídos. Não é classificação de risco.";
 
 /** Legend note: the colors are the same as those of clinical triage. */
 export const COLOR_NOTICE =
@@ -159,7 +151,18 @@ export const COLOR_NOTICE =
 
 export function occupancyStatus(occupancy: UnitOccupancy): OccupancyStatus {
   if (occupancy.confirmation === "stale") return "stale";
-  return occupancy.level ?? "unknown";
+  return waitingStatus(occupancy.attendance);
+}
+
+/** Map, list and history use the queue only, independently of the API aggregate. */
+export function waitingStatus(
+  attendance: UnitAttendance | null | undefined,
+): OccupancyStatus {
+  const ratio = waitingPerSlot(attendance);
+  if (ratio === null) return "unknown";
+  if (ratio >= 3) return "high";
+  if (ratio >= 1) return "moderate";
+  return "low";
 }
 
 /** People waiting per active slot, or `null` without both values. */
@@ -179,33 +182,11 @@ export function formatDecimal(value: number): string {
   return decimalFormat.format(value);
 }
 
-/** Values of the indicators that set the level, e.g. "leitos 90%". */
-function driverDetail(
-  occupancy: UnitOccupancy,
-  indicator: OccupancyIndicator,
-): string {
-  if (indicator === "beds") return `leitos ${occupancy.percentage}%`;
-  const ratio = waitingPerSlot(occupancy.attendance);
-  return `espera ${ratio === null ? "não informada" : `${formatDecimal(ratio)} por posto`}`;
-}
-
-/** Indicators that set the color; older responses only know the beds. */
-export function levelDrivers(occupancy: UnitOccupancy): OccupancyIndicator[] {
-  return occupancy.levelDrivers ?? (occupancy.level ? ["beds"] : []);
-}
-
-/**
- * Visible and spoken summary with the indicator that set the color, e.g.
- * "Situação alta, por espera 3,5 por posto".
- */
+/** Visible and spoken queue summary, consistent with the marker color. */
 export function describeOccupancy(occupancy: UnitOccupancy): string {
   const status = occupancyStatus(occupancy);
   if (status === "stale" || status === "unknown") return STATUS_LABELS[status];
-  const drivers = levelDrivers(occupancy);
-  if (drivers.length === 0) return STATUS_LABELS[status];
-  return `${STATUS_LABELS[status]}, por ${drivers
-    .map((indicator) => driverDetail(occupancy, indicator))
-    .join(" e ")}`;
+  return `${STATUS_LABELS[status]}, ${formatDecimal(waitingPerSlot(occupancy.attendance)!)} por posto`;
 }
 
 /** Explicit period of the completed attendances, in Brasília time. */

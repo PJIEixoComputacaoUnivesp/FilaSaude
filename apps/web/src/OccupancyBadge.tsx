@@ -9,7 +9,7 @@ import {
 
 /**
  * Situation of one unit next to its registry data: the level in words, the
- * indicator that set it, the current counts, its source, when it was sent and
+ * current waiting and in-service counts, its source, when it was sent and
  * the simulation mark, never the color alone. Divs, not paragraphs: Leaflet
  * adds a large margin to paragraphs in popups.
  */
@@ -24,12 +24,13 @@ export function OccupancyBadge({
   const attendance = occupancy.attendance;
   // A stale snapshot keeps only its date here, as its level: the detail
   // shows the last values with that warning.
-  const counts = status === "stale" ? [] : [
-    occupancy.percentage !== null && `Leitos ${occupancy.percentage}%`,
-    attendance?.waiting !== undefined && `Esperando ${attendance.waiting}`,
-    attendance?.inService !== undefined &&
-      `Em atendimento ${attendance.inService}`,
-  ].filter(Boolean);
+  const counts =
+    status === "stale"
+      ? []
+      : [
+          `Esperando ${attendance?.waiting ?? "não informado"}`,
+          `Em atendimento ${attendance?.inService ?? "não informado"}`,
+        ];
   return (
     <div
       className={`rounded-lg border border-occupancy-border bg-occupancy-surface px-3 py-2 text-sm text-slate-800 ${className}`}
