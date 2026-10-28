@@ -182,11 +182,19 @@ export function formatDecimal(value: number): string {
   return decimalFormat.format(value);
 }
 
+/** Do not display a rounded ratio as belonging to the next waiting band. */
+export function formatWaitingPerSlot(value: number): string {
+  const formatted = formatDecimal(value);
+  if (value < 1 && formatted === "1") return "menos de 1";
+  if (value < 3 && formatted === "3") return "menos de 3";
+  return formatted;
+}
+
 /** Visible and spoken queue summary, consistent with the marker color. */
 export function describeOccupancy(occupancy: UnitOccupancy): string {
   const status = occupancyStatus(occupancy);
   if (status === "stale" || status === "unknown") return STATUS_LABELS[status];
-  return `${STATUS_LABELS[status]}, ${formatDecimal(waitingPerSlot(occupancy.attendance)!)} por posto`;
+  return `${STATUS_LABELS[status]}, ${formatWaitingPerSlot(waitingPerSlot(occupancy.attendance)!)} por posto`;
 }
 
 /** Explicit period of the completed attendances, in Brasília time. */

@@ -8,7 +8,7 @@ import {
   SIMULATION_NOTICE,
   describeCompletedPeriod,
   fetchOccupancyHistory,
-  formatDecimal,
+  formatWaitingPerSlot,
   formatDateTime,
   formatTime,
   occupancyStatus,
@@ -197,7 +197,7 @@ function AttendanceSummary({
     },
     {
       label: "Espera por posto",
-      value: ratio === null ? NOT_INFORMED : formatDecimal(ratio),
+      value: ratio === null ? NOT_INFORMED : formatWaitingPerSlot(ratio),
     },
   ];
 

@@ -4,6 +4,7 @@ import {
   fetchOccupancy,
   waitingStatus,
   waitingPerSlot,
+  formatWaitingPerSlot,
   formatDateTime,
   occupancyStatus,
   parseOccupancyResponse,
@@ -74,6 +75,24 @@ describe("occupancyStatus", () => {
 });
 
 describe("describeOccupancy", () => {
+  it.each([
+    [19, 20, "Espera baixa, menos de 1 por posto"],
+    [59, 20, "Espera moderada, menos de 3 por posto"],
+    [999, 1000, "Espera baixa, menos de 1 por posto"],
+    [2999, 1000, "Espera moderada, menos de 3 por posto"],
+  ])(
+    "keeps %s/%s below the next band in the summary",
+    (waiting, serviceSlots, expected) => {
+      expect(
+        describeOccupancy(
+          occupancy({
+            attendance: { waiting, serviceSlots },
+          }),
+        ),
+      ).toBe(expected);
+    },
+  );
+
   it("describes the queue without the bed percentage or aggregate drivers", () => {
     expect(
       describeOccupancy(
@@ -125,6 +144,27 @@ describe("waitingStatus", () => {
   ])("does not classify incomplete data: %s", (attendance) => {
     expect(waitingStatus(attendance)).toBe("unknown");
   });
+});
+
+describe("formatWaitingPerSlot", () => {
+  it.each([
+    [0, "0"],
+    [0.94, "0,9"],
+    [0.95, "menos de 1"],
+    [0.999, "menos de 1"],
+    [1, "1"],
+    [1.25, "1,3"],
+    [2.94, "2,9"],
+    [2.95, "menos de 3"],
+    [2.999, "menos de 3"],
+    [3, "3"],
+    [3.5, "3,5"],
+  ] as const)(
+    "formats %s consistently with the waiting band",
+    (ratio, expected) => {
+      expect(formatWaitingPerSlot(ratio)).toBe(expected);
+    },
+  );
 });
 
 describe("waitingPerSlot", () => {
