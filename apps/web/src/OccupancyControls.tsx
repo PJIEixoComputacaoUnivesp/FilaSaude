@@ -122,7 +122,7 @@ export function OccupancyControls({
           aria-hidden={collapsible ? true : undefined}
           className="text-xs leading-relaxed text-slate-700 map-wide:hidden"
         >
-          Leitos e filas fictícios.
+          Filas e atendimentos fictícios.
         </p>
       )}
       <LiveStatus message={announcement} delay={0} />

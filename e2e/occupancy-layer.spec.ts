@@ -70,6 +70,7 @@ const highOccupancy = {
   percentage: 90,
   level: "high",
   confirmation: "recent",
+  attendance: { waiting: 6, inService: 2, serviceSlots: 2 },
   categories: [
     { code: "observation", capacity: 20, occupied: 18 },
     { code: "inpatient", capacity: 10, occupied: 9 },
@@ -143,6 +144,7 @@ async function mockApi(page: Page, occupancyStatus = 200) {
           history: [
             {
               percentage: 40,
+              attendance: { waiting: 0, serviceSlots: 2 },
               level: "low",
               categories: highOccupancy.categories,
               occurredAt: "2026-10-15T13:00:00.000Z",
@@ -261,7 +263,7 @@ test("mantém o popup do norte visível ao abrir e ligar a ocupação", async ({
   const panel = page.getByRole("region", { name: "Controles do mapa" });
   await panel.getByText("Ocupação simulada", { exact: true }).click();
   await expect(
-    popup.getByText("Situação alta, por leitos 90%", { exact: true }),
+    popup.getByText("Espera alta, 3 por posto", { exact: true }),
   ).toBeVisible();
   await expect
     .poll(async () => {
@@ -347,7 +349,7 @@ for (const viewport of [
     await panel.getByText("Simulação", { exact: true }).click();
     await expect(toggle).toBeChecked();
     await expect(
-      panel.getByText("Leitos e filas fictícios."),
+      panel.getByText("Filas e atendimentos fictícios."),
     ).toBeVisible();
     const open = panel.getByRole("button", {
       name: /^Filtros e legenda/,
@@ -490,7 +492,7 @@ for (const viewport of [
     await page.keyboard.press("Space");
     await expect(toggle).toBeChecked();
     await expect(
-      panel.getByText("Leitos e filas fictícios."),
+      panel.getByText("Filas e atendimentos fictícios."),
     ).toBeVisible();
 
     const after = await panel.boundingBox();
@@ -507,9 +509,7 @@ for (const viewport of [
     ).toBe(true);
 
     const open = page.getByRole("button", { name: /^Filtros e legenda/ });
-    await expect(open).toHaveAccessibleName(
-      "Filtros e legenda: São Paulo",
-    );
+    await expect(open).toHaveAccessibleName("Filtros e legenda: São Paulo");
     await open.click();
     const dialog = page.getByRole("dialog", { name: "Filtros e legenda" });
     await expect(dialog).toBeVisible();
@@ -523,14 +523,12 @@ for (const viewport of [
     await stateSelect.selectOption("ALL");
     await expect(open).toHaveAccessibleName("Filtros e legenda");
     await stateSelect.selectOption("SP");
-    await expect(open).toHaveAccessibleName(
-      "Filtros e legenda: São Paulo",
-    );
+    await expect(open).toHaveAccessibleName("Filtros e legenda: São Paulo");
     await dialog
       .getByText("Legenda da situação simulada", { exact: true })
       .click();
     await expect(
-      dialog.getByText(/A cor é a faixa mais alta entre dois indicadores/),
+      dialog.getByText(/A cor indica apenas a espera simulada/),
     ).toBeVisible();
     await dialog
       .getByRole("checkbox", {
@@ -548,7 +546,7 @@ for (const viewport of [
     await expect(open).toBeFocused();
     await panel.getByRole("button", { name: "Legenda", exact: true }).click();
     await expect(
-      dialog.getByText(/A cor é a faixa mais alta entre dois indicadores/),
+      dialog.getByText(/A cor indica apenas a espera simulada/),
     ).toBeVisible();
     await expect(
       dialog.getByRole("button", { name: "Voltar ao mapa" }),
@@ -559,7 +557,7 @@ for (const viewport of [
     ).toBeFocused();
     await panel.getByRole("button", { name: "Legenda", exact: true }).click();
     await expect(
-      dialog.getByText(/A cor é a faixa mais alta entre dois indicadores/),
+      dialog.getByText(/A cor indica apenas a espera simulada/),
     ).toBeVisible();
     await page.keyboard.press("Escape");
     expect(
@@ -633,15 +631,13 @@ test("ligada, mostra a faixa em texto, a marca de simulação e filtra a amostra
   await page.goto("/units?uf=SP");
 
   // Keyboard: the switch is a native checkbox.
-  await page
-    .getByRole("switch", { name: "Ocupação simulada" })
-    .focus();
+  await page.getByRole("switch", { name: "Ocupação simulada" }).focus();
   await page.keyboard.press("Space");
 
   const mariana = page
     .getByRole("article")
     .filter({ hasText: "UPA Vila Mariana" });
-  await expect(mariana.getByText("Situação alta, por leitos 90%")).toBeVisible();
+  await expect(mariana.getByText("Espera alta, 3 por posto")).toBeVisible();
   await expect(mariana.getByText("Dado simulado")).toBeVisible();
 
   const mooca = page.getByRole("article").filter({ hasText: "UPA Mooca" });
@@ -666,10 +662,7 @@ test("o detalhe traz as categorias e o histórico em tabela", async ({
 }) => {
   await mockApi(page);
   await page.goto("/units?uf=SP");
-  await page
-    .getByText("Ocupação simulada", { exact: true })
-    .first()
-    .click();
+  await page.getByText("Ocupação simulada", { exact: true }).first().click();
   await page
     .getByRole("article")
     .filter({ hasText: "UPA Vila Mariana" })
@@ -688,7 +681,7 @@ test("o detalhe traz as categorias e o histórico em tabela", async ({
   await expect(
     section.getByRole("row", { name: /Observação 18 20 90%/ }),
   ).toBeVisible();
-  // The level is computed on the total of the categories.
+  // Bed totals remain available as complementary detail.
   await expect(
     section.getByRole("row", { name: /Total das categorias 27 30 90%/ }),
   ).toBeVisible();
@@ -702,7 +695,7 @@ test("o detalhe traz as categorias e o histórico em tabela", async ({
     .locator("summary", { hasText: "Ver histórico em tabela" })
     .click();
   await expect(
-    section.getByRole("cell", { name: "Situação baixa" }),
+    section.getByRole("cell", { name: "Espera baixa" }),
   ).toBeVisible();
 });
 
@@ -737,6 +730,10 @@ test("filtros locais preservam a leitura nacional sem controlar as fontes", asyn
             ...highOccupancy,
             unitCnes: rio.id,
             percentage: rioPercentage,
+            attendance: {
+              waiting: rioPercentage >= 85 ? 8 : 0,
+              serviceSlots: 2,
+            },
             level: rioPercentage >= 85 ? "high" : "low",
           },
         ],
@@ -751,9 +748,7 @@ test("filtros locais preservam a leitura nacional sem controlar as fontes", asyn
   });
 
   await page.goto("/units?uf=SP");
-  await page
-    .getByRole("switch", { name: "Ocupação simulada" })
-    .focus();
+  await page.getByRole("switch", { name: "Ocupação simulada" }).focus();
   await page.keyboard.press("Space");
   await expect(
     page.getByRole("combobox", { name: "Cenário da simulação" }),
@@ -762,7 +757,7 @@ test("filtros locais preservam a leitura nacional sem controlar as fontes", asyn
     page
       .getByRole("article")
       .filter({ hasText: "UPA Vila Mariana" })
-      .getByText("Situação alta, por leitos 90%"),
+      .getByText("Espera alta, 3 por posto"),
   ).toBeVisible();
   await expect(
     page.getByText(/3 unidades com ocupação simulada no Brasil$/),
@@ -772,7 +767,7 @@ test("filtros locais preservam a leitura nacional sem controlar as fontes", asyn
     page
       .getByRole("article")
       .filter({ hasText: rio.name })
-      .getByText("Situação baixa, por leitos 40%"),
+      .getByText("Espera baixa, 0 por posto"),
   ).toBeVisible();
 
   // Sources keep producing while the visitor looks at a different state.
@@ -786,6 +781,7 @@ test("filtros locais preservam a leitura nacional sem controlar as fontes", asyn
         ...highOccupancy,
         unitCnes: rio.id,
         percentage: rioPercentage,
+        attendance: { waiting: 8, serviceSlots: 2 },
         level: "high",
       },
     ],
@@ -795,7 +791,7 @@ test("filtros locais preservam a leitura nacional sem controlar as fontes", asyn
     page
       .getByRole("article")
       .filter({ hasText: rio.name })
-      .getByText("Situação alta, por leitos 95%"),
+      .getByText("Espera alta, 4 por posto"),
   ).toBeVisible();
   expect(occupancyRequests).toHaveLength(requestsBefore);
   expect(
@@ -815,7 +811,16 @@ test("SSE reconecta pela consulta REST e encerra ao desligar a camada", async ({
   await page.route("**/api/occupancy", (route) => {
     reads++;
     return route.fulfill({
-      json: { data: [{ ...highOccupancy, percentage }], metadata },
+      json: {
+        data: [
+          {
+            ...highOccupancy,
+            percentage,
+            attendance: { waiting: percentage === 90 ? 6 : 8, serviceSlots: 2 },
+          },
+        ],
+        metadata,
+      },
     });
   });
   await page.goto("/units?uf=SP");
@@ -827,7 +832,7 @@ test("SSE reconecta pela consulta REST e encerra ao desligar a camada", async ({
   const card = page
     .getByRole("article")
     .filter({ hasText: "UPA Vila Mariana" });
-  await expect(card.getByText("Situação alta, por leitos 90%")).toBeVisible();
+  await expect(card.getByText("Espera alta, 3 por posto")).toBeVisible();
   const beforeReconnect = reads;
   await emitOccupancyEvent(page, "error");
   await expect(
@@ -835,7 +840,7 @@ test("SSE reconecta pela consulta REST e encerra ao desligar a camada", async ({
   ).toBeVisible();
   percentage = 95;
   await emitOccupancyEvent(page, "open");
-  await expect(card.getByText("Situação alta, por leitos 95%")).toBeVisible();
+  await expect(card.getByText("Espera alta, 4 por posto")).toBeVisible();
   expect(reads).toBeGreaterThan(beforeReconnect);
   await expect(toggle).toBeFocused();
   await page.keyboard.press("Space");
@@ -865,9 +870,7 @@ test("SSE atualiza o histórico da unidade mesmo quando o estado atual não muda
     });
   });
   await page.goto("/units?uf=SP");
-  await page
-    .getByRole("switch", { name: "Ocupação simulada" })
-    .focus();
+  await page.getByRole("switch", { name: "Ocupação simulada" }).focus();
   await page.keyboard.press("Space");
   await page
     .getByRole("article")
@@ -899,7 +902,7 @@ test("SSE atualiza o histórico da unidade mesmo quando o estado atual não muda
     section.locator("details").getByRole("cell", { name: "20%", exact: true }),
   ).toBeVisible();
   expect(reads).toBeGreaterThan(beforeUpdate);
-  await expect(section.getByText("Situação alta, por leitos 90%")).toBeVisible();
+  await expect(section.getByText("Espera alta, 3 por posto")).toBeVisible();
 });
 
 for (const viewport of [
@@ -964,10 +967,7 @@ test("mostra todos os valores por categoria sem arrastar em 320px", async ({
   await page.setViewportSize({ width: 320, height: 740 });
   await mockApi(page);
   await page.goto("/units?uf=SP");
-  await page
-    .getByText("Ocupação simulada", { exact: true })
-    .first()
-    .click();
+  await page.getByText("Ocupação simulada", { exact: true }).first().click();
   await page
     .getByRole("article")
     .filter({ hasText: "UPA Vila Mariana" })
@@ -1010,17 +1010,12 @@ test("a lista mobile mostra resultados e permite expandir filtros secundários",
   await page.setViewportSize({ width: 390, height: 844 });
   await mockApi(page);
   await page.goto("/units?uf=SP");
-  await page
-    .getByText("Ocupação simulada", { exact: true })
-    .first()
-    .click();
+  await page.getByText("Ocupação simulada", { exact: true }).first().click();
   const expand = page.getByRole("button", {
     name: /^Filtros e legenda/,
   });
   await expect(expand).toHaveAttribute("aria-expanded", "false");
-  await expect(
-    page.getByText("Leitos e filas fictícios."),
-  ).toBeVisible();
+  await expect(page.getByText("Filas e atendimentos fictícios.")).toBeVisible();
   const simulated = page.getByRole("checkbox", {
     name: "Mostrar só unidades com ocupação simulada",
   });
@@ -1047,10 +1042,7 @@ test("as ações do detalhe mobile ficam visíveis junto do título", async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await mockApi(page);
   await page.goto("/units?uf=SP");
-  await page
-    .getByText("Ocupação simulada", { exact: true })
-    .first()
-    .click();
+  await page.getByText("Ocupação simulada", { exact: true }).first().click();
   await page
     .getByRole("article")
     .filter({ hasText: "UPA Vila Mariana" })
@@ -1099,7 +1091,9 @@ for (const width of [640, 680, 768]) {
         );
       })
       .toBe(true);
-    await popup.getByRole("button", { name: "Fechar detalhes da unidade" }).click();
+    await popup
+      .getByRole("button", { name: "Fechar detalhes da unidade" })
+      .click();
     await expect(popup).toBeHidden();
   });
 }
@@ -1189,10 +1183,12 @@ for (const viewport of [
       exact: true,
     });
     await panel.getByText("Simulação", { exact: true }).click();
-    await expect(location.getByRole("button", { name: "Remover localização" })).toBeVisible();
+    await expect(
+      location.getByRole("button", { name: "Remover localização" }),
+    ).toBeVisible();
     // The notice is required while the layer is on: never cut by the panel.
     await expect(
-      panel.getByText("Leitos e filas fictícios."),
+      panel.getByText("Filas e atendimentos fictícios."),
     ).toBeInViewport({ ratio: 1 });
     await expect
       .poll(() =>
@@ -1235,7 +1231,9 @@ for (const width of [390, 667, 1280]) {
       name: "Sua localização",
       exact: true,
     });
-    await expect(location.getByRole("button", { name: "Remover localização" })).toBeVisible();
+    await expect(
+      location.getByRole("button", { name: "Remover localização" }),
+    ).toBeVisible();
     // The text and, at most, one row with both actions.
     expect((await location.boundingBox())!.height).toBeLessThanOrEqual(84);
   });
@@ -1260,7 +1258,7 @@ test("o erro do catálogo deixa a nova tentativa visível em paisagem", async ({
   expect(button!.y + button!.height).toBeLessThanOrEqual(box!.y + box!.height);
 });
 
-test("a espera por posto pode definir a cor e os concluídos ficam no período", async ({
+test("a espera por posto define a cor e os concluídos ficam no período", async ({
   page,
 }) => {
   const queued = {
@@ -1300,12 +1298,8 @@ test("a espera por posto pode definir a cor e os concluídos ficam no período",
   const card = page
     .getByRole("article")
     .filter({ hasText: "UPA Vila Mariana" });
-  await expect(
-    card.getByText("Situação alta, por espera 3,5 por posto"),
-  ).toBeVisible();
-  await expect(
-    card.getByText("Leitos 40% · Esperando 7 · Em atendimento 2"),
-  ).toBeVisible();
+  await expect(card.getByText("Espera alta, 3,5 por posto")).toBeVisible();
+  await expect(card.getByText("Esperando 7 · Em atendimento 2")).toBeVisible();
 
   await card.getByRole("link", { name: /Ver detalhes/ }).click();
   const section = page.getByRole("region", {
@@ -1319,3 +1313,64 @@ test("a espera por posto pode definir a cor e os concluídos ficam no período",
   ).toBeVisible();
   await expect(section.getByText(/não muda a cor/)).toBeVisible();
 });
+
+for (const viewport of [
+  { width: 390, height: 844 },
+  { width: 1280, height: 800 },
+]) {
+  test(`leitos cheios não elevam a espera e dados ausentes ficam explícitos em ${viewport.width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await mockApi(page);
+    await page.route("**/api/occupancy", (route) =>
+      route.fulfill({
+        json: {
+          data: [
+            {
+              ...highOccupancy,
+              percentage: 100,
+              indicators: { beds: "high", waiting: "low" },
+              levelDrivers: ["beds"],
+              attendance: { waiting: 0, inService: 2, serviceSlots: 2 },
+            },
+            { ...highOccupancy, unitCnes: "2345678", attendance: null },
+          ],
+          metadata,
+        },
+      }),
+    );
+    await page.goto("/units?uf=SP");
+    await page.getByRole("switch", { name: "Ocupação simulada" }).focus();
+    await page.keyboard.press("Space");
+    const card = page
+      .getByRole("article")
+      .filter({ hasText: "UPA Vila Mariana" });
+    await expect(card.getByText("Espera baixa, 0 por posto")).toBeVisible();
+    await expect(
+      card.getByText("Esperando 0 · Em atendimento 2"),
+    ).toBeVisible();
+    await expect(card.locator('svg circle[fill="#16a34a"]')).toHaveCount(1);
+    await expect(card.getByText(/Leitos|100%/)).toHaveCount(0);
+    const unknown = page.getByRole("article").filter({ hasText: "UPA Mooca" });
+    await expect(unknown.getByText("Espera não informada")).toBeVisible();
+    await expect(
+      unknown.getByText(
+        "Esperando não informado · Em atendimento não informado",
+      ),
+    ).toBeVisible();
+    await expect(unknown.locator('svg circle[fill="#94a3b8"]')).toHaveCount(1);
+    await card.getByRole("link", { name: /Ver no mapa/ }).click();
+    const popup = page.locator(".leaflet-popup");
+    await expect(popup.getByText("Espera baixa, 0 por posto")).toBeVisible();
+    await expect(
+      popup.getByText("Esperando 0 · Em atendimento 2"),
+    ).toBeVisible();
+    await expect(popup.getByText(/Leitos|100%/)).toHaveCount(0);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  });
+}

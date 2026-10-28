@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   describeOccupancy,
   fetchOccupancy,
-  levelDrivers,
+  waitingStatus,
   waitingPerSlot,
   formatDateTime,
   occupancyStatus,
@@ -33,52 +33,97 @@ const metadata = {
 };
 
 describe("occupancyStatus", () => {
-  it("uses the level while the source confirms, and stale after that", () => {
-    expect(occupancyStatus(occupancy())).toBe("high");
-    expect(occupancyStatus(occupancy({ level: null, percentage: null }))).toBe(
+  it("does not use occupied beds as a fallback for missing waiting data", () => {
+    expect(occupancyStatus(occupancy())).toBe("unknown");
+    expect(occupancyStatus(occupancy({ percentage: 100, level: "high" }))).toBe(
       "unknown",
     );
+  });
+
+  it("uses only the queue even when beds set a higher aggregate level", () => {
     expect(
-      occupancyStatus(occupancy({ level: null, confirmation: "stale" })),
+      occupancyStatus(
+        occupancy({
+          indicators: { beds: "high", waiting: "low" },
+          levelDrivers: ["beds"],
+          attendance: { waiting: 0, serviceSlots: 4, inService: 4 },
+        }),
+      ),
+    ).toBe("low");
+    expect(
+      occupancyStatus(
+        occupancy({
+          percentage: 0,
+          level: "low",
+          attendance: { waiting: 12, serviceSlots: 4 },
+        }),
+      ),
+    ).toBe("high");
+  });
+
+  it("hides the queue level when the source is stale", () => {
+    expect(
+      occupancyStatus(
+        occupancy({
+          confirmation: "stale",
+          attendance: { waiting: 12, serviceSlots: 4 },
+        }),
+      ),
     ).toBe("stale");
   });
 });
 
 describe("describeOccupancy", () => {
-  it("says the level and the bed percentage of older responses", () => {
-    expect(describeOccupancy(occupancy())).toBe(
-      "Situação alta, por leitos 90%",
-    );
-  });
-
-  it("names the indicators that set the level", () => {
-    expect(
-      describeOccupancy(
-        occupancy({
-          percentage: 40,
-          indicators: { beds: "low", waiting: "high" },
-          levelDrivers: ["waiting"],
-          attendance: { waiting: 7, serviceSlots: 2 },
-        }),
-      ),
-    ).toBe("Situação alta, por espera 3,5 por posto");
+  it("describes the queue without the bed percentage or aggregate drivers", () => {
     expect(
       describeOccupancy(
         occupancy({
           levelDrivers: ["beds", "waiting"],
-          attendance: { waiting: 12, serviceSlots: 4 },
+          attendance: { waiting: 7, serviceSlots: 2 },
         }),
       ),
-    ).toBe("Situação alta, por leitos 90% e espera 3 por posto");
+    ).toBe("Espera alta, 3,5 por posto");
+    expect(
+      describeOccupancy(
+        occupancy({
+          attendance: { waiting: 0, serviceSlots: 4 },
+        }),
+      ),
+    ).toBe("Espera baixa, 0 por posto");
   });
 
-  it("drops the percentage when the level is not shown", () => {
-    expect(
-      describeOccupancy(occupancy({ level: null, confirmation: "stale" })),
-    ).toBe("Sem confirmação recente");
-    expect(
-      describeOccupancy(occupancy({ level: null, percentage: null })),
-    ).toBe("Situação não informada");
+  it("makes missing and stale data explicit", () => {
+    expect(describeOccupancy(occupancy())).toBe("Espera não informada");
+    expect(describeOccupancy(occupancy({ confirmation: "stale" }))).toBe(
+      "Sem confirmação recente",
+    );
+  });
+});
+
+describe("waitingStatus", () => {
+  it.each([
+    [0, "low"],
+    [0.99, "low"],
+    [1, "moderate"],
+    [2.99, "moderate"],
+    [3, "high"],
+    [10, "high"],
+  ] as const)("classifies %s people per active slot as %s", (ratio, status) => {
+    expect(waitingStatus({ waiting: ratio * 100, serviceSlots: 100 })).toBe(
+      status,
+    );
+  });
+
+  it.each([
+    undefined,
+    null,
+    {},
+    { waiting: 0 },
+    { serviceSlots: 2 },
+    { waiting: 5, serviceSlots: 0 },
+    { waiting: 0, serviceSlots: 0 },
+  ])("does not classify incomplete data: %s", (attendance) => {
+    expect(waitingStatus(attendance)).toBe("unknown");
   });
 });
 
@@ -88,11 +133,6 @@ describe("waitingPerSlot", () => {
     expect(waitingPerSlot({ waiting: 0, serviceSlots: 4 })).toBe(0);
     expect(waitingPerSlot({ waiting: 6 })).toBeNull();
     expect(waitingPerSlot(null)).toBeNull();
-  });
-
-  it("falls back to the beds only when the response has no drivers", () => {
-    expect(levelDrivers(occupancy())).toEqual(["beds"]);
-    expect(levelDrivers(occupancy({ level: null }))).toEqual([]);
   });
 });
 
