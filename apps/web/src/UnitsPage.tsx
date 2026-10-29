@@ -122,7 +122,7 @@ function UnitCard({
         {occupancy && (
           <div>
             <dt className="font-semibold text-slate-900">
-              Ocupação simulada
+              Fila e atendimento
             </dt>
             <dd className="mt-1">
               <OccupancyBadge occupancy={occupancy} />

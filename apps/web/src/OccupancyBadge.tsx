@@ -5,13 +5,15 @@ import {
   formatDateTime,
   formatTime,
   occupancyStatus,
+  SIMULATION_SOURCE,
   type UnitOccupancy,
 } from "./occupancy";
 
 /**
  * Situation of one unit next to its registry data: the level in words, the
- * current waiting and in-service counts, its source, when it was sent and
- * the simulation mark, never the color alone. Divs, not paragraphs: Leaflet
+ * current waiting and in-service counts, its source and when it was sent,
+ * never the color alone. The tint and the source line are the simulation
+ * mark; the values inside do not repeat it. Divs, not paragraphs: Leaflet
  * adds a large margin to paragraphs in popups.
  */
 export function OccupancyBadge({
@@ -50,9 +52,8 @@ export function OccupancyBadge({
           Espera estimada: {describeWaitEstimate(occupancy)}
         </div>
       )}
-      <div className="mt-1 text-xs leading-relaxed text-slate-700">
-        <span className="font-semibold text-occupancy-ink">Dado simulado</span>{" "}
-        · Simulador do FilaSaúde ·{" "}
+      <div className="mt-1 text-xs leading-relaxed text-slate-600">
+        {SIMULATION_SOURCE} ·{" "}
         {status === "stale" ? "último envio em " : "enviado às "}
         <time dateTime={occupancy.observedAt}>
           {status === "stale"

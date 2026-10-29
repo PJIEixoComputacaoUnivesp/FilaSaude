@@ -1,13 +1,15 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { LiveStatus } from "./LiveStatus";
 import { OccupancySwatch } from "./OccupancySwatch";
-import { SimulationPill } from "./SimulationPill";
 import {
   formatTime,
   COLOR_NOTICE,
   OCCUPANCY_STATUSES,
   OCCUPANCY_EXPLANATION,
   SIMULATION_NOTICE,
+  SIMULATION_NOTICE_SHORT,
+  SIMULATION_SOURCE,
   STATUS_LABELS,
   STATUS_RANGES,
 } from "./occupancy";
@@ -108,23 +110,30 @@ export function OccupancyControls({
           </button>
         )}
       </div>
-      {/* Visible wherever simulated data is on screen. In the map panel, with
-          the layer off, it stays for screen readers only: the panel is the
-          first thing every visitor sees and must leave room for the map. */}
+      {/* One short notice, visible wherever simulated data is on screen. In
+          the map panel, with the layer off, it stays for screen readers only:
+          the panel is the first thing every visitor sees and must leave room
+          for the map; on a narrow map it shortens to fit beside the switch.
+          The full explanation lives in "Sobre os dados". */}
       <p
         id={hintId}
-        className={`text-xs leading-relaxed text-slate-700 ${compact ? (layer.isEnabled ? "sr-only map-wide:not-sr-only" : "sr-only") : collapsible ? "sr-only map-wide:not-sr-only" : ""}`}
+        className={`text-xs leading-relaxed text-slate-700 ${compact && !layer.isEnabled ? "sr-only" : ""}`}
       >
-        {SIMULATION_NOTICE}
-      </p>
-      {((compact && layer.isEnabled) || collapsible) && (
-        <p
-          aria-hidden={collapsible ? true : undefined}
-          className="text-xs leading-relaxed text-slate-700 map-wide:hidden"
+        {compact ? (
+          <>
+            <span className="map-wide:hidden">{SIMULATION_NOTICE_SHORT}</span>
+            <span className="hidden map-wide:inline">{SIMULATION_NOTICE}</span>
+          </>
+        ) : (
+          SIMULATION_NOTICE
+        )}{" "}
+        <Link
+          to="/about"
+          className="font-semibold text-fila-blue underline underline-offset-2"
         >
-          Filas e atendimentos fictícios.
-        </p>
-      )}
+          Saiba mais
+        </Link>
+      </p>
       <LiveStatus message={announcement} delay={0} />
 
       {layer.isEnabled && collapsible && (
@@ -143,10 +152,7 @@ export function OccupancyControls({
           id={secondaryId}
           className={`mt-2 space-y-1 ${compact ? "hidden map-wide:block" : collapsible && !isExpanded ? "hidden map-wide:block" : ""}`}
         >
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-700">
-            <SimulationPill />
-            {response ? simulatedText : "Carregando…"}
-          </p>
+          {!response && <p className="text-xs text-slate-700">Carregando…</p>}
           <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-slate-800">
             <input
               type="checkbox"
@@ -155,6 +161,7 @@ export function OccupancyControls({
               className="h-5 w-5 shrink-0 accent-occupancy-control"
             />
             Mostrar só unidades com ocupação simulada
+            {response && ` (${unitCount.toLocaleString("pt-BR")})`}
           </label>
           <details
             ref={legendRef}
@@ -195,16 +202,21 @@ export function OccupancyControls({
               {!layer.onlySimulated && (
                 <li className="flex items-center gap-2">
                   <OccupancySwatch status="neutral" />
-                  <span>Unidade fora da simulação</span>
+                  <span>Sem ocupação simulada</span>
                 </li>
               )}
             </ul>
             <p className="mt-2 leading-relaxed">
-              {OCCUPANCY_EXPLANATION} {COLOR_NOTICE} As faixas são convenções
-              da demonstração e não indicam qual unidade procurar.
-              {response &&
-                ` Sem envio por mais de ${response.metadata.staleAfterMinutes} minutos, a faixa deixa de ser mostrada. Dados atualizados às ${formatTime(response.metadata.generatedAt)}.`}
+              {OCCUPANCY_EXPLANATION} {COLOR_NOTICE}
             </p>
+            {response && (
+              <p className="mt-1 leading-relaxed text-slate-600">
+                Sem dados novos há mais de{" "}
+                {response.metadata.staleAfterMinutes} minutos, a cor deixa de
+                aparecer. {SIMULATION_SOURCE},
+                atualizado às {formatTime(response.metadata.generatedAt)}.
+              </p>
+            )}
           </details>
         </div>
       )}

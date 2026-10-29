@@ -1,24 +1,23 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { OccupancyBadge } from "./OccupancyBadge";
-import { SimulationPill } from "./SimulationPill";
+import { Link } from "react-router-dom";
+import { OccupancySwatch } from "./OccupancySwatch";
 import {
   CATEGORY_LABELS,
   SERVICE_LABELS,
-  COLOR_NOTICE,
-  OCCUPANCY_EXPLANATION,
   SIMULATION_NOTICE,
+  SIMULATION_SOURCE,
   describeCompletedPeriod,
+  describeOccupancy,
   describeWaitEstimate,
   fetchOccupancyHistory,
-  formatWaitingPerSlot,
   formatDateTime,
   formatTime,
   occupancyStatus,
   waitingStatus,
   STATUS_LABELS,
-  waitingPerSlot,
   type OccupancyHistoryPoint,
   type OccupancyHistoryResponse,
+  type OccupancyStatus,
   type UnitOccupancy,
 } from "./occupancy";
 import { chartSegments, hourlyHistory } from "./occupancyHistory";
@@ -33,7 +32,9 @@ type HistoryState =
  * Current simulated situation of a unit: beds by category, people waiting and
  * in service now, attendances completed in an explicit period, and the
  * history over the public period. Only shown while the layer is on, and only for units of
- * the simulation; every value carries the simulation mark and its source.
+ * the simulation. The title, one short notice and the source line under it
+ * mark the whole section; the values inside do not repeat it, and the full
+ * explanation lives in "Sobre os dados".
  */
 export function UnitOccupancySection({ unitCnes }: { unitCnes: string }) {
   const layer = useOccupancyLayer();
@@ -99,8 +100,8 @@ export function UnitOccupancySection({ unitCnes }: { unitCnes: string }) {
 
   if (!layer.isEnabled || !current) return null;
 
-  const source = layer.response?.metadata.source;
-  const isStale = occupancyStatus(current) === "stale";
+  const status = occupancyStatus(current);
+  const isStale = status === "stale";
   const history = state.status === "success" ? state.response : null;
   const points = history?.data.history ?? [];
   const periodHours = history?.metadata.periodHours ?? 24;
@@ -110,38 +111,39 @@ export function UnitOccupancySection({ unitCnes }: { unitCnes: string }) {
       aria-labelledby={titleId}
       className="mt-6 border-t border-slate-100 pt-5"
     >
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <h2 id={titleId} className="text-lg font-bold text-slate-900">
-          Ocupação e atendimento simulados
-        </h2>
-        <SimulationPill />
-      </div>
-      <p className="mt-2 text-sm leading-relaxed text-slate-700">
-        {SIMULATION_NOTICE}
+      <h2 id={titleId} className="text-lg font-bold text-slate-900">
+        Ocupação e atendimento simulados
+      </h2>
+      <p className="mt-1 text-xs text-slate-600">
+        {SIMULATION_SOURCE} ·{" "}
+        {isStale ? "último envio em " : "enviado às "}
+        <time dateTime={current.observedAt}>
+          {isStale
+            ? formatDateTime(current.observedAt)
+            : formatTime(current.observedAt)}
+        </time>
       </p>
       <p className="mt-2 text-sm leading-relaxed text-slate-700">
-        {OCCUPANCY_EXPLANATION} {COLOR_NOTICE}
+        {SIMULATION_NOTICE}{" "}
+        <Link
+          to="/about"
+          className="font-semibold text-fila-blue underline underline-offset-2"
+        >
+          Como ler estes dados
+        </Link>
       </p>
-      <p className="mt-2 text-xs leading-relaxed text-slate-600">
-        {source ? `Fonte: ${source.name}. ` : null}As capacidades, os postos de
-        atendimento e as faixas são convenções da demonstração, não o inventário
-        nem a equipe reais da unidade.
-      </p>
-
-      <OccupancyBadge occupancy={current} className="mt-4 sm:max-w-lg" />
       {isStale && (
         <p className="mt-3 rounded-lg border-2 border-dashed border-slate-400 bg-white px-3 py-2 text-sm text-slate-900 sm:max-w-lg">
-          A fonte simulada não envia dados desde{" "}
-          {formatDateTime(current.observedAt)}. A faixa deixa de ser mostrada;
-          os valores abaixo são do último envio.
+          Sem dados novos desde {formatDateTime(current.observedAt)}. A cor não
+          é mostrada e os valores abaixo são do último envio.
         </p>
       )}
 
-      <AttendanceSummary occupancy={current} isStale={isStale} />
-      <InstalledCapacity occupancy={current} isStale={isStale} />
+      <AttendanceSummary occupancy={current} status={status} />
+      <ServicesSummary occupancy={current} />
       <CategoryTable occupancy={current} isStale={isStale} />
 
-      <h3 className="mt-6 text-base font-bold text-slate-900">
+      <h3 className="mt-6 text-sm font-semibold text-slate-900">
         Últimas {periodHours} horas
       </h3>
       {state.status === "loading" && (
@@ -181,45 +183,53 @@ const NOT_INFORMED = "Não informado";
  */
 function AttendanceSummary({
   occupancy,
-  isStale,
+  status,
 }: {
   occupancy: UnitOccupancy;
-  isStale: boolean;
+  status: OccupancyStatus;
 }) {
   const titleId = useId();
+  const isStale = status === "stale";
   const attendance = occupancy.attendance ?? null;
-  const ratio = waitingPerSlot(attendance);
   const count = (value: number | undefined) =>
     value === undefined ? NOT_INFORMED : String(value);
+  const slots = attendance?.serviceSlots;
+  const installed = attendance?.installedServiceSlots;
+  const simultaneous =
+    slots === undefined
+      ? installed === undefined
+        ? NOT_INFORMED
+        : `${NOT_INFORMED} (${installed} no total)`
+      : installed === undefined || installed === slots
+        ? String(slots)
+        : `${slots} (${installed} no total)`;
   const rows = [
-    {
-      label: "Pessoas esperando atendimento",
-      value: count(attendance?.waiting),
-    },
     {
       label: "Espera estimada até o início do atendimento",
       value: describeWaitEstimate(occupancy),
+      wide: true,
     },
+    { label: "Pessoas esperando", value: count(attendance?.waiting) },
     { label: "Pessoas em atendimento", value: count(attendance?.inService) },
     {
-      label: "Postos de atendimento ativos",
-      value: count(attendance?.serviceSlots),
-    },
-    {
-      label: "Espera por posto",
-      value: ratio === null ? NOT_INFORMED : formatWaitingPerSlot(ratio),
+      label: "Atendimentos ao mesmo tempo",
+      value: simultaneous,
+      wide: true,
     },
   ];
 
   return (
-    <div className="mt-4 sm:max-w-lg">
+    <div className="mt-5 sm:max-w-lg">
       <h3 id={titleId} className="text-sm font-semibold text-slate-900">
-        Atendimento agora, às {formatTime(occupancy.observedAt)}
-        {isStale && " (sem confirmação recente)"}
+        Atendimento agora
       </h3>
+      <p className="mt-1 flex items-center gap-2 text-sm font-semibold text-slate-900">
+        <OccupancySwatch status={status} />
+        {describeOccupancy(occupancy)}
+      </p>
       {attendance === null ? (
         <p className="mt-2 text-sm text-slate-700">
-          A fonte simulada não informa espera nem atendimento desta unidade.
+          Esta unidade não informou fila nem atendimento.
         </p>
       ) : (
         <dl
@@ -227,7 +237,7 @@ function AttendanceSummary({
           className="mt-2 grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl border border-slate-200 p-3 text-sm text-slate-700"
         >
           {rows.map((row) => (
-            <div key={row.label}>
+            <div key={row.label} className={row.wide ? "col-span-2" : ""}>
               <dt className="text-xs">{row.label}</dt>
               <dd className="mt-1 font-semibold tabular-nums text-slate-900">
                 {row.value}
@@ -237,29 +247,29 @@ function AttendanceSummary({
         </dl>
       )}
       <p className="mt-2 text-xs leading-relaxed text-slate-600">
-        Estimativa agregada calculada pelo FilaSaúde a partir do histórico
-        simulado. Não é uma média medida de esperas individuais nem uma previsão
-        para pacientes reais.
+        A espera estimada não mede a espera de ninguém e não é previsão para
+        pessoas reais.
       </p>
       {occupancy.waitEstimate?.status === "available" && !isStale && (
-        <details className="mt-2 text-xs leading-relaxed text-slate-600">
-          <summary className="min-h-11 cursor-pointer py-3 font-semibold text-fila-blue">
+        <details className="group mt-1 text-xs leading-relaxed text-slate-600">
+          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 text-sm font-semibold text-fila-blue underline underline-offset-2 [&::-webkit-details-marker]:hidden">
             Como a estimativa é calculada
+            <Chevron />
           </summary>
           <p>
-            A fila atual é dividida pelo ritmo recente de início dos
-            atendimentos. Foram considerados {occupancy.waitEstimate.started}{" "}
-            inícios em {occupancy.waitEstimate.sampleCount} envios, de{" "}
+            A fila de agora é dividida pelo ritmo com que os atendimentos
+            começaram há pouco: {occupancy.waitEstimate.started} começaram de{" "}
             {formatDateTime(occupancy.waitEstimate.windowStart)} a{" "}
             {formatDateTime(occupancy.waitEstimate.windowEnd)} (horário de
-            Brasília). Mudanças no fluxo podem alterar a espera.
+            Brasília), em {occupancy.waitEstimate.sampleCount} envios. Se o
+            ritmo mudar, a espera muda.
           </p>
         </details>
       )}
       {attendance?.completed && (
-        <div className="mt-4">
+        <div className="mt-5">
           <h3 className="text-sm font-semibold text-slate-900">
-            Volume do período
+            Atendimentos concluídos
           </h3>
           <p className="mt-1 text-sm text-slate-700">
             <span className="font-semibold tabular-nums text-slate-900">
@@ -269,7 +279,7 @@ function AttendanceSummary({
               ? "atendimento concluído"
               : "atendimentos concluídos"}{" "}
             {describeCompletedPeriod(attendance.completed)}, até o último envio.
-            Conta atendimentos, não pessoas diferentes, e não muda a cor.
+            Conta atendimentos, não pessoas.
           </p>
         </div>
       )}
@@ -277,58 +287,29 @@ function AttendanceSummary({
   );
 }
 
-function InstalledCapacity({
-  occupancy,
-  isStale,
-}: {
-  occupancy: UnitOccupancy;
-  isStale: boolean;
-}) {
-  const capacity = occupancy.categories.reduce(
-    (sum, item) => sum + item.capacity,
-    0,
-  );
+/** Services of the scenario; installed slots live with the attendance. */
+function ServicesSummary({ occupancy }: { occupancy: UnitOccupancy }) {
   const services = occupancy.attendance?.services;
   return (
-    <div className="mt-4 sm:max-w-lg">
+    <div className="mt-5 sm:max-w-lg">
       <h3 className="text-sm font-semibold text-slate-900">
-        Capacidade instalada e serviços simulados
-        {isStale && " (sem confirmação recente)"}
+        Serviços disponíveis
       </h3>
-      <dl className="mt-2 grid grid-cols-2 gap-3 rounded-xl border border-slate-200 p-3 text-sm text-slate-700">
-        <div>
-          <dt className="text-xs">Postos instalados</dt>
-          <dd className="mt-1 font-semibold tabular-nums text-slate-900">
-            {occupancy.attendance?.installedServiceSlots ?? NOT_INFORMED}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs">Leitos nas categorias informadas</dt>
-          <dd className="mt-1 font-semibold tabular-nums text-slate-900">
-            {capacity > 0 ? capacity : NOT_INFORMED}
-          </dd>
-        </div>
-        <div className="col-span-2">
-          <dt className="text-xs">Serviços disponíveis no cenário simulado</dt>
-          <dd className="mt-1 text-slate-900">
-            {services === undefined ? (
-              "Não informados"
-            ) : services.length === 0 ? (
-              "Nenhum serviço disponível no cenário"
-            ) : (
-              <ul className="list-inside list-disc">
-                {services.map((code) => (
-                  <li key={code}>{SERVICE_LABELS[code]}</li>
-                ))}
-              </ul>
-            )}
-          </dd>
-        </div>
-      </dl>
-      <p className="mt-2 text-xs leading-relaxed text-slate-600">
-        Postos instalados são a capacidade do cenário; postos ativos são os
-        disponíveis agora. Estes serviços são fictícios e não confirmam a oferta
-        real da unidade.
+      <div className="mt-1 text-sm text-slate-900">
+        {services === undefined ? (
+          "Não informados"
+        ) : services.length === 0 ? (
+          "Nenhum serviço disponível"
+        ) : (
+          <ul className="list-inside list-disc">
+            {services.map((code) => (
+              <li key={code}>{SERVICE_LABELS[code]}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <p className="mt-1 text-xs leading-relaxed text-slate-600">
+        A lista não confirma o que a unidade oferece de verdade.
       </p>
     </div>
   );
@@ -368,11 +349,11 @@ function CategoryTable({
   ];
 
   return (
-    <div className="mt-4 sm:max-w-lg">
+    <div className="mt-5 sm:max-w-lg">
       <div className="sm:hidden">
         <p className="mb-2 text-sm font-semibold text-slate-900">
           Leitos por categoria, às {formatTime(occupancy.observedAt)}
-          {isStale && " (sem confirmação recente)"}
+          {isStale && " (sem dados recentes)"}
         </p>
         <div className="divide-y divide-slate-200 rounded-xl border border-slate-200 px-3">
           {categoryRows.map((category) => (
@@ -388,7 +369,7 @@ function CategoryTable({
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs">Simulados</dt>
+                  <dt className="text-xs">Total</dt>
                   <dd className="mt-1 font-semibold tabular-nums text-slate-900">
                     {category.capacity}
                   </dd>
@@ -408,7 +389,7 @@ function CategoryTable({
         <table className="w-full min-w-[18rem] text-left text-sm text-slate-700">
           <caption className="mb-2 text-left text-sm font-semibold text-slate-900">
             Leitos por categoria, às {formatTime(occupancy.observedAt)}
-            {isStale && " (sem confirmação recente)"}
+            {isStale && " (sem dados recentes)"}
           </caption>
           <thead>
             <tr className="border-b border-slate-200 text-slate-900">
@@ -419,7 +400,7 @@ function CategoryTable({
                 Leitos ocupados
               </th>
               <th scope="col" className="py-2 pr-4 text-right font-semibold">
-                Leitos simulados
+                Total de leitos
               </th>
               <th scope="col" className="py-2 text-right font-semibold">
                 Percentual
@@ -515,8 +496,6 @@ function HistoryChart({
   const last = points[points.length - 1];
   const guides = [
     { value: 0, label: "0%" },
-    { value: 60, label: "leitos ≥ 60%" },
-    { value: 85, label: "leitos ≥ 85%" },
     { value: 100, label: "100%" },
   ];
 
@@ -542,7 +521,6 @@ function HistoryChart({
           </desc>
           {guides.map(({ value, label }) => {
             const y = CHART_HEIGHT - (value / 100) * CHART_HEIGHT;
-            const isThreshold = value === 60 || value === 85;
             return (
               <g key={value}>
                 <line
@@ -551,11 +529,10 @@ function HistoryChart({
                   y1={y}
                   y2={y}
                   stroke={value === 100 ? "#cbd5e1" : GUIDE_COLOR}
-                  strokeDasharray={isThreshold ? "4 4" : undefined}
                 />
                 <text
-                  x={isThreshold ? plotWidth : -6}
-                  y={isThreshold ? y - 4 : y + 4}
+                  x={-6}
+                  y={y + 4}
                   textAnchor="end"
                   fontSize="12"
                   fill="#475569"
@@ -610,19 +587,7 @@ function HistoryChart({
       <details className="group mt-3 text-sm text-slate-700">
         <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 font-semibold text-fila-blue underline underline-offset-2 [&::-webkit-details-marker]:hidden">
           Ver histórico em tabela
-          <svg
-            aria-hidden="true"
-            focusable="false"
-            viewBox="0 0 16 16"
-            className="h-4 w-4 transition group-open:rotate-180 motion-reduce:transition-none"
-          >
-            <path
-              d="M4 6l4 4 4-4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            />
-          </svg>
+          <Chevron />
         </summary>
         <div className="mt-2 max-h-80 overflow-auto sm:max-w-lg">
           <table className="w-full text-left">
@@ -641,7 +606,7 @@ function HistoryChart({
                   Esperando
                 </th>
                 <th scope="col" className="py-2 font-semibold">
-                  Faixa de espera
+                  Nível da espera
                 </th>
               </tr>
             </thead>
@@ -669,5 +634,18 @@ function HistoryChart({
         </div>
       </details>
     </>
+  );
+}
+
+function Chevron() {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      viewBox="0 0 16 16"
+      className="h-4 w-4 transition group-open:rotate-180 motion-reduce:transition-none"
+    >
+      <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="2" />
+    </svg>
   );
 }

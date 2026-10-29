@@ -122,14 +122,18 @@ export const STATUS_LABELS: Record<OccupancyStatus, string> = {
   moderate: "Espera moderada",
   high: "Espera alta",
   unknown: "Espera não informada",
-  stale: "Sem confirmação recente",
+  stale: "Sem dados recentes",
 };
 
-/** Demonstration thresholds in people waiting per active service slot. */
+/**
+ * Demonstration thresholds in people waiting per active service slot, told as
+ * the queue against the unit's simultaneous attendances ("posto" stays an
+ * internal name: on screen it reads as "posto de saúde").
+ */
 export const STATUS_RANGES: Partial<Record<OccupancyStatus, string>> = {
-  low: "menos de 1 pessoa esperando por posto",
-  moderate: "de 1 a menos de 3 pessoas esperando por posto",
-  high: "3 ou mais pessoas esperando por posto",
+  low: "fila menor que a capacidade de atendimento",
+  moderate: "fila de 1 a menos de 3 vezes a capacidade",
+  high: "fila de 3 vezes a capacidade ou mais",
 };
 
 export const CATEGORY_LABELS: Record<OccupancyCategoryCode, string> = {
@@ -165,33 +169,39 @@ export const STATUS_COLORS: Record<
 /** Units outside the simulation keep the neutral brand marker. */
 export const NEUTRAL_MARKER = { fill: "#1266cc", stroke: "#ffffff" };
 
-/** One name for the synthetic data in every screen. */
+/** Source line of every simulated container (popup, card, detail). */
+export const SIMULATION_SOURCE = "Simulador do FilaSaúde";
+
+/** Short notice, the same wherever the layer or its data shows. */
 export const SIMULATION_NOTICE =
-  "Dados fictícios de leitos, pessoas em espera, atendimentos, capacidade e serviços. Não representam a situação real da unidade. A espera estimada usa apenas o histórico simulado, não prevê a espera real e não indica qual unidade procurar.";
+  "Dados simulados: não mostram a situação real das unidades.";
+
+/** The same notice where only a few words fit (narrow map panel). */
+export const SIMULATION_NOTICE_SHORT = "Dados simulados, não reais.";
 
 export function describeWaitEstimate(occupancy: UnitOccupancy): string {
   if (occupancy.confirmation === "stale")
-    return "Indisponível: sem confirmação recente";
+    return "Indisponível: dados desatualizados";
   const estimate = occupancy.waitEstimate;
   if (!estimate) return "Não informada";
   if (estimate.status === "available")
     return `${estimate.minutes.toLocaleString("pt-BR")} min`;
   const reasons = {
-    "missing-data": "Indisponível: dados não informados",
-    stale: "Indisponível: sem confirmação recente",
-    "insufficient-history": "Indisponível: histórico insuficiente",
-    "no-throughput": "Indisponível: sem ritmo de atendimento no intervalo",
+    "missing-data": "Indisponível: faltam dados da unidade",
+    stale: "Indisponível: dados desatualizados",
+    "insufficient-history": "Indisponível: ainda há poucos dados para calcular",
+    "no-throughput": "Indisponível: nenhum atendimento começou no período analisado",
   };
   return reasons[estimate.reason];
 }
 
 /** How the color is chosen; completed attendances never take part. */
 export const OCCUPANCY_EXPLANATION =
-  "A cor indica apenas a espera simulada: pessoas esperando por posto de atendimento ativo. Sem esses dados, a espera aparece como não informada. Leitos ficam nos detalhes da unidade e não mudam a cor, assim como pessoas em atendimento e atendimentos concluídos. Não é classificação de risco.";
+  "A cor compara a fila com quantas pessoas a unidade atende ao mesmo tempo. Leitos e atendimentos concluídos não mudam a cor.";
 
 /** Legend note: the colors are the same as those of clinical triage. */
 export const COLOR_NOTICE =
-  "Verde, amarelo e vermelho indicam só a situação simulada da unidade, não a gravidade de uma pessoa nem a ordem de atendimento.";
+  "As cores não são classificação de risco: não indicam gravidade, ordem de atendimento nem qual unidade procurar.";
 
 export function occupancyStatus(occupancy: UnitOccupancy): OccupancyStatus {
   if (occupancy.confirmation === "stale") return "stale";
@@ -218,39 +228,38 @@ export function waitingPerSlot(
   return attendance.waiting / attendance.serviceSlots;
 }
 
-const decimalFormat = new Intl.NumberFormat("pt-BR", {
-  maximumFractionDigits: 1,
-});
-
-export function formatDecimal(value: number): string {
-  return decimalFormat.format(value);
-}
-
-/** Do not display a rounded ratio as belonging to the next waiting band. */
-export function formatWaitingPerSlot(value: number): string {
-  const formatted = formatDecimal(value);
-  if (value < 1 && formatted === "1") return "menos de 1";
-  if (value < 3 && formatted === "3") return "menos de 3";
-  return formatted;
-}
-
-/** Visible and spoken queue summary, consistent with the marker color. */
+/** Visible and spoken queue level, consistent with the marker color. */
 export function describeOccupancy(occupancy: UnitOccupancy): string {
-  const status = occupancyStatus(occupancy);
-  if (status === "stale" || status === "unknown") return STATUS_LABELS[status];
-  return `${STATUS_LABELS[status]}, ${formatWaitingPerSlot(waitingPerSlot(occupancy.attendance)!)} por posto`;
+  return STATUS_LABELS[occupancyStatus(occupancy)];
 }
 
-/** Explicit period of the completed attendances, in Brasília time. */
+const BRASILIA_DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Period of the completed attendances, in Brasília time. A whole Brasília day
+ * (midnight to midnight, the end excluded) reads as that day; any other
+ * period stays explicit.
+ */
 export function describeCompletedPeriod(
   completed: NonNullable<UnitAttendance["completed"]>,
 ): string {
-  return `de ${formatDateTime(completed.periodStart)} a ${formatDateTime(completed.periodEnd)} (horário de Brasília, fim não incluído)`;
+  const start = new Date(completed.periodStart);
+  const end = new Date(completed.periodEnd);
+  const isWholeDay =
+    end.getTime() - start.getTime() === BRASILIA_DAY_MS &&
+    timeFormat.format(start) === "00:00";
+  if (isWholeDay) return `em ${dayFormat.format(start)} (horário de Brasília)`;
+  return `de ${formatDateTime(completed.periodStart)} a ${formatDateTime(completed.periodEnd)} (horário de Brasília)`;
 }
 
 const timeFormat = new Intl.DateTimeFormat("pt-BR", {
   hour: "2-digit",
   minute: "2-digit",
+  timeZone: "America/Sao_Paulo",
+});
+const dayFormat = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "2-digit",
   timeZone: "America/Sao_Paulo",
 });
 const dateTimeFormat = new Intl.DateTimeFormat("pt-BR", {
@@ -433,7 +442,7 @@ export async function fetchOccupancy(
   if (response.status === 404) return null;
   if (!response.ok)
     throw new Error(
-      "Não foi possível consultar a ocupação simulada de leitos.",
+      "Não foi possível carregar a ocupação simulada.",
     );
   return parseOccupancyResponse(await response.json());
 }
@@ -449,7 +458,7 @@ export async function fetchOccupancyHistory(
   if (response.status === 404) return null;
   if (!response.ok) {
     throw new Error(
-      "Não foi possível consultar o histórico da ocupação simulada de leitos.",
+      "Não foi possível carregar o histórico da ocupação simulada.",
     );
   }
   return parseOccupancyHistory(await response.json());
