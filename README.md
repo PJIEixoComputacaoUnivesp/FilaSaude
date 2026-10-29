@@ -317,9 +317,11 @@ backups e o passo a passo.
 - [ADR 0005](docs/adr/0005-simulated-occupancy-semantics.md): semântica da ocupação simulada.
 - [ADR 0006](docs/adr/0006-catalog-cache-and-fallback.md): cache e contingência cadastral.
 - [ADR 0007](docs/adr/0007-attendance-flow-and-color-synthesis.md): fluxo de atendimento simulado e cor pela pior faixa.
+- [ADR 0008](docs/adr/0008-operational-indicators-and-wait-estimation.md): indicadores operacionais e cálculo da espera pelo histórico no FilaSaúde.
 - [Proposta 0001](docs/proposals/0001-operational-occupancy-simulation.md): simulação de ocupação operacional.
 - [Contrato do snapshot de ocupação v1](docs/contracts/occupancy-snapshot-v1.md) e seu [JSON Schema](docs/contracts/occupancy-snapshot-v1.schema.json).
 - [Contrato do snapshot v2, com o fluxo de atendimento](docs/contracts/occupancy-snapshot-v2.md) e seu [JSON Schema](docs/contracts/occupancy-snapshot-v2.schema.json).
+- [Contrato da estimativa de espera](docs/contracts/wait-estimate-v1.md): método, janela e indisponibilidade.
 - [Roteiro de teste do `occupancy-feed`](docs/simulator-testing.md).
 - [Visão geral da pesquisa](docs/research/README.md).
 - [Sistema de interface](.interface-design/system.md): jornada, acessibilidade e mobile.

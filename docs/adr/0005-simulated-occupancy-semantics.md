@@ -2,6 +2,7 @@
 
 - Status: aceita (registro da implementação existente)
 - Complementada por: [ADR 0007](0007-attendance-flow-and-color-synthesis.md)
+  e [ADR 0008](0008-operational-indicators-and-wait-estimation.md)
 - Data do registro: 2026-10-17
 - Origem: [proposta 0001](../proposals/0001-operational-occupancy-simulation.md)
 

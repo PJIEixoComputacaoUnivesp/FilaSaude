@@ -96,7 +96,8 @@ O modelo inclui:
 - **leitos ocupados** e a capacidade (observação, estabilização e internação);
 - **pessoas esperando** atendimento;
 - **pessoas em atendimento** e quantos postos de atendimento estão ativos;
-- **atendimentos concluídos no dia**.
+- **atendimentos concluídos no dia**;
+- **postos instalados** e **serviços disponíveis no cenário simulado**.
 
 Como nenhuma unidade está conectada ainda, um programa do próprio projeto, o
 **simulador**, faz o papel dos sistemas das unidades. Ele usa exatamente o mesmo
@@ -108,7 +109,9 @@ O simulador acompanha cada pessoa fictícia pelos estados chegada → espera →
 atendimento → saída. As contas sempre fecham: quem começa a ser atendido sai da
 espera, e quem termina o atendimento libera o posto para o próximo. Assim a fila
 cresce quando chega mais gente do que a unidade consegue atender e diminui
-quando sobra capacidade.
+quando sobra capacidade. As chegadas e as conclusões são sorteadas, por isso o
+ritmo oscila. Os sorteios podem ser reproduzidos nos testes, mas o FilaSaúde não
+usa os parâmetros internos do simulador para calcular a espera.
 
 Com a demonstração ligada, cada unidade ganha uma cor:
 
@@ -129,6 +132,47 @@ mesmo com leitos cheios, ela não aumenta a faixa de espera. Pessoas em atendime
 e atendimentos concluídos também não mudam a cor. As faixas são convenções da
 simulação e não estimam quanto tempo uma pessoa vai esperar.
 
+### Os cinco indicadores operacionais
+
+Com a demonstração ligada, os detalhes da unidade reúnem:
+
+| Indicador | O que mostra |
+| --- | --- |
+| Pessoas em espera | Quantas pessoas fictícias aguardam o início do atendimento no último envio. |
+| Espera estimada | Uma aproximação em minutos, calculada pelo FilaSaúde usando o ritmo recente de início dos atendimentos. |
+| Ocupação de leitos | Quantos leitos estão ocupados e o percentual das categorias informadas. |
+| Capacidade instalada | Leitos das categorias informadas e postos instalados no cenário; os postos ativos mostram quantos estão disponíveis agora. |
+| Serviços disponíveis | Os serviços fictícios do cenário, como atendimento geral e enfermagem. Não confirmam a oferta real da unidade. |
+
+**A fonte envia as contagens; o FilaSaúde calcula a estimativa.** O site compara
+os envios guardados para descobrir quantos atendimentos começaram no intervalo.
+Depois, divide a fila atual por esse ritmo. Por exemplo: com seis pessoas
+esperando e seis atendimentos iniciados nos últimos 20 minutos, a estimativa é
+de 20 minutos. Não é preciso que o sistema de origem envie um tempo pronto.
+
+Essa divisão facilita a conexão das próprias unidades: o sistema de cada uma
+só precisa enviar os números operacionais que já conhece, sem desenvolver um
+cálculo de espera ou mandar uma análise pronta. O **armazenamento do histórico
+e o processamento analítico são responsabilidade do FilaSaúde**, que aplica a
+mesma metodologia aos dados recebidos e informa quando eles não bastam para
+calcular. Assim, o método pode evoluir no FilaSaúde sem exigir uma implementação
+nova em cada unidade, enquanto as contagens necessárias forem as mesmas.
+
+O envio das contagens continua sendo necessário. O simulador demonstra essa
+integração fazendo o papel de quem fornece os dados; a análise fica na
+plataforma que os recebe.
+
+O cálculo usa até uma hora de histórico, com pelo menos três envios cobrindo
+15 minutos. Lacunas, mudanças de fonte ou de período e quedas nos contadores
+interrompem a série. Enquanto não houver dados suficientes ou ritmo de
+atendimento, a estimativa aparece como indisponível; dado ausente não vira zero.
+Quando a confirmação vence, ela também deixa de ser mostrada como atual.
+
+A estimativa é **agregada e simulada**: não mede quanto cada pessoa esperou,
+não é a duração de uma consulta nem prevê quanto alguém real aguardará.
+Mudanças na demanda e critérios clínicos podem mudar a ordem e o ritmo do
+atendimento. A estimativa não altera a cor nem a ordem das unidades na lista.
+
 Tudo isso aparece marcado como **"Dados simulados"**. Os números não descrevem
 nenhuma unidade de verdade, e as cores **não são classificação de risco**.
 
@@ -136,7 +180,8 @@ nenhuma unidade de verdade, e as cores **não são classificação de risco**.
 
 - Não faz diagnóstico, triagem nem avaliação de sintomas.
 - Não diz qual unidade procurar nem qual é "a melhor".
-- Não estima tempo de espera.
+- Não prevê a espera real de uma pessoa; a estimativa disponível pertence
+  apenas à demonstração com dados simulados.
 - Não substitui os canais oficiais de saúde e de emergência.
 
 A ordem dos resultados é alfabética ou por distância, e não indica prioridade.
@@ -167,6 +212,8 @@ a telas pequenas, a celulares deitados e a fontes maiores.
   secretaria de saúde se conectar, os dados reais entram pelo mesmo caminho.
   Basta autorizar o sistema dela e ajustar o site, que hoje marca toda a
   ocupação como simulada.
+- O ritmo recente pode mudar. A estimativa não detecta um reinício da fonte
+  quando o contador volta a crescer sem uma queda observável entre os envios.
 - Filtros por características da unidade estão planejados.
 
 ## Parte 2 — Como usar
@@ -225,8 +272,10 @@ ganham as cores verde, amarelo e vermelho; as demais continuam em azul.
 ![Mapa da capital paulista com as cores da ocupação simulada](evidencias/fluxo-atendimento-mapa-1280x800.png)
 
 Ao abrir uma unidade, o resumo mostra a faixa de espera, as pessoas esperando
-e as pessoas em atendimento, com fonte e horário do envio. Leitos ficam nos
-detalhes da unidade. Dados ausentes aparecem como não informados.
+e as pessoas em atendimento, com fonte e horário do envio. Quando há histórico
+suficiente, também aparece **Espera estimada**, em minutos e identificada como
+simulada. Leitos, capacidade e serviços ficam nos detalhes da unidade. Dados
+ausentes aparecem como não informados.
 
 ![Resumo de uma unidade com a situação simulada](evidencias/fluxo-atendimento-popup-390x844.png)
 
@@ -238,13 +287,29 @@ recente", para que um número antigo não pareça atual.
 
 Na página de detalhes, a seção **Ocupação e atendimento simulados** separa:
 
-- **Atendimento agora**: pessoas esperando, em atendimento, postos ativos e
-  espera por posto;
+- **Atendimento agora**: pessoas esperando, espera estimada, pessoas em
+  atendimento, postos ativos e espera por posto;
+- **Como a estimativa é calculada**: toque para ver o método, o intervalo e a
+  quantidade de envios considerados;
+- **Capacidade instalada e serviços simulados**: postos instalados, leitos das
+  categorias informadas e os serviços fictícios disponíveis no cenário;
 - **Volume do período**: atendimentos concluídos no dia, em horário de Brasília;
 - **Leitos por categoria** e o histórico das últimas 24 horas, em gráfico e em
   tabela.
 
-![Detalhe da unidade com a ocupação simulada](evidencias/fluxo-atendimento-detalhe-1280x800.png)
+![Detalhe dos cinco indicadores no celular](evidencias/indicadores-operacionais-mobile.png)
+
+![Detalhe dos cinco indicadores no computador](evidencias/indicadores-operacionais-desktop.png)
+
+Se a estimativa estiver indisponível, leia o motivo no próprio detalhe:
+
+| Mensagem | O que significa |
+| --- | --- |
+| "Não informada" | A versão do FilaSaúde consultada ainda não informa a estimativa. |
+| "Indisponível: dados não informados" | Faltam as contagens necessárias para o cálculo. |
+| "Indisponível: histórico insuficiente" | Ainda não há uma sequência longa o suficiente de envios compatíveis. |
+| "Indisponível: sem ritmo de atendimento no intervalo" | O histórico não registra inícios suficientes para calcular um ritmo positivo. |
+| "Indisponível: sem confirmação recente" | Os dados venceram; a estimativa antiga não é apresentada como atual. |
 
 A demonstração fica ligada só na aba aberta. Para desligar, use o mesmo botão.
 
@@ -253,6 +318,21 @@ A demonstração fica ligada só na aba aberta. Para desligar, use o mesmo botã
 **Os números de leitos e de espera são reais?**
 Não. São fictícios, criados pelo simulador para a demonstração acadêmica, e
 sempre aparecem marcados como "Dados simulados".
+
+**A espera estimada vem do governo ou do simulador?**
+É calculada pelo FilaSaúde a partir das contagens recebidas e guardadas no
+histórico. Hoje, essas contagens vêm do simulador. Ele faz o papel de um sistema
+de origem, mas não envia a estimativa nem fornece ao cálculo seu ritmo interno.
+
+**Por que a estimativa não aparece logo que a demonstração começa?**
+O FilaSaúde precisa de histórico suficiente e de um ritmo positivo de início
+dos atendimentos. A ocupação de leitos ou o número de postos, sozinhos, não
+dizem quanto tempo a fila demora. Uma fila confirmada em zero só resulta em
+zero minutos quando existe um ritmo válido para o cálculo.
+
+**Esse tempo diz quanto eu vou esperar?**
+Não. É uma aproximação agregada para uma demonstração fictícia. Não é a média
+medida das esperas individuais e não é uma promessa de atendimento.
 
 **Vermelho quer dizer que é grave?**
 Não. A cor indica só a situação simulada da unidade, não a gravidade de uma

@@ -123,6 +123,36 @@ Fontes: [resumo](../apps/api/src/occupancy/occupancy-status.ts),
 [formatação](../apps/web/src/occupancy.ts) e
 [camada](../apps/web/src/OccupancyLayerProvider.tsx).
 
+## Indicadores e estimativa de espera
+
+- A origem envia contagens. `waitEstimate` é calculado pelo FilaSaúde no REST
+  atual, nos deltas SSE e no `data.current` do histórico; o webhook não aceita
+  estimativas prontas nem a duração média interna do simulador.
+- Inícios = diferença de `completed.count` + diferença de `inService`.
+  Ritmo = inícios / minutos do intervalo. Estimativa = fila atual / ritmo,
+  arredondada para cima em minutos inteiros. Não é média medida de esperas
+  individuais nem duração de atendimento.
+- A janela usa até uma hora anterior ao `occurredAt` atual, limitada a 121
+  eventos processados por unidade, com ao menos três instantes cobrindo
+  15 minutos. Intervalos maiores que 10 minutos interrompem a série.
+- Mudança de fonte ou período, queda no contador, inícios negativos e ausência
+  de dados também interrompem a série. Correções no mesmo instante substituem
+  a leitura anterior; duplicatas não aumentam a quantidade de amostras.
+- Sem dados, histórico suficiente, ritmo positivo ou confirmação recente, a
+  estimativa fica indisponível com uma razão explícita. Zero pessoas na fila
+  só resulta em zero minutos quando há ritmo válido.
+- `installedServiceSlots` informa postos instalados; `serviceSlots` informa
+  postos ativos e não pode ultrapassar os instalados quando ambos existirem.
+  Os leitos continuam nas categorias, sem serem convertidos em postos.
+- `services` identifica serviços fictícios do cenário. Ausência é não informado;
+  lista vazia confirma nenhum serviço. Nenhum desses campos confirma oferta
+  real do CNES ou altera a cor ou a ordenação da interface.
+
+Fontes: [cálculo](../apps/api/src/occupancy/wait-estimate.ts),
+[consulta em lote](../apps/api/src/database/repositories/occupancy.repository.ts),
+[contrato](contracts/wait-estimate-v1.md) e
+[decisão](adr/0008-operational-indicators-and-wait-estimation.md).
+
 ## Navegação e cache cadastral
 
 | Regra | Comportamento |
