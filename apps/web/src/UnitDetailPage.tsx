@@ -3,6 +3,7 @@ import { DirectionsLink } from "./DirectionsLink";
 import { NationalStateCode } from "./brazilianStates";
 import { distanceOrigin, distanceToUnit, formatUnitDistance } from "./geo";
 import { LiveStatus } from "./LiveStatus";
+import { AMBER_NOTICE } from "./notice";
 import { UnitOccupancySection } from "./UnitOccupancySection";
 import { UnitSources } from "./UnitSources";
 import { unitListLink, unitMapLink } from "./unitLinks";
@@ -101,7 +102,7 @@ export function UnitDetailPage() {
           <button
             type="button"
             onClick={retry}
-            className="mt-4 min-h-11 rounded-lg bg-fila-blue px-4 py-2 font-semibold text-white hover:bg-blue-800"
+            className="mt-4 min-h-11 rounded-xl bg-fila-blue px-4 py-2 font-semibold text-white hover:bg-blue-800"
           >
             Tentar novamente
           </button>
@@ -136,7 +137,7 @@ export function UnitDetailPage() {
 
           {notice && (
             <p
-              className={`mt-5 rounded-xl border px-4 py-3 text-sm ${notice.isOutage ? "border-amber-300 bg-amber-50 font-medium text-amber-950" : "border-slate-200 bg-fila-bg text-slate-700"}`}
+              className={`mt-5 px-4 py-3 text-sm ${notice.isOutage ? `${AMBER_NOTICE} font-medium` : "rounded-xl border border-slate-200 bg-fila-bg text-slate-700"}`}
               role={notice.isOutage ? "status" : undefined}
             >
               {notice.text}

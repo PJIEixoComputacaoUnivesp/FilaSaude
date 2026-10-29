@@ -36,7 +36,7 @@ export function OccupancyBadge({
         ];
   return (
     <div
-      className={`rounded-lg border border-occupancy-border bg-occupancy-surface px-3 py-2 text-sm text-slate-800 ${className}`}
+      className={`rounded-xl border border-occupancy-border bg-occupancy-surface px-3 py-2 text-sm text-slate-800 ${className}`}
     >
       <div className="flex items-center gap-2 font-semibold text-slate-900">
         <OccupancySwatch status={status} />

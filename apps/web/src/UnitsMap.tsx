@@ -26,6 +26,7 @@ import { MapFocusRing } from "./MapFocusRing";
 import type { UserPosition } from "./useUserLocation";
 import { useUnitDistance } from "./useUnitDistance";
 import { OccupancyBadge } from "./OccupancyBadge";
+import { AMBER_NOTICE } from "./notice";
 import {
   occupancyStatus,
   STATUS_COLORS,
@@ -479,27 +480,31 @@ function UnitMarker({
             </Link>
             <DirectionsLink unit={unit} />
           </div>
-          {/* Leaflet's own paragraph margin would leave a gap under the link. */}
+          {/* Address and hours are one block of registry data, right under
+              the links; the paragraph margin would leave a gap there. */}
           <p className="mt-0! mb-2 text-sm text-slate-600">
             {formatAddress(unit.address)}
+            {unit.serviceHours && (
+              <>
+                <br />
+                {unit.serviceHours}
+              </>
+            )}
           </p>
           <PopupDistance unit={unit} />
-          {unit.serviceHours && (
-            <p className="my-2 text-sm text-slate-600">{unit.serviceHours}</p>
-          )}
           {occupancy && (
             <OccupancyBadge occupancy={occupancy} className="my-2" />
           )}
           {unit.location.precision === "manual" &&
             unit.location.correctedAt && (
-              <p className="my-2 text-xs font-medium text-amber-800">
+              <p className={`my-2 px-3 py-2 text-xs ${AMBER_NOTICE}`}>
                 Posição corrigida manualmente em{" "}
                 {formatSourceDate(unit.location.correctedAt)}.
               </p>
             )}
           {unit.location.precision === "history" &&
             unit.location.referenceMonth && (
-              <p className="my-2 text-xs font-medium text-amber-800">
+              <p className={`my-2 px-3 py-2 text-xs ${AMBER_NOTICE}`}>
                 Posição registrada no CNES em{" "}
                 {formatReferenceMonth(unit.location.referenceMonth)}. A
                 coordenada atual do cadastro está ausente ou fora do município,
@@ -508,7 +513,7 @@ function UnitMarker({
               </p>
             )}
           {unit.location.precision === "municipality" && (
-            <p className="my-2 text-xs font-medium text-amber-800">
+            <p className={`my-2 px-3 py-2 text-xs ${AMBER_NOTICE}`}>
               Localização aproximada: centro do município (contorno do IBGE). O
               cadastro do CNES não traz uma posição válida para esta unidade.
             </p>
