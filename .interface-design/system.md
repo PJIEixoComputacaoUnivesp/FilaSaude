@@ -75,6 +75,10 @@
   moderada de 1 a menos de 3, alta a partir de 3. São convenções da simulação.
   Sem espera ou postos ativos informados, mostrar “Espera não informada”; zero
   pessoas esperando é um valor válido. Não usar leitos como fallback.
+- “Posto” fica só no código e nos contratos (`serviceSlots`): na tela é lido
+  como posto de saúde. A interface diz “Atendimentos ao mesmo tempo”
+  (`serviceSlots`, com `installedServiceSlots` como “no total”) e descreve as
+  faixas como a fila em relação à capacidade. A razão por posto não aparece.
 - Leitos por categoria e histórico de ocupação ficam como informações
   complementares no detalhe. A faixa de espera da tabela histórica usa a mesma
   regra do mapa. Leitos, pessoas em atendimento e conclusões não mudam a cor.
@@ -82,10 +86,14 @@
   para dado não informado e anel cinza tracejado sem confirmação recente.
   Texto acompanha a cor; a legenda explica que não é classificação de risco.
   Controles permanecem violetas. Manter `occupancy.ts` e `index.css` coerentes.
-- Every simulated value carries the "Dados simulados" pill or the "Dado
-  simulado · Simulador do FilaSaúde" line, the time it was sent and the level
-  in words. The notice "Dados fictícios… não são a ocupação real" stays
-  visible while the layer is on.
+- Say it once, in the right place. Each container of simulated data (popup and
+  card summary, detail section) carries one mark: the violet tint or the
+  section title, plus the line "Simulador do FilaSaúde · enviado às HH:MM".
+  Values inside do not repeat "simulado". The short notice
+  (`SIMULATION_NOTICE`, or `SIMULATION_NOTICE_SHORT` on the narrow map panel)
+  stays visible while the layer is on, with a link to "Sobre os dados", which
+  holds the full explanation. The legend keeps one color notice (not risk
+  classification, not which unit to seek). No pill, no repeated paragraphs.
 - In the list the occupancy is one more field of the card, after the registry
   data, not a highlight. On desktop the map panel is capped in height and
   scrolls. On mobile it contains only search, the filters action and the layer
@@ -103,7 +111,8 @@
   instalados/ativos e serviços do cenário simulado. A lista e o popup mostram
   a estimativa quando disponível, sem alterar a cor nem a ordem das unidades.
   A estimativa usa somente o histórico agregado recebido; é distinta de média
-  observada de esperas individuais e sempre identificada como simulada.
+  observada de esperas individuais e fica dentro de um bloco já marcado como
+  simulado, com uma frase de que não é previsão para pessoas reais.
   Ausência, histórico insuficiente, ritmo nulo e expiração são explícitos;
   dados antigos não mantêm uma estimativa apresentada como atual.
 
