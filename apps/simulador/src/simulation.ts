@@ -38,6 +38,8 @@ export interface AttendanceSnapshot {
   waiting: number;
   inService: number;
   serviceSlots: number;
+  installedServiceSlots: number;
+  services: string[];
   completed: CompletedAttendances;
 }
 
@@ -245,6 +247,10 @@ function reportAttendance(
     waiting: state.stock.waiting,
     inService: state.stock.inService,
     serviceSlots,
+    installedServiceSlots: state.profile.serviceSlots,
+    services: state.profile.code === 'small'
+      ? ['general-care', 'nursing', 'observation']
+      : ['general-care', 'nursing', 'observation', 'stabilization'],
     completed: {
       count: state.completedInPeriod,
       periodStart: period.start,
