@@ -1420,13 +1420,11 @@ for (const width of [320, 390, 844, 1280]) {
     await expect(
       section.getByText("Pessoas esperando atendimento", { exact: true }),
     ).toBeVisible();
-    const row = section
-      .locator("dl > div")
-      .filter({
-        has: page.getByText("Espera estimada até o início do atendimento", {
-          exact: true,
-        }),
-      });
+    const row = section.locator("dl > div").filter({
+      has: page.getByText("Espera estimada até o início do atendimento", {
+        exact: true,
+      }),
+    });
     await expect(row.getByRole("definition")).toHaveText("20 min");
     await expect(
       section.getByText("Postos instalados", { exact: true }),
@@ -1520,3 +1518,61 @@ test("expiração remove a estimativa dos resumos e indisponibilidade é explíc
   ).toBeVisible();
   await expect(page.getByText("Não informados", { exact: true })).toBeVisible();
 });
+
+for (const viewport of [
+  { width: 390, height: 844 },
+  { width: 1280, height: 800 },
+]) {
+  test(`o relógio local expira a estimativa sem SSE em ${viewport.width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await page.clock.install({ time: new Date(metadata.generatedAt) });
+    await mockApi(page);
+    const current = {
+      ...highOccupancy,
+      waitEstimate: {
+        status: "available",
+        minutes: 20,
+        method: "recent-start-rate",
+        sampleCount: 3,
+        started: 6,
+        windowStart: "2026-10-15T14:39:00Z",
+        windowEnd: highOccupancy.occurredAt,
+      },
+    };
+    let occupancyReads = 0;
+    await page.route("**/api/occupancy", (route) => {
+      occupancyReads += 1;
+      return route.fulfill({ json: { data: [current], metadata } });
+    });
+    await page.goto("/units?uf=SP");
+    await page.getByRole("switch", { name: "Ocupação simulada" }).focus();
+    await page.keyboard.press("Space");
+    const card = page
+      .getByRole("article")
+      .filter({ hasText: "UPA Vila Mariana" });
+    const estimateText = "Espera estimada: 20 min (simulada)";
+    await expect(card.getByText(estimateText)).toBeVisible();
+    await card.getByRole("link", { name: /Ver no mapa/ }).click();
+    const popup = page.locator(".leaflet-popup");
+    await expect(popup.getByText(estimateText)).toBeVisible();
+    const readsBeforeExpiry = occupancyReads;
+
+    // Only the browser's confirmation timer runs: no SSE update or polling.
+    await page.clock.fastForward((metadata.staleAfterMinutes + 1) * 60_000);
+    await expect(popup.getByText(estimateText)).toHaveCount(0);
+    await expect(
+      popup.getByText("Sem confirmação recente", { exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("navigation", { name: "Forma de visualização" })
+      .getByRole("link", { name: "Lista", exact: true })
+      .click();
+    await expect(card.getByText(estimateText)).toHaveCount(0);
+    await expect(
+      card.getByText("Sem confirmação recente", { exact: true }),
+    ).toBeVisible();
+    expect(occupancyReads).toBe(readsBeforeExpiry);
+  });
+}
