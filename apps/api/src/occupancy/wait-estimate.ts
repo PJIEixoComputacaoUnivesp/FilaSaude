@@ -29,6 +29,19 @@ export type WaitEstimate =
         'missing-data' | 'stale' | 'insufficient-history' | 'no-throughput';
     };
 
+/** Same history-independent prerequisites as estimateWait, for batch reads. */
+export function isEstimable(
+  current: WaitEstimateSample,
+  now: Date,
+  staleAfterMs: number,
+): boolean {
+  return (
+    now.getTime() - current.observedAt.getTime() <= staleAfterMs &&
+    current.attendance?.waiting !== undefined &&
+    hasFlow(current)
+  );
+}
+
 /**
  * Aggregate queue estimate, not a measured mean of individual waiting times.
  * Conservation gives starts = Δcompleted + ΔinService. The queue is divided
@@ -79,8 +92,10 @@ export function estimateWait(
       if (
         point.occurredAt.getTime() - previous.occurredAt.getTime() >
           MAXIMUM_GAP_MS ||
-        before.completed!.periodStart !== after.completed!.periodStart ||
-        before.completed!.periodEnd !== after.completed!.periodEnd ||
+        Date.parse(before.completed!.periodStart) !==
+          Date.parse(after.completed!.periodStart) ||
+        Date.parse(before.completed!.periodEnd) !==
+          Date.parse(after.completed!.periodEnd) ||
         completions < 0 ||
         starts < 0
       ) {

@@ -43,6 +43,19 @@ describe('estimateWait', () => {
     });
   });
 
+  it.each([
+    ['2026-10-29T00:00:00-03:00', '2026-10-30T00:00:00-03:00'],
+    ['2026-10-29T03:00:00.000Z', '2026-10-30T03:00:00+00:00'],
+  ])(
+    'keeps equivalent period instants in one segment: %s',
+    (periodStart, periodEnd) => {
+      const points = history();
+      points[1].attendance!.completed!.periodStart = periodStart;
+      points[1].attendance!.completed!.periodEnd = periodEnd;
+      expect(calculate(points)).toEqual(calculate());
+    },
+  );
+
   it('includes the change in in-service stock when inferring starts', () => {
     expect(
       calculate([sample(0, 10), sample(10, 13), sample(20, 16, 4)]),

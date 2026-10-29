@@ -28,7 +28,9 @@ Leitos, perfil e duração média interna do simulador não entram no cálculo.
 Reenvios não somam contagens. Correções do mesmo instante substituem a leitura
 anterior. Mudança de fonte/período, regressão do contador, ausência de dados,
 inícios negativos ou lacuna de mais de 10 minutos interrompem o segmento.
-O cálculo retoma quando o novo segmento tem dados suficientes. Reinícios que
+Os limites do período são comparados como instantes: representações
+equivalentes em UTC (`Z`) ou com deslocamento, como `-03:00`, não interrompem
+a série. O cálculo retoma quando o novo segmento tem dados suficientes. Reinícios que
 não produzam regressão observável do contador não podem ser detectados por
 contagens agregadas; a estimativa continua sendo aproximada.
 

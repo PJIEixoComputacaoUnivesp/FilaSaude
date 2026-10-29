@@ -6,6 +6,7 @@ import type {
 import { OccupancyRepository } from '../database/repositories/occupancy.repository.js';
 import {
   estimateWait,
+  isEstimable,
   WAIT_ESTIMATE_WINDOW_MS,
   type WaitEstimate,
   type WaitEstimateSample,
@@ -96,10 +97,7 @@ export class OccupancyService {
 
   async findCurrent(now = new Date()): Promise<OccupancyResponse> {
     const rows = await this.repository.findCurrent();
-    const history = await this.repository.findWaitEstimateHistory(
-      rows,
-      WAIT_ESTIMATE_WINDOW_MS,
-    );
+    const history = await this.findEstimateHistory(rows, now);
     return {
       data: rows.map((row) =>
         this.toUnitOccupancy(row, now, history.get(row.unitCnes)),
@@ -113,10 +111,7 @@ export class OccupancyService {
     now = new Date(),
   ): Promise<OccupancyResponse> {
     const rows = await this.repository.findCurrentForUnits(unitCnes);
-    const history = await this.repository.findWaitEstimateHistory(
-      rows,
-      WAIT_ESTIMATE_WINDOW_MS,
-    );
+    const history = await this.findEstimateHistory(rows, now);
     return {
       data: rows.map((row) =>
         this.toUnitOccupancy(row, now, history.get(row.unitCnes)),
@@ -134,12 +129,10 @@ export class OccupancyService {
       this.repository.findCurrentByUnit(unitCnes),
       this.repository.findHistory(unitCnes, since),
     ]);
-    const estimateHistory = current
-      ? await this.repository.findWaitEstimateHistory(
-          [current],
-          WAIT_ESTIMATE_WINDOW_MS,
-        )
-      : new Map<string, WaitEstimateSample[]>();
+    const estimateHistory = await this.findEstimateHistory(
+      current ? [current] : [],
+      now,
+    );
 
     return {
       data: {
@@ -173,6 +166,22 @@ export class OccupancyService {
         periodHours: Math.round(this.settings.historyMs / 3_600_000),
       },
     };
+  }
+
+  /** Avoid reading history that the estimator cannot use, in every public view. */
+  private findEstimateHistory(
+    rows: readonly (WaitEstimateSample & { unitCnes: string })[],
+    now: Date,
+  ): Promise<Map<string, WaitEstimateSample[]>> {
+    const eligible = rows.filter((row) =>
+      isEstimable(row, now, this.settings.staleAfterMs),
+    );
+    return eligible.length === 0
+      ? Promise.resolve(new Map())
+      : this.repository.findWaitEstimateHistory(
+          eligible,
+          WAIT_ESTIMATE_WINDOW_MS,
+        );
   }
 
   private toUnitOccupancy(

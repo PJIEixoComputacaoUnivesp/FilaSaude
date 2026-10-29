@@ -118,6 +118,7 @@ describe('OccupancyRepository', () => {
     ]);
     const [sql, parameters] = query.mock.calls[0];
     expect(sql).toContain('CROSS JOIN LATERAL');
+    expect(sql).toContain('event_id, source_id,');
     expect(sql).toContain('LIMIT 121');
     expect(sql).toContain("status = 'processed'");
     expect(JSON.parse(parameters[0])).toMatchObject([
