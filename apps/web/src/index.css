@@ -192,10 +192,16 @@
 }
 
 /* Leaflet sets Arial for the map and a 1.3em margin on popup paragraphs,
-   outside any layer, so they beat the utilities. The popup uses the same type
-   as the rest of the interface. */
-.leaflet-container {
+   outside any layer and loaded after this file, so they beat the utilities.
+   One class more specific, as above: the map uses the type of the rest of the
+   interface, and popup paragraphs get the 0.5rem rhythm of the other popup
+   blocks (unlayered, so only `!` utilities change it). */
+.leaflet-container.leaflet-container {
   font-family: var(--font-sans);
+}
+
+.leaflet-container .leaflet-popup-content p {
+  margin: 0.5rem 0;
 }
 
 /* "You are here": a cyan dot with a white and a dark ring, distinct from the
