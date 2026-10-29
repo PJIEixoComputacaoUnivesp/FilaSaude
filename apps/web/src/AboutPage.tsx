@@ -1,8 +1,4 @@
-import {
-  COLOR_NOTICE,
-  OCCUPANCY_EXPLANATION,
-  SIMULATION_NOTICE,
-} from "./occupancy";
+import { COLOR_NOTICE, STATUS_LABELS, STATUS_RANGES } from "./occupancy";
 import { Link } from "react-router-dom";
 import { usePageHeading } from "./usePageHeading";
 import { useSearchFilters } from "./useSearchFilters";
@@ -45,26 +41,51 @@ export function AboutPage() {
         </p>
       </section>
 
-      <section className="flex flex-col gap-3" aria-labelledby="sobre-leitos">
-        <h2 id="sobre-leitos" className="text-xl font-bold text-slate-900">
-          O que significa a ocupação simulada
+      <section
+        id="ocupacao-simulada"
+        className="flex scroll-mt-20 flex-col gap-3"
+        aria-labelledby="sobre-ocupacao"
+      >
+        <h2 id="sobre-ocupacao" className="text-xl font-bold text-slate-900">
+          Ocupação simulada
         </h2>
         <p className="text-base leading-relaxed text-slate-700">
-          Quando disponível, essa camada apresenta uma demonstração acadêmica.
-          Leitos, pessoas esperando, pessoas em atendimento e atendimentos
-          concluídos são gerados pelo simulador; não vêm do cadastro de cada
-          unidade. {SIMULATION_NOTICE}
+          É uma demonstração acadêmica, ligada pelo botão “Ocupação simulada”.
+          Pessoas esperando, pessoas em atendimento, atendimentos concluídos,
+          leitos e serviços são gerados por um simulador. Não vêm das unidades e
+          não representam a situação real delas.
         </p>
+        <h3 className="text-base font-semibold text-slate-900">
+          Como ler as cores
+        </h3>
+        <ul className="flex list-disc flex-col gap-1 pl-5 text-base leading-relaxed text-slate-700">
+          {(["low", "moderate", "high"] as const).map((status) => (
+            <li key={status}>
+              {STATUS_LABELS[status]}: {STATUS_RANGES[status]}.
+            </li>
+          ))}
+        </ul>
         <p className="text-base leading-relaxed text-slate-700">
-          {OCCUPANCY_EXPLANATION} {COLOR_NOTICE} O detalhe mostra cada valor
-          separado, com leitos como informação complementar. As faixas são
-          convenções da simulação.
+          A capacidade é quantas pessoas a unidade atende ao mesmo tempo no
+          cenário simulado. Leitos e atendimentos concluídos não mudam a cor.
+          Sem dados recentes, a cor deixa de aparecer. {COLOR_NOTICE}
         </p>
+        <h3 className="text-base font-semibold text-slate-900">
+          Espera estimada
+        </h3>
+        <p className="text-base leading-relaxed text-slate-700">
+          O FilaSaúde divide a fila de agora pelo ritmo com que os atendimentos
+          começaram recentemente, usando até uma hora de envios do simulador.
+          Com poucos dados, a estimativa fica indisponível. Ela não mede a
+          espera de ninguém nem prevê quanto uma pessoa real aguardará; na
+          unidade, o atendimento segue critérios clínicos.
+        </p>
+        <h3 className="text-base font-semibold text-slate-900">Contagens</h3>
         <p className="text-base leading-relaxed text-slate-700">
           Esperando e em atendimento são pessoas no momento do último envio.
-          Atendimentos concluídos são o total do dia, em horário de Brasília, e
-          contam atendimentos, não pessoas diferentes. Nada disso estima tempo
-          de espera.
+          Atendimentos concluídos somam o dia, em horário de Brasília, e contam
+          atendimentos, não pessoas. Os serviços listados não confirmam o que a
+          unidade oferece de verdade.
         </p>
       </section>
 
@@ -93,30 +114,6 @@ export function AboutPage() {
           próprio aplicativo obtém, e a sua posição no FilaSaúde não é enviada.
           A localização exige conexão segura e pode falhar ou ser imprecisa.
           Você pode continuar consultando por cidade ou unidade.
-        </p>
-      </section>
-
-      <section
-        className="flex flex-col gap-3"
-        aria-labelledby="sobre-indicadores"
-      >
-        <h2 id="sobre-indicadores" className="text-xl font-bold text-slate-900">
-          Indicadores operacionais simulados
-        </h2>
-        <p className="text-base leading-relaxed text-slate-700">
-          A demonstração mostra pessoas esperando, ocupação de leitos,
-          capacidade instalada e serviços fictícios. Postos instalados e postos
-          ativos são contagens diferentes. Os serviços do cenário não confirmam
-          a oferta real da unidade cadastrada no CNES.
-        </p>
-        <p className="text-base leading-relaxed text-slate-700">
-          O FilaSaúde calcula a espera estimada pelo ritmo recente de início dos
-          atendimentos, obtido do histórico de contagens agregadas do simulador.
-          Usa até uma hora de dados, com ao menos três envios cobrindo 15
-          minutos. Sem histórico suficiente ou ritmo de atendimento, a
-          estimativa fica indisponível. Não é uma média de esperas individuais
-          nem prevê quanto uma pessoa real aguardará; o atendimento pode seguir
-          critérios clínicos.
         </p>
       </section>
 
