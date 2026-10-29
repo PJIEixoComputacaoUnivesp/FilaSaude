@@ -47,7 +47,7 @@ export function OccupancyBadge({
       )}
       {status !== "stale" && occupancy.waitEstimate?.status === "available" && (
         <div className="mt-1 text-xs tabular-nums text-slate-800">
-          Espera estimada: {describeWaitEstimate(occupancy)} (simulada)
+          Espera estimada: {describeWaitEstimate(occupancy)}
         </div>
       )}
       <div className="mt-1 text-xs leading-relaxed text-slate-700">

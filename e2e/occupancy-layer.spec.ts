@@ -1406,12 +1406,12 @@ for (const width of [320, 390, 844, 1280]) {
       .getByRole("article")
       .filter({ hasText: "UPA Vila Mariana" });
     await expect(
-      card.getByText("Espera estimada: 20 min (simulada)"),
+      card.getByText("Espera estimada: 20 min"),
     ).toBeVisible();
     await card.getByRole("link", { name: /Ver no mapa/ }).click();
     const popup = page.locator(".leaflet-popup");
     await expect(
-      popup.getByText("Espera estimada: 20 min (simulada)"),
+      popup.getByText("Espera estimada: 20 min"),
     ).toBeVisible();
     await popup.getByRole("link", { name: /Ver detalhes/ }).click();
     const section = page.getByRole("region", {
@@ -1491,14 +1491,14 @@ test("expiração remove a estimativa dos resumos e indisponibilidade é explíc
     .getByRole("article")
     .filter({ hasText: "UPA Vila Mariana" });
   await expect(
-    card.getByText("Espera estimada: 20 min (simulada)"),
+    card.getByText("Espera estimada: 20 min"),
   ).toBeVisible();
   await emitOccupancyEvent(page, "occupancy.updated", {
     data: [{ ...current, confirmation: "stale" }],
     metadata,
   });
   await expect(
-    card.getByText("Espera estimada: 20 min (simulada)"),
+    card.getByText("Espera estimada: 20 min"),
   ).toHaveCount(0);
   await card.getByRole("link", { name: /Ver detalhes/ }).click();
   await expect(
@@ -1552,7 +1552,7 @@ for (const viewport of [
     const card = page
       .getByRole("article")
       .filter({ hasText: "UPA Vila Mariana" });
-    const estimateText = "Espera estimada: 20 min (simulada)";
+    const estimateText = "Espera estimada: 20 min";
     await expect(card.getByText(estimateText)).toBeVisible();
     await card.getByRole("link", { name: /Ver no mapa/ }).click();
     const popup = page.locator(".leaflet-popup");
