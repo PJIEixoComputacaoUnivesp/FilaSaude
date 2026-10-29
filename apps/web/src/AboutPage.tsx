@@ -1,6 +1,7 @@
 import { COLOR_NOTICE, STATUS_LABELS, STATUS_RANGES } from "./occupancy";
 import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { AMBER_NOTICE } from "./notice";
 import { usePageHeading } from "./usePageHeading";
 import { useSearchFilters } from "./useSearchFilters";
 
@@ -30,6 +31,22 @@ export function AboutPage() {
           pronto atendimento para facilitar a consulta.
         </p>
       </div>
+
+      {/* Safety notice: amber callout right after the intro, before the data. */}
+      <section
+        className={`flex flex-col gap-2 border-l-4 border-l-amber-600 px-4 py-4 sm:px-5 ${AMBER_NOTICE}`}
+        aria-labelledby="sobre-limites"
+      >
+        <h2 id="sobre-limites" className="text-lg font-bold">
+          O que o FilaSaúde não faz
+        </h2>
+        <p className="text-base leading-relaxed">
+          Não realizamos diagnóstico, triagem nem recomendação médica, e não
+          indicamos qual unidade é a mais adequada para cada caso. A ordem dos
+          resultados é alfabética e não indica prioridade. Em uma emergência,
+          procure os canais oficiais de atendimento.
+        </p>
+      </section>
 
       <section className="flex flex-col gap-3" aria-labelledby="sobre-fontes">
         <h2 id="sobre-fontes" className="text-xl font-bold text-slate-900">
@@ -120,18 +137,6 @@ export function AboutPage() {
           próprio aplicativo obtém, e a sua posição no FilaSaúde não é enviada.
           A localização exige conexão segura e pode falhar ou ser imprecisa.
           Você pode continuar consultando por cidade ou unidade.
-        </p>
-      </section>
-
-      <section className="flex flex-col gap-3" aria-labelledby="sobre-limites">
-        <h2 id="sobre-limites" className="text-xl font-bold text-slate-900">
-          O que o FilaSaúde não faz
-        </h2>
-        <p className="text-base leading-relaxed text-slate-700">
-          Não realizamos diagnóstico, triagem nem recomendação médica, e não
-          indicamos qual unidade é a mais adequada para cada caso. A ordem dos
-          resultados é alfabética e não indica prioridade. Em uma emergência,
-          procure os canais oficiais de atendimento.
         </p>
       </section>
 
