@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   describeOccupancy,
+  describeWaitEstimate,
   fetchOccupancy,
   waitingStatus,
   waitingPerSlot,
@@ -281,5 +282,88 @@ describe("fetchOccupancy", () => {
 describe("formatDateTime", () => {
   it("shows Brasília time", () => {
     expect(formatDateTime("2026-10-15T15:00:00.000Z")).toBe("15/10 às 12:00");
+  });
+});
+
+describe("wait estimates and resources", () => {
+  const estimate = {
+    status: "available" as const,
+    minutes: 20,
+    method: "recent-start-rate" as const,
+    sampleCount: 3,
+    started: 6,
+    windowStart: "2026-10-15T14:30:00Z",
+    windowEnd: "2026-10-15T14:50:00Z",
+  };
+  it("accepts API-calculated estimates and optional simulated services", () => {
+    const value = occupancy({
+      waitEstimate: estimate,
+      attendance: {
+        serviceSlots: 2,
+        installedServiceSlots: 4,
+        services: ["general-care", "nursing"],
+      },
+    });
+    expect(parseOccupancyResponse({ data: [value], metadata }).data[0]).toEqual(
+      value,
+    );
+    expect(describeWaitEstimate(value)).toBe("20 min");
+    expect(
+      describeWaitEstimate(
+        occupancy({ waitEstimate: { ...estimate, minutes: 0 } }),
+      ),
+    ).toBe("0 min");
+    expect(describeWaitEstimate(occupancy())).toBe("Não informada");
+  });
+  it("never presents a stale estimate as current", () => {
+    expect(
+      describeWaitEstimate(
+        occupancy({ confirmation: "stale", waitEstimate: estimate }),
+      ),
+    ).toBe("Indisponível: sem confirmação recente");
+  });
+  it.each([
+    { ...estimate, minutes: -1 },
+    { ...estimate, minutes: Infinity },
+    { ...estimate, sampleCount: 1 },
+    { ...estimate, started: 0 },
+    { ...estimate, windowEnd: estimate.windowStart },
+    { ...estimate, method: "unknown" },
+    { status: "unavailable", reason: "unknown" },
+    null,
+  ])("rejects invalid estimates: %s", (waitEstimate) => {
+    expect(() =>
+      parseOccupancyResponse({
+        data: [{ ...occupancy(), waitEstimate }],
+        metadata,
+      }),
+    ).toThrow();
+  });
+  it.each([
+    { services: ["unknown"] },
+    { services: ["nursing", "nursing"] },
+    { installedServiceSlots: 0 },
+    { serviceSlots: 4, installedServiceSlots: 2 },
+  ])("rejects invalid resources: %s", (attendance) => {
+    expect(() =>
+      parseOccupancyResponse({
+        data: [{ ...occupancy(), attendance }],
+        metadata,
+      }),
+    ).toThrow();
+  });
+  it.each([
+    "missing-data",
+    "insufficient-history",
+    "no-throughput",
+    "stale",
+  ] as const)("describes unavailable estimates: %s", (reason) => {
+    const value = occupancy({
+      waitEstimate: { status: "unavailable", reason },
+    });
+    expect(parseOccupancyResponse({ data: [value], metadata }).data[0]).toEqual(
+      value,
+    );
+    expect(describeWaitEstimate(value)).toMatch(/^Indisponível:/);
   });
 });

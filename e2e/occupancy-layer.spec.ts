@@ -674,9 +674,7 @@ test("o detalhe traz as categorias e o histórico em tabela", async ({
   });
   await expect(section.getByText("Dados simulados")).toBeVisible();
   await expect(
-    section.getByText(
-      /Não representam a situação real da unidade, não estimam tempo de espera/,
-    ),
+    section.getByText(/Não representam a situação real da unidade/),
   ).toBeVisible();
   await expect(
     section.getByRole("row", { name: /Observação 18 20 90%/ }),
@@ -1374,3 +1372,151 @@ for (const viewport of [
     ).toBe(true);
   });
 }
+
+for (const width of [320, 390, 844, 1280]) {
+  test(`mostra os cinco indicadores e a origem da estimativa em ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: width === 844 ? 390 : 844 });
+    await mockApi(page);
+    const current = {
+      ...highOccupancy,
+      attendance: {
+        ...highOccupancy.attendance,
+        installedServiceSlots: 4,
+        services: ["general-care", "nursing"],
+      },
+      waitEstimate: {
+        status: "available",
+        minutes: 20,
+        method: "recent-start-rate",
+        sampleCount: 3,
+        started: 6,
+        windowStart: "2026-10-15T14:39:00Z",
+        windowEnd: highOccupancy.occurredAt,
+      },
+    };
+    await page.route("**/api/occupancy", (route) =>
+      route.fulfill({ json: { data: [current], metadata } }),
+    );
+    await page.goto("/units?uf=SP");
+    await page.getByRole("switch", { name: "Ocupação simulada" }).focus();
+    await page.keyboard.press("Space");
+    const card = page
+      .getByRole("article")
+      .filter({ hasText: "UPA Vila Mariana" });
+    await expect(
+      card.getByText("Espera estimada: 20 min (simulada)"),
+    ).toBeVisible();
+    await card.getByRole("link", { name: /Ver no mapa/ }).click();
+    const popup = page.locator(".leaflet-popup");
+    await expect(
+      popup.getByText("Espera estimada: 20 min (simulada)"),
+    ).toBeVisible();
+    await popup.getByRole("link", { name: /Ver detalhes/ }).click();
+    const section = page.getByRole("region", {
+      name: "Ocupação e atendimento simulados",
+    });
+    await expect(
+      section.getByText("Pessoas esperando atendimento", { exact: true }),
+    ).toBeVisible();
+    const row = section
+      .locator("dl > div")
+      .filter({
+        has: page.getByText("Espera estimada até o início do atendimento", {
+          exact: true,
+        }),
+      });
+    await expect(row.getByRole("definition")).toHaveText("20 min");
+    await expect(
+      section.getByText("Postos instalados", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      section.getByText("Capacidade instalada e serviços simulados", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      section.getByRole("listitem").filter({ hasText: "Enfermagem" }),
+    ).toBeVisible();
+    await expect(
+      section
+        .getByText("Leitos por categoria", { exact: false })
+        .filter({ visible: true }),
+    ).toBeVisible();
+    await section
+      .getByText("Como a estimativa é calculada", { exact: true })
+      .click();
+    await expect(
+      section.getByText(/Foram considerados 6 inícios em 3 envios/),
+    ).toBeVisible();
+    await expect(
+      section.getByText(/não confirmam a oferta real/),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await testInfo.attach(`indicadores-${width}`, {
+      body: await section.screenshot({
+        path: `/tmp/filasaude-indicadores-${width}.png`,
+      }),
+      contentType: "image/png",
+    });
+  });
+}
+
+test("expiração remove a estimativa dos resumos e indisponibilidade é explícita no detalhe", async ({
+  page,
+}) => {
+  await mockApi(page);
+  const current = {
+    ...highOccupancy,
+    waitEstimate: {
+      status: "available",
+      minutes: 20,
+      method: "recent-start-rate",
+      sampleCount: 3,
+      started: 6,
+      windowStart: "2026-10-15T14:39:00Z",
+      windowEnd: highOccupancy.occurredAt,
+    },
+  };
+  await page.route("**/api/occupancy", (route) =>
+    route.fulfill({ json: { data: [current], metadata } }),
+  );
+  await page.goto("/units?uf=SP");
+  await page.getByRole("switch", { name: "Ocupação simulada" }).focus();
+  await page.keyboard.press("Space");
+  const card = page
+    .getByRole("article")
+    .filter({ hasText: "UPA Vila Mariana" });
+  await expect(
+    card.getByText("Espera estimada: 20 min (simulada)"),
+  ).toBeVisible();
+  await emitOccupancyEvent(page, "occupancy.updated", {
+    data: [{ ...current, confirmation: "stale" }],
+    metadata,
+  });
+  await expect(
+    card.getByText("Espera estimada: 20 min (simulada)"),
+  ).toHaveCount(0);
+  await card.getByRole("link", { name: /Ver detalhes/ }).click();
+  await expect(
+    page.getByText("Indisponível: sem confirmação recente", { exact: true }),
+  ).toBeVisible();
+  await emitOccupancyEvent(page, "occupancy.updated", {
+    data: [
+      {
+        ...current,
+        waitEstimate: { status: "unavailable", reason: "insufficient-history" },
+      },
+    ],
+    metadata,
+  });
+  await expect(
+    page.getByText("Indisponível: histórico insuficiente", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Não informados", { exact: true })).toBeVisible();
+});

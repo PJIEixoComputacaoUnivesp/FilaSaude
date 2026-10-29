@@ -21,8 +21,34 @@ export interface UnitAttendance {
   waiting?: number;
   inService?: number;
   serviceSlots?: number;
+  installedServiceSlots?: number;
+  services?: SimulatedServiceCode[];
   completed?: { count: number; periodStart: string; periodEnd: string };
 }
+
+export const SERVICE_LABELS = {
+  "general-care": "Atendimento geral",
+  nursing: "Enfermagem",
+  observation: "Observação",
+  stabilization: "Estabilização",
+} as const;
+export type SimulatedServiceCode = keyof typeof SERVICE_LABELS;
+
+export type WaitEstimate =
+  | {
+      status: "available";
+      minutes: number;
+      method: "recent-start-rate";
+      sampleCount: number;
+      started: number;
+      windowStart: string;
+      windowEnd: string;
+    }
+  | {
+      status: "unavailable";
+      reason:
+        "missing-data" | "stale" | "insufficient-history" | "no-throughput";
+    };
 
 export interface UnitOccupancy {
   unitCnes: string;
@@ -37,6 +63,8 @@ export interface UnitOccupancy {
   indicators?: Partial<Record<OccupancyIndicator, OccupancyLevel | null>>;
   levelDrivers?: OccupancyIndicator[];
   attendance?: UnitAttendance | null;
+  /** Optional for compatibility with APIs that predate the estimate. */
+  waitEstimate?: WaitEstimate;
   categories: OccupancyCategory[];
   occurredAt: string;
   observedAt: string;
@@ -139,7 +167,23 @@ export const NEUTRAL_MARKER = { fill: "#1266cc", stroke: "#ffffff" };
 
 /** One name for the synthetic data in every screen. */
 export const SIMULATION_NOTICE =
-  "Dados fictícios de leitos, pessoas em espera e atendimentos. Não representam a situação real da unidade, não estimam tempo de espera e não indicam qual unidade procurar.";
+  "Dados fictícios de leitos, pessoas em espera, atendimentos, capacidade e serviços. Não representam a situação real da unidade. A espera estimada usa apenas o histórico simulado, não prevê a espera real e não indica qual unidade procurar.";
+
+export function describeWaitEstimate(occupancy: UnitOccupancy): string {
+  if (occupancy.confirmation === "stale")
+    return "Indisponível: sem confirmação recente";
+  const estimate = occupancy.waitEstimate;
+  if (!estimate) return "Não informada";
+  if (estimate.status === "available")
+    return `${estimate.minutes.toLocaleString("pt-BR")} min`;
+  const reasons = {
+    "missing-data": "Indisponível: dados não informados",
+    stale: "Indisponível: sem confirmação recente",
+    "insufficient-history": "Indisponível: histórico insuficiente",
+    "no-throughput": "Indisponível: sem ritmo de atendimento no intervalo",
+  };
+  return reasons[estimate.reason];
+}
 
 /** How the color is chosen; completed attendances never take part. */
 export const OCCUPANCY_EXPLANATION =
@@ -258,12 +302,50 @@ function isAttendance(value: unknown): boolean {
     isCount(value.waiting) &&
     isCount(value.inService) &&
     isCount(value.serviceSlots) &&
+    (value.installedServiceSlots === undefined ||
+      (Number.isSafeInteger(value.installedServiceSlots) &&
+        Number(value.installedServiceSlots) >= 1 &&
+        (value.serviceSlots === undefined ||
+          Number(value.serviceSlots) <=
+            Number(value.installedServiceSlots)))) &&
+    (value.services === undefined ||
+      (Array.isArray(value.services) &&
+        value.services.every(
+          (code) =>
+            typeof code === "string" && Object.hasOwn(SERVICE_LABELS, code),
+        ) &&
+        new Set(value.services).size === value.services.length)) &&
     (completed === undefined ||
       (isRecord(completed) &&
         isCount(completed.count) &&
         completed.count !== undefined &&
         isDateTime(completed.periodStart) &&
         isDateTime(completed.periodEnd)))
+  );
+}
+
+function isWaitEstimate(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!isRecord(value)) return false;
+  if (value.status === "unavailable")
+    return [
+      "missing-data",
+      "stale",
+      "insufficient-history",
+      "no-throughput",
+    ].includes(String(value.reason));
+  return (
+    value.status === "available" &&
+    value.method === "recent-start-rate" &&
+    Number.isSafeInteger(value.minutes) &&
+    Number(value.minutes) >= 0 &&
+    Number.isSafeInteger(value.sampleCount) &&
+    Number(value.sampleCount) >= 3 &&
+    Number.isSafeInteger(value.started) &&
+    Number(value.started) > 0 &&
+    isDateTime(value.windowStart) &&
+    isDateTime(value.windowEnd) &&
+    Date.parse(String(value.windowStart)) < Date.parse(String(value.windowEnd))
   );
 }
 
@@ -294,6 +376,7 @@ function isUnitOccupancy(value: unknown): value is UnitOccupancy {
     isSnapshot(value) &&
     isRecord(value) &&
     typeof value.unitCnes === "string" &&
+    isWaitEstimate(value.waitEstimate) &&
     (value.confirmation === "recent" || value.confirmation === "stale")
   );
 }

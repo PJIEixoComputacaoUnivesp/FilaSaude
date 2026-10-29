@@ -99,6 +99,14 @@
   turning the layer on announces the count; a failed refresh with data still
   shown is a `status`, not an `alert`.
 
+- O detalhe reúne espera, estimativa calculada pelo FilaSaúde, leitos, postos
+  instalados/ativos e serviços do cenário simulado. A lista e o popup mostram
+  a estimativa quando disponível, sem alterar a cor nem a ordem das unidades.
+  A estimativa usa somente o histórico agregado recebido; é distinta de média
+  observada de esperas individuais e sempre identificada como simulada.
+  Ausência, histórico insuficiente, ritmo nulo e expiração são explícitos;
+  dados antigos não mantêm uma estimativa apresentada como atual.
+
 ## Foundations
 
 - Spacing base: 4px, using the Tailwind spacing scale.

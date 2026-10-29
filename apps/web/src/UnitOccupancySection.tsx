@@ -3,10 +3,12 @@ import { OccupancyBadge } from "./OccupancyBadge";
 import { SimulationPill } from "./SimulationPill";
 import {
   CATEGORY_LABELS,
+  SERVICE_LABELS,
   COLOR_NOTICE,
   OCCUPANCY_EXPLANATION,
   SIMULATION_NOTICE,
   describeCompletedPeriod,
+  describeWaitEstimate,
   fetchOccupancyHistory,
   formatWaitingPerSlot,
   formatDateTime,
@@ -136,6 +138,7 @@ export function UnitOccupancySection({ unitCnes }: { unitCnes: string }) {
       )}
 
       <AttendanceSummary occupancy={current} isStale={isStale} />
+      <InstalledCapacity occupancy={current} isStale={isStale} />
       <CategoryTable occupancy={current} isStale={isStale} />
 
       <h3 className="mt-6 text-base font-bold text-slate-900">
@@ -189,7 +192,14 @@ function AttendanceSummary({
   const count = (value: number | undefined) =>
     value === undefined ? NOT_INFORMED : String(value);
   const rows = [
-    { label: "Pessoas esperando atendimento", value: count(attendance?.waiting) },
+    {
+      label: "Pessoas esperando atendimento",
+      value: count(attendance?.waiting),
+    },
+    {
+      label: "Espera estimada até o início do atendimento",
+      value: describeWaitEstimate(occupancy),
+    },
     { label: "Pessoas em atendimento", value: count(attendance?.inService) },
     {
       label: "Postos de atendimento ativos",
@@ -226,6 +236,26 @@ function AttendanceSummary({
           ))}
         </dl>
       )}
+      <p className="mt-2 text-xs leading-relaxed text-slate-600">
+        Estimativa agregada calculada pelo FilaSaúde a partir do histórico
+        simulado. Não é uma média medida de esperas individuais nem uma previsão
+        para pacientes reais.
+      </p>
+      {occupancy.waitEstimate?.status === "available" && !isStale && (
+        <details className="mt-2 text-xs leading-relaxed text-slate-600">
+          <summary className="min-h-11 cursor-pointer py-3 font-semibold text-fila-blue">
+            Como a estimativa é calculada
+          </summary>
+          <p>
+            A fila atual é dividida pelo ritmo recente de início dos
+            atendimentos. Foram considerados {occupancy.waitEstimate.started}{" "}
+            inícios em {occupancy.waitEstimate.sampleCount} envios, de{" "}
+            {formatDateTime(occupancy.waitEstimate.windowStart)} a{" "}
+            {formatDateTime(occupancy.waitEstimate.windowEnd)} (horário de
+            Brasília). Mudanças no fluxo podem alterar a espera.
+          </p>
+        </details>
+      )}
       {attendance?.completed && (
         <div className="mt-4">
           <h3 className="text-sm font-semibold text-slate-900">
@@ -243,6 +273,63 @@ function AttendanceSummary({
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+function InstalledCapacity({
+  occupancy,
+  isStale,
+}: {
+  occupancy: UnitOccupancy;
+  isStale: boolean;
+}) {
+  const capacity = occupancy.categories.reduce(
+    (sum, item) => sum + item.capacity,
+    0,
+  );
+  const services = occupancy.attendance?.services;
+  return (
+    <div className="mt-4 sm:max-w-lg">
+      <h3 className="text-sm font-semibold text-slate-900">
+        Capacidade instalada e serviços simulados
+        {isStale && " (sem confirmação recente)"}
+      </h3>
+      <dl className="mt-2 grid grid-cols-2 gap-3 rounded-xl border border-slate-200 p-3 text-sm text-slate-700">
+        <div>
+          <dt className="text-xs">Postos instalados</dt>
+          <dd className="mt-1 font-semibold tabular-nums text-slate-900">
+            {occupancy.attendance?.installedServiceSlots ?? NOT_INFORMED}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs">Leitos nas categorias informadas</dt>
+          <dd className="mt-1 font-semibold tabular-nums text-slate-900">
+            {capacity > 0 ? capacity : NOT_INFORMED}
+          </dd>
+        </div>
+        <div className="col-span-2">
+          <dt className="text-xs">Serviços disponíveis no cenário simulado</dt>
+          <dd className="mt-1 text-slate-900">
+            {services === undefined ? (
+              "Não informados"
+            ) : services.length === 0 ? (
+              "Nenhum serviço disponível no cenário"
+            ) : (
+              <ul className="list-inside list-disc">
+                {services.map((code) => (
+                  <li key={code}>{SERVICE_LABELS[code]}</li>
+                ))}
+              </ul>
+            )}
+          </dd>
+        </div>
+      </dl>
+      <p className="mt-2 text-xs leading-relaxed text-slate-600">
+        Postos instalados são a capacidade do cenário; postos ativos são os
+        disponíveis agora. Estes serviços são fictícios e não confirmam a oferta
+        real da unidade.
+      </p>
     </div>
   );
 }
