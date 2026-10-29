@@ -191,6 +191,39 @@ describe('OccupancySnapshotValidationService', () => {
       expect(service.validate(withoutAttendance)).toEqual(withoutAttendance);
     });
 
+    it('accepts installed capacity and synthetic services without requiring them on older v2', () => {
+      const attendance = {
+        ...validV2.attendance,
+        installedServiceSlots: 8,
+        services: ['general-care', 'nursing'],
+      };
+      expect(service.validate({ ...validV2, attendance }).attendance).toEqual(
+        attendance,
+      );
+      expect(
+        service.validate({ ...validV2, attendance: { services: [] } }),
+      ).toBeTruthy();
+    });
+
+    it.each([
+      { installedServiceSlots: 0 },
+      { serviceSlots: 4, installedServiceSlots: 2 },
+      { services: ['unknown'] },
+      { services: ['nursing', 'nursing'] },
+      { services: null },
+      { installedServiceSlots: null },
+      { estimatedWaitMinutes: 20 },
+      { averageServiceMinutes: 20 },
+      { waitEstimate: { minutes: 20 } },
+    ])(
+      'rejects invalid resources and source-supplied estimates: %s',
+      (attendance) => {
+        expect(() => service.validate({ ...validV2, attendance })).toThrow(
+          UnprocessableEntityException,
+        );
+      },
+    );
+
     it('keeps attendance out of v1', () => {
       expect(
         fieldsOf({ ...validSnapshot, attendance: validV2.attendance }),

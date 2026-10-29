@@ -3,6 +3,7 @@ import {
   OCCUPANCY_ATTENDANCE_SNAPSHOT_TYPE,
   OCCUPANCY_CATEGORY_CODES,
   OCCUPANCY_SNAPSHOT_TYPES,
+  SIMULATED_SERVICE_CODES,
   type OccupancySnapshot,
 } from './occupancy-snapshot.types.js';
 
@@ -131,7 +132,14 @@ function validateAttendance(
   addUnknownFields(
     fields,
     attendance,
-    ['waiting', 'inService', 'serviceSlots', 'completed'],
+    [
+      'waiting',
+      'inService',
+      'serviceSlots',
+      'completed',
+      'installedServiceSlots',
+      'services',
+    ],
     'attendance',
   );
   for (const field of ['waiting', 'inService'] as const) {
@@ -145,6 +153,30 @@ function validateAttendance(
       attendance.serviceSlots < 1)
   ) {
     fields.push('attendance.serviceSlots');
+  }
+  if (
+    'installedServiceSlots' in attendance &&
+    (!isNonNegativeInteger(attendance.installedServiceSlots) ||
+      attendance.installedServiceSlots < 1)
+  ) {
+    fields.push('attendance.installedServiceSlots');
+  }
+  if (
+    isNonNegativeInteger(attendance.serviceSlots) &&
+    isNonNegativeInteger(attendance.installedServiceSlots) &&
+    attendance.serviceSlots > attendance.installedServiceSlots
+  ) {
+    fields.push('attendance.installedServiceSlots');
+  }
+  if ('services' in attendance) {
+    const services = attendance.services;
+    if (
+      !Array.isArray(services) ||
+      services.some((code) => !SIMULATED_SERVICE_CODES.includes(code)) ||
+      new Set(services).size !== services.length
+    ) {
+      fields.push('attendance.services');
+    }
   }
   if (!('completed' in attendance)) return;
 

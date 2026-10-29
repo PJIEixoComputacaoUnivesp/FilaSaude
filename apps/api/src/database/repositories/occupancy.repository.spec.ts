@@ -74,6 +74,58 @@ describe('OccupancyRepository', () => {
     expect(query.mock.calls[0][1]).toEqual(['1234567', since, 2000]);
   });
 
+  it('reads a bounded batch of rate samples anchored to the captured current state', async () => {
+    const occurredAt = new Date('2026-10-29T12:00:00Z');
+    const query = vi.fn().mockResolvedValue([
+      {
+        unit_cnes: '1234567',
+        event_id: 'event-a',
+        source_id: 'source-a',
+        attendance: { inService: 2 },
+        occurred_at: occurredAt,
+        observed_at: occurredAt,
+        received_at: occurredAt,
+      },
+    ]);
+    const repository = new OccupancyRepository({ query } as never);
+    expect(await repository.findWaitEstimateHistory([], 3_600_000)).toEqual(
+      new Map(),
+    );
+    expect(query).not.toHaveBeenCalled();
+    const result = await repository.findWaitEstimateHistory(
+      [
+        {
+          unitCnes: '1234567',
+          eventId: 'event-a',
+          sourceId: 'source-a',
+          attendance: { inService: 2 },
+          occurredAt,
+          observedAt: occurredAt,
+          receivedAt: occurredAt,
+        },
+      ],
+      3_600_000,
+    );
+    expect(result.get('1234567')).toEqual([
+      {
+        eventId: 'event-a',
+        sourceId: 'source-a',
+        attendance: { inService: 2 },
+        occurredAt,
+        observedAt: occurredAt,
+        receivedAt: occurredAt,
+      },
+    ]);
+    const [sql, parameters] = query.mock.calls[0];
+    expect(sql).toContain('CROSS JOIN LATERAL');
+    expect(sql).toContain('LIMIT 121');
+    expect(sql).toContain("status = 'processed'");
+    expect(JSON.parse(parameters[0])).toMatchObject([
+      { unit_cnes: '1234567', event_id: 'event-a' },
+    ]);
+    expect(parameters[1]).toBe(3_600_000);
+  });
+
   it('only deletes processed events older than the cutoff', async () => {
     const query = vi.fn().mockResolvedValue([]);
     const cutoff = new Date('2026-10-08T12:00:00Z');

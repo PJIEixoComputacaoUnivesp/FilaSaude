@@ -1,4 +1,5 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
+import type { SimulatedServiceCode } from '../../webhooks/occupancy-snapshot.types.js';
 
 export interface OccupancyCategoryValue {
   code: string;
@@ -11,6 +12,8 @@ export interface OccupancyAttendanceValue {
   waiting?: number;
   inService?: number;
   serviceSlots?: number;
+  installedServiceSlots?: number;
+  services?: SimulatedServiceCode[];
   completed?: { count: number; periodStart: string; periodEnd: string };
 }
 

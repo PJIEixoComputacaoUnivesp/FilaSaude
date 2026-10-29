@@ -54,6 +54,8 @@ um leito, mas o contrato não relaciona as duas contagens.
 | `attendance.waiting` | inteiro ≥ 0 | Opcional. |
 | `attendance.inService` | inteiro ≥ 0 | Opcional. |
 | `attendance.serviceSlots` | inteiro ≥ 1 | Opcional. Postos de atendimento simultâneo ativos agora. |
+| `attendance.installedServiceSlots` | inteiro ≥ 1 | Opcional. Postos instalados no cenário; deve ser ≥ `serviceSlots`, quando ambos forem informados. |
+| `attendance.services` | lista de códigos | Opcional, sem duplicatas: `general-care`, `nursing`, `observation`, `stabilization`. Lista vazia confirma nenhum serviço; ausência é não informado. |
 | `attendance.completed` | objeto | Opcional; exige `count`, `periodStart` e `periodEnd`. |
 | `attendance.completed.count` | inteiro ≥ 0 | Total acumulado no período, não pessoas únicas. |
 | `attendance.completed.periodStart` | ISO 8601 | Início do período, incluído. |
@@ -113,9 +115,21 @@ de snapshots diferentes. Por isso:
 }
 ```
 
+## Extensão de capacidade e serviços
+
+Os campos opcionais `installedServiceSlots` e `services` descrevem exclusivamente
+o cenário sintético; não são o inventário nem a oferta real da unidade CNES.
+Instale a API com a validação atualizada antes de atualizar o simulador, pois
+versões anteriores rejeitam esses campos desconhecidos. Snapshots v1 e v2
+anteriores continuam válidos; não há migração de banco (o objeto já é JSONB).
+`estimatedWaitMinutes`, `averageServiceMinutes` e `waitEstimate` não são aceitos
+no webhook: a fonte informa contagens, não a estimativa do FilaSaúde.
+
 ## Limites
 
-As contagens são agregadas e não identificam pacientes. Elas não estimam tempo
-de espera, não classificam gravidade e não recomendam unidades. No simulador,
+As contagens são agregadas e não identificam pacientes. O simulador não envia
+tempo estimado: o FilaSaúde o calcula a partir do histórico de contagens, conforme
+[contrato de estimativa](./wait-estimate-v1.md). As estimativas não preveem a espera
+real de pacientes, não classificam gravidade e não recomendam unidades. No simulador,
 são hipóteses da demonstração, descritas no
 [README do simulador](../../apps/simulador/README.md#fluxo-de-atendimento-sintético).
