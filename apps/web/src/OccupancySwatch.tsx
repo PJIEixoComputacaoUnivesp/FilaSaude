@@ -1,5 +1,6 @@
 import {
   NEUTRAL_MARKER,
+  NEUTRAL_SWATCH_STROKE,
   STATUS_COLORS,
   type OccupancyStatus,
 } from "./occupancy";
@@ -30,7 +31,7 @@ export function OccupancySwatch({
         r="6"
         fill={fill}
         // The neutral marker's white ring would vanish on white.
-        stroke={status === "neutral" ? "#0b3f80" : stroke}
+        stroke={status === "neutral" ? NEUTRAL_SWATCH_STROKE : stroke}
         strokeWidth={hollow ? 2.5 : 2}
         strokeDasharray={status === "stale" ? "3 2" : undefined}
       />

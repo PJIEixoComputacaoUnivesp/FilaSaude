@@ -134,7 +134,7 @@ export function UnitOccupancySection({ unitCnes }: { unitCnes: string }) {
         </Link>
       </p>
       {isStale && (
-        <p className="mt-3 rounded-lg border-2 border-dashed border-slate-400 bg-white px-3 py-2 text-sm text-slate-900 sm:max-w-lg">
+        <p className="mt-3 rounded-xl border-2 border-dashed border-slate-400 bg-white px-3 py-2 text-sm text-slate-900">
           Sem dados novos desde {formatDateTime(current.observedAt)}. A cor não
           é mostrada e os valores abaixo são do último envio.
         </p>
@@ -220,7 +220,7 @@ function AttendanceSummary({
   ];
 
   return (
-    <div className="mt-5 sm:max-w-lg">
+    <div className="mt-5">
       <h3 id={titleId} className="text-sm font-semibold text-slate-900">
         Atendimento agora
       </h3>
@@ -292,7 +292,7 @@ function AttendanceSummary({
 function ServicesSummary({ occupancy }: { occupancy: UnitOccupancy }) {
   const services = occupancy.attendance?.services;
   return (
-    <div className="mt-5 sm:max-w-lg">
+    <div className="mt-5">
       <h3 className="text-sm font-semibold text-slate-900">
         Serviços disponíveis
       </h3>
@@ -350,7 +350,7 @@ function CategoryTable({
   ];
 
   return (
-    <div className="mt-5 sm:max-w-lg">
+    <div className="mt-5">
       <div className="sm:hidden">
         <p className="mb-2 text-sm font-semibold text-slate-900">
           Leitos por categoria, às {formatTime(occupancy.observedAt)}
@@ -451,8 +451,6 @@ function CategoryTable({
 
 const CHART_HEIGHT = 160;
 const AXIS_WIDTH = 40;
-const LINE_COLOR = "#4c1d95";
-const GUIDE_COLOR = "#64748b";
 
 /**
  * The chart is drawn at the width it gets (one SVG unit per pixel), so text
@@ -529,14 +527,14 @@ function HistoryChart({
                   x2={plotWidth}
                   y1={y}
                   y2={y}
-                  stroke={value === 100 ? "#cbd5e1" : GUIDE_COLOR}
+                  className={value === 100 ? "stroke-slate-300" : "stroke-slate-500"}
                 />
                 <text
                   x={-6}
                   y={y + 4}
                   textAnchor="end"
                   fontSize="12"
-                  fill="#475569"
+                  className="fill-slate-600"
                 >
                   {label}
                 </text>
@@ -549,7 +547,7 @@ function HistoryChart({
                 <polyline
                   points={segment.map(({ x, y }) => `${x},${y}`).join(" ")}
                   fill="none"
-                  stroke={LINE_COLOR}
+                  className="stroke-occupancy-ink"
                   strokeWidth={2.5}
                   strokeLinejoin="round"
                 />
@@ -559,20 +557,24 @@ function HistoryChart({
                 cx={segment[segment.length - 1].x}
                 cy={segment[segment.length - 1].y}
                 r={3.5}
-                fill={LINE_COLOR}
-                stroke="#ffffff"
+                className="fill-occupancy-ink stroke-white"
                 strokeWidth={1.5}
               />
             </g>
           ))}
-          <text x={0} y={CHART_HEIGHT + 22} fontSize="12" fill="#475569">
+          <text
+            x={0}
+            y={CHART_HEIGHT + 22}
+            fontSize="12"
+            className="fill-slate-600"
+          >
             há {periodHours} h
           </text>
           <text
             x={plotWidth}
             y={CHART_HEIGHT + 22}
             fontSize="12"
-            fill="#475569"
+            className="fill-slate-600"
             textAnchor="end"
           >
             agora
@@ -590,7 +592,7 @@ function HistoryChart({
           Ver histórico em tabela
           <Chevron />
         </summary>
-        <div className="mt-2 max-h-80 overflow-auto sm:max-w-lg">
+        <div className="mt-2 max-h-80 overflow-auto">
           <table className="w-full text-left">
             <caption className="sr-only">
               Último envio de cada hora, do mais recente ao mais antigo

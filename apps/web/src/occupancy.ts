@@ -169,6 +169,9 @@ export const STATUS_COLORS: Record<
 /** Units outside the simulation keep the neutral brand marker. */
 export const NEUTRAL_MARKER = { fill: "#1266cc", stroke: "#ffffff" };
 
+/** Ring of the neutral swatch on white, where the marker's white ring vanishes. */
+export const NEUTRAL_SWATCH_STROKE = "#0b3f80";
+
 /** Where the full explanation of the simulation lives. */
 export const ABOUT_SIMULATION = "/about#ocupacao-simulada";
 
