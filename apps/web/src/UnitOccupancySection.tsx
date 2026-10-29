@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { OccupancySwatch } from "./OccupancySwatch";
 import {
+  ABOUT_SIMULATION,
   CATEGORY_LABELS,
   SERVICE_LABELS,
   SIMULATION_NOTICE,
@@ -126,7 +127,7 @@ export function UnitOccupancySection({ unitCnes }: { unitCnes: string }) {
       <p className="mt-2 text-sm leading-relaxed text-slate-700">
         {SIMULATION_NOTICE}{" "}
         <Link
-          to="/about"
+          to={ABOUT_SIMULATION}
           className="font-semibold text-fila-blue underline underline-offset-2"
         >
           Como ler estes dados

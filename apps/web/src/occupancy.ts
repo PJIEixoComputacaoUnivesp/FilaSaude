@@ -169,6 +169,9 @@ export const STATUS_COLORS: Record<
 /** Units outside the simulation keep the neutral brand marker. */
 export const NEUTRAL_MARKER = { fill: "#1266cc", stroke: "#ffffff" };
 
+/** Where the full explanation of the simulation lives. */
+export const ABOUT_SIMULATION = "/about#ocupacao-simulada";
+
 /** Source line of every simulated container (popup, card, detail). */
 export const SIMULATION_SOURCE = "Simulador do FilaSaúde";
 

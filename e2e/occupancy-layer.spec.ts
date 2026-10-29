@@ -677,7 +677,7 @@ test("o detalhe traz as categorias e o histórico em tabela", async ({
   ).toBeVisible();
   await expect(
     section.getByRole("link", { name: "Como ler estes dados" }),
-  ).toHaveAttribute("href", "/about");
+  ).toHaveAttribute("href", "/about#ocupacao-simulada");
   await expect(
     section.getByRole("row", { name: /Observação 18 20 90%/ }),
   ).toBeVisible();
@@ -802,6 +802,26 @@ test("filtros locais preservam a leitura nacional sem controlar as fontes", asyn
     ),
   ).toBe(true);
   expect(controlRequests).toEqual([]);
+});
+
+test("o aviso escondido do painel não deixa link focável e o link leva à seção do Sobre", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await page.route("**/api/units?state=ALL", (route) =>
+    route.fulfill({ json: unitsResponse }),
+  );
+  await page.goto("/?uf=SP");
+  const panel = page.getByRole("region", { name: "Controles do mapa" });
+  const toggle = panel.getByRole("switch", { name: "Ocupação simulada" });
+  await expect(toggle).not.toBeChecked();
+  await expect(panel.getByRole("link", { name: "Saiba mais" })).toHaveCount(0);
+  await toggle.focus();
+  await page.keyboard.press("Space");
+  await panel.getByRole("link", { name: "Saiba mais" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Ocupação simulada", level: 2 }),
+  ).toBeInViewport();
 });
 
 test("SSE reconecta pela consulta REST e encerra ao desligar a camada", async ({
@@ -1433,9 +1453,12 @@ for (const width of [320, 390, 844, 1280]) {
       }),
     });
     await expect(row.getByRole("definition")).toHaveText("20 min");
-    await expect(
-      section.getByText("Atendimentos ao mesmo tempo", { exact: true }),
-    ).toBeVisible();
+    const simultaneous = section.locator("dl > div").filter({
+      has: page.getByText("Atendimentos ao mesmo tempo", { exact: true }),
+    });
+    await expect(simultaneous.getByRole("definition")).toHaveText(
+      "2 (4 no total)",
+    );
     await expect(
       section.getByText("Serviços disponíveis", { exact: true }),
     ).toBeVisible();

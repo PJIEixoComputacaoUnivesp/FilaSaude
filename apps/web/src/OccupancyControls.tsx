@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { LiveStatus } from "./LiveStatus";
 import { OccupancySwatch } from "./OccupancySwatch";
 import {
+  ABOUT_SIMULATION,
   formatTime,
   COLOR_NOTICE,
   OCCUPANCY_STATUSES,
@@ -126,13 +127,19 @@ export function OccupancyControls({
           </>
         ) : (
           SIMULATION_NOTICE
-        )}{" "}
-        <Link
-          to="/about"
-          className="font-semibold text-fila-blue underline underline-offset-2"
-        >
-          Saiba mais
-        </Link>
+        )}
+        {/* A hidden notice must not hold a focusable link. */}
+        {!(compact && !layer.isEnabled) && (
+          <>
+            {" "}
+            <Link
+              to={ABOUT_SIMULATION}
+              className="font-semibold text-fila-blue underline underline-offset-2"
+            >
+              Saiba mais
+            </Link>
+          </>
+        )}
       </p>
       <LiveStatus message={announcement} delay={0} />
 

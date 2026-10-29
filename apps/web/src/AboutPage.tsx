@@ -1,5 +1,6 @@
 import { COLOR_NOTICE, STATUS_LABELS, STATUS_RANGES } from "./occupancy";
-import { Link } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { usePageHeading } from "./usePageHeading";
 import { useSearchFilters } from "./useSearchFilters";
 
@@ -8,6 +9,11 @@ const title = "Sobre os dados";
 export function AboutPage() {
   const headingRef = usePageHeading(title);
   const { search } = useSearchFilters();
+  const { hash } = useLocation();
+  // Runs after the heading takes focus, so a link to a section lands on it.
+  useEffect(() => {
+    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView();
+  }, [hash]);
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-6 sm:px-6 md:gap-10 md:py-10">
