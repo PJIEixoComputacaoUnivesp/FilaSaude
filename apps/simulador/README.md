@@ -129,7 +129,7 @@ no mesmo momento em que os leitos variam, aplica três transições nesta ordem
 ([`src/attendance.ts`](src/attendance.ts)):
 
 1. **Conclusões**: cada atendimento em curso termina com chance
-   `passo / duração média`. Nunca terminam mais atendimentos do que os em curso.
+   `1 - exp(-passo / duração média)`. Nunca terminam mais atendimentos do que os em curso.
 2. **Chegadas**: sorteio de Poisson com média `chegadas por hora × passo`.
 3. **Inícios**: quem espera, incluindo quem acabou de chegar, começa a ser
    atendido enquanto houver postos livres na capacidade ativa.
