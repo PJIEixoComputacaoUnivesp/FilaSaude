@@ -251,7 +251,16 @@
 
 - Product status: compact bordered pill with explicit text.
 - Safety notice: amber-tinted surface with a strong left border and direct label
-  where it needs emphasis; a short plain footer paragraph elsewhere.
+  where it needs emphasis ("O que o FilaSaúde não faz", near the top of Sobre);
+  a short plain footer paragraph elsewhere. Data-quality notices (source
+  outage, approximate or corrected position, in the popup too) use the same
+  amber surface (`AMBER_NOTICE` in `notice.ts`), never amber text alone.
+- Radii: `rounded-2xl` for cards and panels, `rounded-xl` for boxes inside them,
+  notices and boxed controls (inputs, selects, filled buttons); `rounded-lg`
+  only for the compact map panel controls and text-like buttons.
+- The layer controls in the list are a violet-tinted card
+  (`occupancy-surface`), not a white card, so they do not read as one more
+  unit result.
 - Public-data records must expose source and update time in their own context.
 - Empty search: say what was searched and offer "Limpar busca".
 
