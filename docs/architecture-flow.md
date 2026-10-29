@@ -64,6 +64,9 @@ flowchart LR
   processor -->|"marca processed"| inbox
   processor --> notify["NOTIFY após commit"]
   current --> rest["REST e deltas SSE"]
+  current --> estimate["API: estimar espera pelo ritmo recente"]
+  inbox -->|"histórico processado e limitado"| estimate
+  estimate --> rest
   inbox -->|"eventos processados"| history["REST de histórico"]
   notify --> listener["LISTEN compartilhado por API"]
   listener --> rest
@@ -81,6 +84,19 @@ define autenticação, autorização por CNES, validação e duplicidade.
 uma tabela separada de histórico de ocupação. O processador aplica somente
 eventos mais novos ao estado atual. Um evento atrasado continua no histórico e
 notifica os clientes mesmo sem alterar o estado atual.
+
+A espera estimada é calculada pela API, não pelo simulador. Essa separação
+permite que cada unidade implemente somente o envio das contagens pelo contrato,
+sem precisar calcular e enviar análises prontas. Recebimento, histórico,
+processamento analítico e metodologia comum ficam no FilaSaúde; o simulador
+exercita a mesma fronteira como fornecedor dos dados. A API lê o histórico
+processado de um conjunto de unidades em uma consulta limitada e ancora a janela
+na versão do estado atual já capturada. Infere os inícios pela variação dos
+concluídos e das pessoas em atendimento e divide a fila atual por esse ritmo.
+REST e deltas SSE recebem o mesmo `waitEstimate`; o detalhe recebe o mesmo campo
+em `data.current`. Capacidade instalada e serviços são dados opcionais do cenário
+simulado, separados da estimativa. Decisão e limites: [ADR 0008](adr/0008-operational-indicators-and-wait-estimation.md)
+e [contrato da estimativa](contracts/wait-estimate-v1.md).
 
 O navegador consulta REST para sincronizar e recebe deltas SSE enquanto a camada
 está ligada e a página visível. Reconexões recompõem o estado por REST, sem

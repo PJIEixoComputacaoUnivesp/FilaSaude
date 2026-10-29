@@ -12,6 +12,7 @@ describe('Occupancy (e2e)', () => {
   let app: NestExpressApplication | undefined;
   const observedAt = new Date();
   const repository = {
+    findWaitEstimateHistory: vi.fn().mockResolvedValue(new Map()),
     findCurrent: vi.fn().mockResolvedValue([
       {
         unitCnes: '1234567',

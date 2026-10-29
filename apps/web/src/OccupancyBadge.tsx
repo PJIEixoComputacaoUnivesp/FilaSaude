@@ -1,6 +1,7 @@
 import { OccupancySwatch } from "./OccupancySwatch";
 import {
   describeOccupancy,
+  describeWaitEstimate,
   formatDateTime,
   formatTime,
   occupancyStatus,
@@ -42,6 +43,11 @@ export function OccupancyBadge({
       {counts.length > 0 && (
         <div className="mt-1 text-xs tabular-nums text-slate-800">
           {counts.join(" · ")}
+        </div>
+      )}
+      {status !== "stale" && occupancy.waitEstimate?.status === "available" && (
+        <div className="mt-1 text-xs tabular-nums text-slate-800">
+          Espera estimada: {describeWaitEstimate(occupancy)} (simulada)
         </div>
       )}
       <div className="mt-1 text-xs leading-relaxed text-slate-700">

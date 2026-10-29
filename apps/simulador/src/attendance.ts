@@ -108,11 +108,13 @@ export function stepAttendance(
   const key = `${input.seed}:${input.unitCnes}:attendance:${input.occurrence}`;
   const stepMinutes = input.stepSeconds / 60;
 
-  const completionChance = Math.min(1, stepMinutes / input.profile.averageServiceMinutes);
-  const completed = Math.min(
-    stock.inService,
-    Math.floor(stock.inService * completionChance + uniform(`${key}:completed`)),
-  );
+  // Independent random durations (exponential model), rather than rounding a
+  // fixed fraction of the stock. The seed still reproduces each experiment.
+  const completionChance = -Math.expm1(-stepMinutes / input.profile.averageServiceMinutes);
+  let completed = 0;
+  for (let slot = 0; slot < stock.inService; slot += 1) {
+    if (uniform(`${key}:completed:${slot}`) < completionChance) completed += 1;
+  }
 
   const arrivalMean = (arrivalsPerHour(input.profile, input.scenario) * stepMinutes) / 60;
   const arrivals = poisson(arrivalMean, uniform(`${key}:arrivals`));

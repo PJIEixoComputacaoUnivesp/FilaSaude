@@ -217,3 +217,32 @@ test('o fluxo não altera os leitos gerados pela mesma seed', () => {
     beds.snapshotFor(unit, now).categories,
   );
 });
+
+test('informa capacidade instalada e serviços, sem enviar tempos ou parâmetros internos', () => {
+  const normal = new SimulationState('demo-seed', { attendance: true });
+  const reduced = new SimulationState('demo-seed', {
+    attendance: true, attendanceScenario: 'capacity-reduction',
+  });
+  const instant = new Date('2026-10-29T12:00:00Z');
+  const first = normal.snapshotFor(unit, instant).attendance!;
+  const second = reduced.snapshotFor(unit, instant).attendance!;
+  assert.equal(first.installedServiceSlots, second.installedServiceSlots);
+  assert.equal(first.serviceSlots, first.installedServiceSlots);
+  assert.ok(second.serviceSlots < second.installedServiceSlots);
+  assert.deepEqual(first.services, second.services);
+  assert.ok(first.services.includes('general-care'));
+  assert.equal('estimatedWaitMinutes' in first, false);
+  assert.equal('averageServiceMinutes' in first, false);
+  assert.equal('waitEstimate' in first, false);
+});
+
+test('as conclusões variam além do arredondamento de uma fração fixa', () => {
+  const completions = new Set<number>();
+  for (let occurrence = 0; occurrence < 200; occurrence += 1) {
+    completions.add(stepAttendance({ waiting: 0, inService: 8 }, {
+      seed: 'completion-variation', unitCnes: unit.id, occurrence,
+      stepSeconds: 120, profile: { ...profile, serviceSlots: 8 }, scenario: 'normal',
+    }).transitions.completed);
+  }
+  assert.ok(completions.size >= 4);
+});

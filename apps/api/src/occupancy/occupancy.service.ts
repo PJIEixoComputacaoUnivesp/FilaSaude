@@ -5,6 +5,13 @@ import type {
 } from '../database/entities/occupancy-current.entity.js';
 import { OccupancyRepository } from '../database/repositories/occupancy.repository.js';
 import {
+  estimateWait,
+  isEstimable,
+  WAIT_ESTIMATE_WINDOW_MS,
+  type WaitEstimate,
+  type WaitEstimateSample,
+} from './wait-estimate.js';
+import {
   OCCUPANCY_THRESHOLDS,
   WAITING_THRESHOLDS,
   summarizeUnitStatus,
@@ -30,6 +37,8 @@ export interface UnitOccupancy {
   categories: OccupancyCategoryValue[];
   /** `null` when the source does not inform the attendance flow. */
   attendance: OccupancyAttendanceValue | null;
+  /** Calculated by FilaSaúde from received history, never supplied by a source. */
+  waitEstimate: WaitEstimate;
   occurredAt: string;
   observedAt: string;
   receivedAt: string;
@@ -76,7 +85,7 @@ export interface OccupancyHistoryResponse {
 const SOURCE = {
   name: 'Simulador de ocupação e atendimento do FilaSaúde',
   description:
-    'Dados sintéticos de leitos, pessoas em espera, pessoas em atendimento e atendimentos concluídos para demonstração acadêmica. Não representam a situação real das unidades, não estimam tempo de espera e não recomendam unidades.',
+    'Dados sintéticos de leitos, espera, atendimento, capacidade e serviços para demonstração acadêmica. O FilaSaúde calcula a espera estimada pelo histórico sintético; ela não prevê a espera real nem recomenda unidades.',
 };
 
 @Injectable()
@@ -88,8 +97,11 @@ export class OccupancyService {
 
   async findCurrent(now = new Date()): Promise<OccupancyResponse> {
     const rows = await this.repository.findCurrent();
+    const history = await this.findEstimateHistory(rows, now);
     return {
-      data: rows.map((row) => this.toUnitOccupancy(row, now)),
+      data: rows.map((row) =>
+        this.toUnitOccupancy(row, now, history.get(row.unitCnes)),
+      ),
       metadata: this.metadata(now),
     };
   }
@@ -99,8 +111,11 @@ export class OccupancyService {
     now = new Date(),
   ): Promise<OccupancyResponse> {
     const rows = await this.repository.findCurrentForUnits(unitCnes);
+    const history = await this.findEstimateHistory(rows, now);
     return {
-      data: rows.map((row) => this.toUnitOccupancy(row, now)),
+      data: rows.map((row) =>
+        this.toUnitOccupancy(row, now, history.get(row.unitCnes)),
+      ),
       metadata: this.metadata(now),
     };
   }
@@ -114,11 +129,17 @@ export class OccupancyService {
       this.repository.findCurrentByUnit(unitCnes),
       this.repository.findHistory(unitCnes, since),
     ]);
+    const estimateHistory = await this.findEstimateHistory(
+      current ? [current] : [],
+      now,
+    );
 
     return {
       data: {
         unitCnes,
-        current: current ? this.toUnitOccupancy(current, now) : null,
+        current: current
+          ? this.toUnitOccupancy(current, now, estimateHistory.get(unitCnes))
+          : null,
         // Each point is read as it was when observed, so it is never stale.
         history: history.map((row) => {
           const { percentage, level, levelDrivers } = summarizeUnitStatus(
@@ -147,10 +168,27 @@ export class OccupancyService {
     };
   }
 
+  /** Avoid reading history that the estimator cannot use, in every public view. */
+  private findEstimateHistory(
+    rows: readonly (WaitEstimateSample & { unitCnes: string })[],
+    now: Date,
+  ): Promise<Map<string, WaitEstimateSample[]>> {
+    const eligible = rows.filter((row) =>
+      isEstimable(row, now, this.settings.staleAfterMs),
+    );
+    return eligible.length === 0
+      ? Promise.resolve(new Map())
+      : this.repository.findWaitEstimateHistory(
+          eligible,
+          WAIT_ESTIMATE_WINDOW_MS,
+        );
+  }
+
   private toUnitOccupancy(
     row: {
       unitCnes: string;
       eventId: string;
+      sourceId: string;
       categories: OccupancyCategoryValue[];
       attendance: OccupancyAttendanceValue | null;
       occurredAt: Date;
@@ -158,6 +196,7 @@ export class OccupancyService {
       receivedAt: Date;
     },
     now: Date,
+    history: readonly WaitEstimateSample[] = [],
   ): UnitOccupancy {
     return {
       unitCnes: row.unitCnes,
@@ -175,6 +214,7 @@ export class OccupancyService {
         occupied,
       })),
       attendance: row.attendance ?? null,
+      waitEstimate: estimateWait(row, history, now, this.settings.staleAfterMs),
       occurredAt: row.occurredAt.toISOString(),
       observedAt: row.observedAt.toISOString(),
       receivedAt: row.receivedAt.toISOString(),

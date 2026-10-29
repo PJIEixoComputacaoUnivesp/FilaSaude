@@ -129,7 +129,7 @@ no mesmo momento em que os leitos variam, aplica três transições nesta ordem
 ([`src/attendance.ts`](src/attendance.ts)):
 
 1. **Conclusões**: cada atendimento em curso termina com chance
-   `passo / duração média`. Nunca terminam mais atendimentos do que os em curso.
+   `1 - exp(-passo / duração média)`. Nunca terminam mais atendimentos do que os em curso.
 2. **Chegadas**: sorteio de Poisson com média `chegadas por hora × passo`.
 3. **Inícios**: quem espera, incluindo quem acabou de chegar, começa a ser
    atendido enquanto houver postos livres na capacidade ativa.
@@ -182,8 +182,28 @@ altera o total, e a API substitui o valor em vez de somá-lo.
 
 O estado fica em memória. Reiniciar com a mesma seed repete a mesma sequência
 desde o início e recomeça o total do dia do zero; o consumidor substitui o
-valor anterior e não soma os dois. Os valores não estimam tempo de espera nem
-recomendam unidades.
+valor anterior e não soma os dois. A API interrompe a série de cálculo da espera
+quando detecta queda no contador ou mudança de período.
+
+### Indicadores e aleatoriedade
+
+As chegadas seguem sorteios Poisson; cada atendimento em curso tem um sorteio
+independente de conclusão, com probabilidade `1 - exp(-passo / duração média)`.
+Isso permite oscilações maiores do que arredondar uma fração fixa de concluídos,
+preservando os estoques, os limites de capacidade e a reprodução pela seed.
+
+O snapshot v2 informa também `installedServiceSlots` (capacidade do perfil,
+mesmo quando o cenário reduz os postos ativos) e `services` (oferta fictícia do
+perfil). Perfis pequenos oferecem atendimento geral, enfermagem e observação;
+os demais acrescentam estabilização. Esses serviços não descrevem a oferta real
+das unidades. Nenhum perfil ou parâmetro interno de duração é usado pela API
+para estimar tempo.
+
+O simulador **não envia a espera estimada**. O FilaSaúde calcula esse indicador
+pelo histórico de contagens recebidas, conforme o
+[contrato de estimativa](../../docs/contracts/wait-estimate-v1.md). Todos os
+resultados permanecem simulados e não recomendam unidades. A API deve receber
+a atualização do contrato antes do simulador.
 
 ## Pré-requisitos
 

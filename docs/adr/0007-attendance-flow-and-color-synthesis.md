@@ -1,6 +1,7 @@
 # ADR 0007: Fluxo de atendimento simulado e síntese da cor
 
 - Status: aceita
+- Complementada por: [ADR 0008](0008-operational-indicators-and-wait-estimation.md)
 - Data: 2026-10-23
 - Issues: #107, #108, #109 e #110
 - Complementa: [ADR 0005](0005-simulated-occupancy-semantics.md)

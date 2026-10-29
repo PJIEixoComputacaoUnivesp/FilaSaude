@@ -100,6 +100,25 @@
         },
         "completed": {
           "$ref": "#/$defs/completed"
+        },
+        "installedServiceSlots": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Postos instalados no cenário simulado; maior ou igual aos postos ativos, quando ambos forem informados."
+        },
+        "services": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "general-care",
+              "nursing",
+              "observation",
+              "stabilization"
+            ]
+          },
+          "description": "Serviços fictícios disponíveis no cenário. Ausência significa não informado; lista vazia confirma nenhum serviço."
         }
       }
     },

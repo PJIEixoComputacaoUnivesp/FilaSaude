@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import type { WaitEstimateSample } from '../../occupancy/wait-estimate.js';
 import {
   OccupancyCurrentEntity,
   type OccupancyAttendanceValue,
@@ -161,6 +162,70 @@ export class OccupancyRepository {
 
   findCurrentByUnit(unitCnes: string): Promise<OccupancyCurrentEntity | null> {
     return this.repository.findOneBy({ unitCnes });
+  }
+
+  /** One bounded, indexed read for all units, anchored to the current rows
+   * already read by the caller. A concurrent update cannot enter the window.
+   * Source changes stay in the result so the estimator can break the series.
+   */
+  async findWaitEstimateHistory(
+    current: readonly (WaitEstimateSample & { unitCnes: string })[],
+    windowMs: number,
+  ): Promise<Map<string, WaitEstimateSample[]>> {
+    if (current.length === 0) return new Map();
+    const rows = (await this.repository.query(
+      `SELECT basis.unit_cnes, recent.*
+       FROM jsonb_to_recordset($1::jsonb) AS basis(
+         unit_cnes varchar, event_id varchar, occurred_at timestamptz,
+         observed_at timestamptz, received_at timestamptz
+       )
+       CROSS JOIN LATERAL (
+         SELECT event_id, source_id, payload->'attendance' AS attendance,
+                occurred_at, observed_at, received_at
+         FROM occupancy_webhook_inbox
+         WHERE unit_cnes = basis.unit_cnes AND status = 'processed'
+           AND occurred_at >= basis.occurred_at - ($2 * interval '1 millisecond')
+           AND occurred_at <= basis.occurred_at
+           AND (occurred_at, observed_at, received_at, event_id) <=
+               (basis.occurred_at, basis.observed_at, basis.received_at, basis.event_id)
+         ORDER BY occurred_at DESC, observed_at DESC, received_at DESC, event_id DESC
+         LIMIT 121
+       ) AS recent`,
+      [
+        JSON.stringify(
+          current.map((row) => ({
+            unit_cnes: row.unitCnes,
+            event_id: row.eventId,
+            occurred_at: row.occurredAt,
+            observed_at: row.observedAt,
+            received_at: row.receivedAt,
+          })),
+        ),
+        windowMs,
+      ],
+    )) as {
+      unit_cnes: string;
+      event_id: string;
+      source_id: string;
+      attendance: OccupancyAttendanceValue | null;
+      occurred_at: Date | string;
+      observed_at: Date | string;
+      received_at: Date | string;
+    }[];
+    const history = new Map<string, WaitEstimateSample[]>();
+    for (const row of rows) {
+      const points = history.get(row.unit_cnes) ?? [];
+      points.push({
+        eventId: row.event_id,
+        sourceId: row.source_id,
+        attendance: row.attendance ?? null,
+        occurredAt: new Date(row.occurred_at),
+        observedAt: new Date(row.observed_at),
+        receivedAt: new Date(row.received_at),
+      });
+      history.set(row.unit_cnes, points);
+    }
+    return history;
   }
 
   /** Every processed snapshot of the unit since the cutoff, oldest first. */

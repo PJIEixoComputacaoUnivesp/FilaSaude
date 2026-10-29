@@ -23,8 +23,8 @@ ocupação. As faixas são convenções da demonstração.
 
 O payload v1 não informa pessoas em espera, pessoas em atendimento, atendimentos
 concluídos ou tempo de espera. Espera, atendimento e concluídos estão no
-[`occupancy.snapshot.v2`](./occupancy-snapshot-v2.md); tempo de espera não é
-informado por nenhuma versão. A clareza desta entrega corresponde à #106.
+[`occupancy.snapshot.v2`](./occupancy-snapshot-v2.md); o tempo de espera é
+[estimado pelo FilaSaúde a partir do histórico](./wait-estimate-v1.md), não enviado pela fonte. A clareza desta entrega corresponde à #106.
 
 ## Cabeçalhos
 

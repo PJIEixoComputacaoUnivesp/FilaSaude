@@ -15,6 +15,14 @@ export const OCCUPANCY_CATEGORY_CODES = [
 
 export type OccupancyCategoryCode = (typeof OCCUPANCY_CATEGORY_CODES)[number];
 
+export const SIMULATED_SERVICE_CODES = [
+  'general-care',
+  'nursing',
+  'observation',
+  'stabilization',
+] as const;
+export type SimulatedServiceCode = (typeof SIMULATED_SERVICE_CODES)[number];
+
 export interface OccupancySnapshotCategory {
   code: OccupancyCategoryCode;
   capacity: number;
@@ -26,6 +34,8 @@ export interface OccupancySnapshotAttendance {
   waiting?: number;
   inService?: number;
   serviceSlots?: number;
+  installedServiceSlots?: number;
+  services?: SimulatedServiceCode[];
   completed?: {
     count: number;
     /** Inclusive. */
