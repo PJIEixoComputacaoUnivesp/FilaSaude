@@ -62,7 +62,9 @@ export function OccupancyControls({
       className={
         compact
           ? "mt-2 border-t border-slate-100 pt-2 map-wide:mt-3 map-wide:pt-3"
-          : "rounded-2xl border border-slate-200 bg-white p-4 sm:p-5"
+          : // Violet tint, no white card: it is a control of the layer, not
+            // one more result among the unit cards below.
+            "rounded-2xl border border-occupancy-border bg-occupancy-surface p-4 sm:p-5"
       }
     >
       <div className="flex items-center justify-between gap-2">
