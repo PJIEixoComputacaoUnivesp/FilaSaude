@@ -124,6 +124,29 @@ describe("describeCompletedPeriod", () => {
       }),
     ).toBe("de 15/10 às 06:00 a 15/10 às 12:00 (horário de Brasília)");
   });
+
+  it.each(["30", "00.001"])(
+    "does not treat a full day starting at 00:00:%s as a calendar day",
+    (seconds) => {
+      expect(
+        describeCompletedPeriod({
+          count: 12,
+          periodStart: `2026-10-15T00:00:${seconds}-03:00`,
+          periodEnd: `2026-10-16T00:00:${seconds}-03:00`,
+        }),
+      ).toBe("de 15/10 às 00:00 a 16/10 às 00:00 (horário de Brasília)");
+    },
+  );
+
+  it("recognizes exact Brasília midnight represented in UTC", () => {
+    expect(
+      describeCompletedPeriod({
+        count: 12,
+        periodStart: "2026-10-15T03:00:00.000Z",
+        periodEnd: "2026-10-16T03:00:00.000Z",
+      }),
+    ).toBe("em 15/10 (horário de Brasília)");
+  });
 });
 
 describe("waitingStatus", () => {

@@ -253,6 +253,8 @@ export function describeCompletedPeriod(
   const end = new Date(completed.periodEnd);
   const isWholeDay =
     end.getTime() - start.getTime() === BRASILIA_DAY_MS &&
+    start.getUTCSeconds() === 0 &&
+    start.getUTCMilliseconds() === 0 &&
     timeFormat.format(start) === "00:00";
   if (isWholeDay) return `em ${dayFormat.format(start)} (horário de Brasília)`;
   return `de ${formatDateTime(completed.periodStart)} a ${formatDateTime(completed.periodEnd)} (horário de Brasília)`;
