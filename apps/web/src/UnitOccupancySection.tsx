@@ -116,8 +116,7 @@ export function UnitOccupancySection({ unitCnes }: { unitCnes: string }) {
         Ocupação e atendimento simulados
       </h2>
       <p className="mt-1 text-xs text-slate-600">
-        {SIMULATION_SOURCE} ·{" "}
-        {isStale ? "último envio em " : "enviado às "}
+        {SIMULATION_SOURCE} · {isStale ? "último envio em " : "enviado às "}
         <time dateTime={current.observedAt}>
           {isStale
             ? formatDateTime(current.observedAt)
@@ -196,14 +195,10 @@ function AttendanceSummary({
     value === undefined ? NOT_INFORMED : String(value);
   const slots = attendance?.serviceSlots;
   const installed = attendance?.installedServiceSlots;
-  const simultaneous =
-    slots === undefined
-      ? installed === undefined
-        ? NOT_INFORMED
-        : `${NOT_INFORMED} (${installed} no total)`
-      : installed === undefined || installed === slots
-        ? String(slots)
-        : `${slots} (${installed} no total)`;
+  const capacity = (value: number | undefined) =>
+    value === undefined
+      ? "Não informada"
+      : `${value === 1 ? "1 pessoa" : `${value} pessoas`} simultaneamente`;
   const rows = [
     {
       label: "Espera estimada até o início do atendimento",
@@ -213,8 +208,22 @@ function AttendanceSummary({
     { label: "Pessoas esperando", value: count(attendance?.waiting) },
     { label: "Pessoas em atendimento", value: count(attendance?.inService) },
     {
-      label: "Atendimentos ao mesmo tempo",
-      value: simultaneous,
+      label: "Capacidade de atendimento",
+      value: (
+        <dl className="space-y-1 font-normal">
+          <div>
+            <dt className="inline">Em operação: </dt>
+            <dd className="inline font-semibold">
+              {slots === undefined ? "Não informada" : `até ${capacity(slots)}`}
+              .
+            </dd>
+          </div>
+          <div>
+            <dt className="inline">Capacidade total do cenário: </dt>
+            <dd className="inline font-semibold">{capacity(installed)}.</dd>
+          </div>
+        </dl>
+      ),
       wide: true,
     },
   ];
@@ -527,7 +536,9 @@ function HistoryChart({
                   x2={plotWidth}
                   y1={y}
                   y2={y}
-                  className={value === 100 ? "stroke-slate-300" : "stroke-slate-500"}
+                  className={
+                    value === 100 ? "stroke-slate-300" : "stroke-slate-500"
+                  }
                 />
                 <text
                   x={-6}
@@ -648,7 +659,12 @@ function Chevron() {
       viewBox="0 0 16 16"
       className="h-4 w-4 transition group-open:rotate-180 motion-reduce:transition-none"
     >
-      <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M4 6l4 4 4-4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
     </svg>
   );
 }

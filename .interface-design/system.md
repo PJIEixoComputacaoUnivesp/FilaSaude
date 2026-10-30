@@ -76,8 +76,10 @@
   Sem espera ou postos ativos informados, mostrar “Espera não informada”; zero
   pessoas esperando é um valor válido. Não usar leitos como fallback.
 - “Posto” fica só no código e nos contratos (`serviceSlots`): na tela é lido
-  como posto de saúde. A interface diz “Atendimentos ao mesmo tempo”
-  (`serviceSlots`, com `installedServiceSlots` como “no total”) e descreve as
+  como posto de saúde. A interface usa “Capacidade de atendimento”,
+  separando “Em operação: até N pessoas simultaneamente” (`serviceSlots`) de
+  “Capacidade total do cenário: N pessoas simultaneamente”
+  (`installedServiceSlots`), e descreve as
   faixas como a fila em relação à capacidade. A razão por posto não aparece.
 - Leitos por categoria e histórico de ocupação ficam como informações
   complementares no detalhe. A faixa de espera da tabela histórica usa a mesma

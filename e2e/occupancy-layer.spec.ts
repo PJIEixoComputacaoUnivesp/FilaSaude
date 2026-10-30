@@ -262,9 +262,7 @@ test("mantém o popup do norte visível ao abrir e ligar a ocupação", async ({
   expect(await panePosition()).toBe(before);
   const panel = page.getByRole("region", { name: "Controles do mapa" });
   await panel.getByText("Ocupação simulada", { exact: true }).click();
-  await expect(
-    popup.getByText("Espera alta", { exact: true }),
-  ).toBeVisible();
+  await expect(popup.getByText("Espera alta", { exact: true })).toBeVisible();
   await expect
     .poll(async () => {
       const box = await popup.boundingBox();
@@ -348,9 +346,7 @@ for (const viewport of [
     });
     await panel.getByText("Simulação", { exact: true }).click();
     await expect(toggle).toBeChecked();
-    await expect(
-      panel.getByText("Dados simulados, não reais."),
-    ).toBeVisible();
+    await expect(panel.getByText("Dados simulados, não reais.")).toBeVisible();
     const open = panel.getByRole("button", {
       name: /^Filtros e legenda/,
     });
@@ -491,9 +487,7 @@ for (const viewport of [
     await toggle.focus();
     await page.keyboard.press("Space");
     await expect(toggle).toBeChecked();
-    await expect(
-      panel.getByText("Dados simulados, não reais."),
-    ).toBeVisible();
+    await expect(panel.getByText("Dados simulados, não reais.")).toBeVisible();
 
     const after = await panel.boundingBox();
     const map = await page.locator(".leaflet-container").boundingBox();
@@ -924,7 +918,9 @@ test("SSE atualiza o histórico da unidade mesmo quando o estado atual não muda
     section.locator("details").getByRole("cell", { name: "20%", exact: true }),
   ).toBeVisible();
   expect(reads).toBeGreaterThan(beforeUpdate);
-  await expect(section.getByText("Espera alta", { exact: true }).first()).toBeVisible();
+  await expect(
+    section.getByText("Espera alta", { exact: true }).first(),
+  ).toBeVisible();
 });
 
 for (const viewport of [
@@ -1038,7 +1034,9 @@ test("a lista mobile mostra resultados e permite expandir filtros secundários",
   });
   await expect(expand).toHaveAttribute("aria-expanded", "false");
   await expect(
-    page.getByText("Dados simulados: não mostram a situação real das unidades."),
+    page.getByText(
+      "Dados simulados: não mostram a situação real das unidades.",
+    ),
   ).toBeVisible();
   const simulated = page.getByRole("checkbox", {
     name: "Mostrar só unidades com ocupação simulada",
@@ -1387,7 +1385,9 @@ for (const viewport of [
     await expect(unknown.locator('svg circle[fill="#94a3b8"]')).toHaveCount(1);
     await card.getByRole("link", { name: /Ver no mapa/ }).click();
     const popup = page.locator(".leaflet-popup");
-    await expect(popup.getByText("Espera baixa", { exact: true })).toBeVisible();
+    await expect(
+      popup.getByText("Espera baixa", { exact: true }),
+    ).toBeVisible();
     await expect(
       popup.getByText("Esperando 0 · Em atendimento 2"),
     ).toBeVisible();
@@ -1432,14 +1432,10 @@ for (const width of [320, 390, 844, 1280]) {
     const card = page
       .getByRole("article")
       .filter({ hasText: "UPA Vila Mariana" });
-    await expect(
-      card.getByText("Espera estimada: 20 min"),
-    ).toBeVisible();
+    await expect(card.getByText("Espera estimada: 20 min")).toBeVisible();
     await card.getByRole("link", { name: /Ver no mapa/ }).click();
     const popup = page.locator(".leaflet-popup");
-    await expect(
-      popup.getByText("Espera estimada: 20 min"),
-    ).toBeVisible();
+    await expect(popup.getByText("Espera estimada: 20 min")).toBeVisible();
     await popup.getByRole("link", { name: /Ver detalhes/ }).click();
     const section = page.getByRole("region", {
       name: "Ocupação e atendimento simulados",
@@ -1453,12 +1449,21 @@ for (const width of [320, 390, 844, 1280]) {
       }),
     });
     await expect(row.getByRole("definition")).toHaveText("20 min");
-    const simultaneous = section.locator("dl > div").filter({
-      has: page.getByText("Atendimentos ao mesmo tempo", { exact: true }),
-    });
-    await expect(simultaneous.getByRole("definition")).toHaveText(
-      "2 (4 no total)",
-    );
+    await expect(
+      section.getByText("Capacidade de atendimento", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      section
+        .getByText("Em operação:", { exact: true })
+        .locator("..")
+        .getByRole("definition"),
+    ).toHaveText("até 2 pessoas simultaneamente.");
+    await expect(
+      section
+        .getByText("Capacidade total do cenário:", { exact: true })
+        .locator("..")
+        .getByRole("definition"),
+    ).toHaveText("4 pessoas simultaneamente.");
     await expect(
       section.getByText("Serviços disponíveis", { exact: true }),
     ).toBeVisible();
@@ -1484,6 +1489,10 @@ for (const width of [320, 390, 844, 1280]) {
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true);
+    await page.screenshot({
+      path: `/tmp/filasaude-capacidade-pagina-${width}.png`,
+      fullPage: true,
+    });
     await testInfo.attach(`indicadores-${width}`, {
       body: await section.screenshot({
         path: `/tmp/filasaude-indicadores-${width}.png`,
@@ -1518,16 +1527,12 @@ test("expiração remove a estimativa dos resumos e indisponibilidade é explíc
   const card = page
     .getByRole("article")
     .filter({ hasText: "UPA Vila Mariana" });
-  await expect(
-    card.getByText("Espera estimada: 20 min"),
-  ).toBeVisible();
+  await expect(card.getByText("Espera estimada: 20 min")).toBeVisible();
   await emitOccupancyEvent(page, "occupancy.updated", {
     data: [{ ...current, confirmation: "stale" }],
     metadata,
   });
-  await expect(
-    card.getByText("Espera estimada: 20 min"),
-  ).toHaveCount(0);
+  await expect(card.getByText("Espera estimada: 20 min")).toHaveCount(0);
   await card.getByRole("link", { name: /Ver detalhes/ }).click();
   await expect(
     page.getByText("Indisponível: dados desatualizados", { exact: true }),
@@ -1542,7 +1547,9 @@ test("expiração remove a estimativa dos resumos e indisponibilidade é explíc
     metadata,
   });
   await expect(
-    page.getByText("Indisponível: ainda há poucos dados para calcular", { exact: true }),
+    page.getByText("Indisponível: ainda há poucos dados para calcular", {
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(page.getByText("Não informados", { exact: true })).toBeVisible();
 });
@@ -1602,5 +1609,58 @@ for (const viewport of [
       card.getByText("Sem dados recentes", { exact: true }),
     ).toBeVisible();
     expect(occupancyReads).toBe(readsBeforeExpiry);
+  });
+}
+
+for (const [serviceSlots, installedServiceSlots, activeText, totalText] of [
+  [1, 1, "até 1 pessoa simultaneamente.", "1 pessoa simultaneamente."],
+  [2, undefined, "até 2 pessoas simultaneamente.", "Não informada."],
+  [undefined, 4, "Não informada.", "4 pessoas simultaneamente."],
+  [undefined, undefined, "Não informada.", "Não informada."],
+] as const) {
+  test(`capacidade distingue operação e total: ${serviceSlots}/${installedServiceSlots}`, async ({
+    page,
+  }) => {
+    await mockApi(page);
+    await page.route("**/api/occupancy", (route) =>
+      route.fulfill({
+        json: {
+          data: [
+            {
+              ...highOccupancy,
+              attendance: {
+                ...highOccupancy.attendance,
+                serviceSlots,
+                installedServiceSlots,
+              },
+            },
+          ],
+          metadata,
+        },
+      }),
+    );
+    await page.goto("/units?uf=SP");
+    await page.getByRole("switch", { name: "Ocupação simulada" }).focus();
+    await page.keyboard.press("Space");
+    await page
+      .getByRole("article")
+      .filter({ hasText: "UPA Vila Mariana" })
+      .getByRole("link", { name: /Ver detalhes/ })
+      .click();
+    const section = page.getByRole("region", {
+      name: "Ocupação e atendimento simulados",
+    });
+    await expect(
+      section
+        .getByText("Em operação:", { exact: true })
+        .locator("..")
+        .getByRole("definition"),
+    ).toHaveText(activeText);
+    await expect(
+      section
+        .getByText("Capacidade total do cenário:", { exact: true })
+        .locator("..")
+        .getByRole("definition"),
+    ).toHaveText(totalText);
   });
 }

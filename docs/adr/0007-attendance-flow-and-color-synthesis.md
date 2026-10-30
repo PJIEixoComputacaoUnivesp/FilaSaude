@@ -48,7 +48,8 @@ de capacidade.
   Cada bloco tem uma marca de simulação e a linha da fonte com o horário; a
   legenda mantém o aviso de que as cores não são classificação de risco, ordem
   de atendimento nem indicação de unidade. Na tela, “posto” virou
-  “atendimentos ao mesmo tempo”.
+  “Capacidade de atendimento”, com valores separados para “Em operação” e
+  “Capacidade total do cenário”, em pessoas simultaneamente.
 
 ## Alternativas e consequências
 

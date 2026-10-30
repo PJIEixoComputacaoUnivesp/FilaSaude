@@ -288,8 +288,10 @@ recentes", para que um número antigo não pareça atual.
 Na página de detalhes, a seção **Ocupação e atendimento simulados** separa:
 
 - **Atendimento agora**: o nível da espera, a espera estimada, pessoas
-  esperando, pessoas em atendimento e quantos atendimentos a unidade faz ao
-  mesmo tempo (agora e no total);
+  esperando e pessoas em atendimento. Em **Capacidade de atendimento**,
+  “Em operação” mostra até quantas pessoas podem ser atendidas simultaneamente
+  agora; “Capacidade total do cenário” mostra o limite total simulado. Esses
+  valores não são a quantidade de pessoas em atendimento nem leitos;
 - **Como a estimativa é calculada**: toque para ver o método, o intervalo e a
   quantidade de envios considerados;
 - **Atendimentos concluídos**: o total do dia, em horário de Brasília;
