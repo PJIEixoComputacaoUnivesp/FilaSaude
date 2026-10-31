@@ -63,7 +63,7 @@ flowchart LR
   caddy -->|"SSE"| pessoa
 
   api -->|"catálogo e dados operacionais"| db[("PostgreSQL")]
-  api -->|"municípios e contornos"| ibge["IBGE"]
+  api -->|"nomes de municípios"| ibge["IBGE"]
   api -->|"posições em São Paulo"| geo["GeoSampa"]
 
   sim["Simulador nacional contínuo"] -->|"webhook assinado"| api
@@ -134,7 +134,8 @@ flowchart TD
 
 Todas as respostas passam pela mesma verificação de posição. A coordenada do
 CNES é autodeclarada e parte dela cai fora do município, então a API compara o
-ponto com o contorno do IBGE (tolerância de 5 km) e escolhe, nesta ordem:
+ponto com o contorno do IBGE, versionado no repositório (tolerância de 5 km), e
+escolhe, nesta ordem:
 
 1. posição definida por um administrador (`manual`);
 2. coordenada atual do CNES, quando está dentro do município (`source`);
