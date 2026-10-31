@@ -3,6 +3,7 @@
 - Status: aceita
 - Data: 2026-10-29
 - PR: [#122](https://github.com/PJIEixoComputacaoUnivesp/FilaSaude/pull/122)
+- Complementada por: [ADR 0009](0009-wait-read-model-and-usual-comparison.md)
 - Complementa: [ADR 0005](0005-simulated-occupancy-semantics.md) e
   [ADR 0007](0007-attendance-flow-and-color-synthesis.md)
 

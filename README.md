@@ -190,6 +190,7 @@ Refs #78, #79, #106, #107, #108, #109 e #110.
 | `GET /admin/me` e `/admin/location-corrections` | Administração de posições, com `Authorization: Bearer` | Implementado |
 | `GET /occupancy` | Leitos, espera, atendimento e concluídos simulados, separados do catálogo CNES | Implementado (#78) |
 | `GET /units/{cnes}/occupancy-history` | Histórico simulado das últimas 24 horas | Implementado (#78) |
+| `GET /occupancy/availability` | Indica se a camada simulada existe, sem ler dados | Implementado |
 | `GET /occupancy/stream` | Unidades alteradas por SSE | Implementado (#78) |
 
 Os detalhes das rotas, dos campos e dos cabeçalhos estão em
@@ -319,6 +320,7 @@ backups e o passo a passo.
 - [ADR 0006](docs/adr/0006-catalog-cache-and-fallback.md): cache e contingência cadastral.
 - [ADR 0007](docs/adr/0007-attendance-flow-and-color-synthesis.md): fluxo de atendimento simulado e cor pela pior faixa.
 - [ADR 0008](docs/adr/0008-operational-indicators-and-wait-estimation.md): indicadores operacionais e cálculo da espera pelo histórico no FilaSaúde.
+- [ADR 0009](docs/adr/0009-wait-read-model-and-usual-comparison.md): leitura enxuta da espera e comparação de cada unidade com o próprio habitual.
 - [Proposta 0001](docs/proposals/0001-operational-occupancy-simulation.md): simulação de ocupação operacional.
 - [Contrato do snapshot de ocupação v1](docs/contracts/occupancy-snapshot-v1.md) e seu [JSON Schema](docs/contracts/occupancy-snapshot-v1.schema.json).
 - [Contrato do snapshot v2, com o fluxo de atendimento](docs/contracts/occupancy-snapshot-v2.md) e seu [JSON Schema](docs/contracts/occupancy-snapshot-v2.schema.json).

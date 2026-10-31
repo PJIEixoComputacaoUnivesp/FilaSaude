@@ -9,8 +9,9 @@ simulador envia contagens, nunca esse resultado ou seus parâmetros internos.
 Na última hora do instante atual da unidade, considera-se o segmento contínuo
 mais recente com `inService` e `completed`. São necessários ao menos três
 instantes distintos cobrindo 15 minutos, sem intervalos maiores que 10 minutos.
-A leitura é limitada a 121 eventos recentes por unidade e usa o índice existente
-por CNES/ocorrência, em uma consulta para o conjunto de unidades solicitado.
+A leitura é limitada a 121 eventos recentes por unidade, em uma consulta para o
+conjunto de unidades solicitado. Ela usa a tabela enxuta `occupancy_flow_sample`,
+não a inbox ([ADR 0009](../adr/0009-wait-read-model-and-usual-comparison.md)).
 Cadências muito altas podem encurtar a janela a ponto de impedir a estimativa.
 
 ```text
@@ -50,6 +51,33 @@ contagens agregadas; a estimativa continua sendo aproximada.
 
 Nesse exemplo, seis pessoas esperam e seis atendimentos começaram em 20 minutos.
 Fila confirmada em zero resulta em zero minutos somente com ritmo válido.
+
+## Comparação com o habitual
+
+`waitComparison` acompanha `waitEstimate` nas mesmas respostas e compara a
+unidade apenas com as próprias leituras das últimas 24 horas, registradas a cada
+15 minutos, sem visitantes:
+
+```json
+{
+  "status": "above-usual",
+  "typicalMinutes": 5,
+  "upperMinutes": 30,
+  "sampleCount": 96,
+  "windowStart": "2026-10-28T12:15:00.000Z",
+  "windowEnd": "2026-10-29T12:00:00.000Z"
+}
+```
+
+`typicalMinutes` é a mediana e `upperMinutes`, o percentil 90. O `status` é
+`above-usual` quando a estimativa é maior que o percentil 90 e ao menos 15
+minutos maior que a mediana; caso contrário, é `usual`. Sem estimativa disponível,
+sem 48 leituras ou sem resumo atualizado na última hora, a resposta é
+`{ "status": "unavailable" }`. A ausência do campo em uma API antiga significa
+não comparado.
+
+A comparação descreve a leitura simulada. Não prevê a espera, não compara
+unidades entre si e não altera cor, classificação ou ordenação.
 
 ## Indisponibilidade
 

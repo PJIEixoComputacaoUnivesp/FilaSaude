@@ -154,6 +154,11 @@ não o devolve ao disco. Ao reduzir a retenção de uma rodada em andamento, apa
 antes o excedente em lotes, para a primeira limpeza da API não remover milhões
 de linhas num só comando.
 
+A estimativa de espera não depende dessa retenção: `occupancy_flow_sample` guarda
+a janela recente, apagada pela API a cada 15 minutos, e `occupancy_wait_sample`
+guarda 24 horas de leituras. Ao limpar uma rodada, limpe também essas tabelas e
+`occupancy_wait_baseline`.
+
 - O simulador usa a rede interna do Compose. A autorização de execução nacional
   e de destino interno é explícita no serviço.
 - O serviço inicia após a versão estar saudável e fora do `--wait`: se falhar,
