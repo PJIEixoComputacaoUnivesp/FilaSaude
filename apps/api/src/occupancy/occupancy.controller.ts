@@ -34,6 +34,17 @@ export class OccupancyController {
     @Inject(OCCUPANCY_SETTINGS) private readonly settings: OccupancySettings,
   ) {}
 
+  /**
+   * Lets the site offer the layer without loading it. It reads no data, so
+   * the switch does not depend on the national snapshot.
+   */
+  @Get('occupancy/availability')
+  @Header('Cache-Control', 'no-cache')
+  availability(): { simulated: true } {
+    this.assertEnabled();
+    return { simulated: true };
+  }
+
   @Get('occupancy')
   @Header('Cache-Control', 'no-cache')
   findCurrent(): Promise<OccupancyResponse> {

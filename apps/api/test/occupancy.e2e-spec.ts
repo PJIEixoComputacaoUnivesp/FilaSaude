@@ -12,6 +12,7 @@ describe('Occupancy (e2e)', () => {
   let app: NestExpressApplication | undefined;
   const observedAt = new Date();
   const repository = {
+    findWaitBaselines: vi.fn().mockResolvedValue(new Map()),
     findWaitEstimateHistory: vi.fn().mockResolvedValue(new Map()),
     findCurrent: vi.fn().mockResolvedValue([
       {
@@ -67,8 +68,21 @@ describe('Occupancy (e2e)', () => {
     const server = (await start(false)).getHttpServer();
 
     await request(server).get('/occupancy').expect(404);
+    await request(server).get('/occupancy/availability').expect(404);
     await request(server).get('/occupancy/stream').expect(404);
     await request(server).get('/units/1234567/occupancy-history').expect(404);
+  });
+
+  it('offers the layer without reading the occupancy', async () => {
+    const server = (await start(true)).getHttpServer();
+    const before = repository.findCurrent.mock.calls.length;
+
+    await request(server)
+      .get('/occupancy/availability')
+      .expect(200)
+      .expect({ simulated: true });
+
+    expect(repository.findCurrent.mock.calls.length).toBe(before);
   });
 
   it('returns the current simulated occupancy, marked as simulation', async () => {
