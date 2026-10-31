@@ -20,6 +20,7 @@ function row(unitCnes: string, observedAt: string, occupied: number) {
 describe('OccupancyService', () => {
   it('returns the current state with its level, confirmation and simulation mark', async () => {
     const repository = {
+      findWaitBaselines: vi.fn().mockResolvedValue(new Map()),
       findWaitEstimateHistory: vi.fn().mockResolvedValue(new Map()),
       findCurrent: vi
         .fn()
@@ -58,6 +59,7 @@ describe('OccupancyService', () => {
 
   it('reads the history of the configured period, each point as observed', async () => {
     const repository = {
+      findWaitBaselines: vi.fn().mockResolvedValue(new Map()),
       findWaitEstimateHistory: vi.fn().mockResolvedValue(new Map()),
       findCurrentByUnit: vi.fn().mockResolvedValue(null),
       findHistory: vi.fn().mockResolvedValue([
@@ -124,6 +126,20 @@ it('calculates the same estimate in national, delta and detail responses', async
     findCurrentForUnits: vi.fn().mockResolvedValue([current]),
     findCurrentByUnit: vi.fn().mockResolvedValue(current),
     findHistory: vi.fn().mockResolvedValue(points),
+    findWaitBaselines: vi.fn().mockResolvedValue(
+      new Map([
+        [
+          '1234567',
+          {
+            typicalMinutes: 2,
+            upperMinutes: 5,
+            sampleCount: 96,
+            windowStart: new Date(instant.getTime() - 86_400_000),
+            windowEnd: instant,
+          },
+        ],
+      ]),
+    ),
     findWaitEstimateHistory: vi
       .fn()
       .mockResolvedValue(new Map([['1234567', points]])),
@@ -137,6 +153,10 @@ it('calculates the same estimate in national, delta and detail responses', async
   expect(responses[0].data[0].waitEstimate).toMatchObject({
     status: 'available',
     minutes: 20,
+  });
+  expect(responses[0].data[0].waitComparison).toMatchObject({
+    status: 'above-usual',
+    typicalMinutes: 2,
   });
   expect(responses[1].data[0]).toEqual(responses[0].data[0]);
   expect(responses[2].data.current).toEqual(responses[0].data[0]);
@@ -191,6 +211,7 @@ describe('estimate history eligibility', () => {
         findCurrentForUnits: vi
           .fn()
           .mockResolvedValue([complete, ...ineligible]),
+        findWaitBaselines: vi.fn().mockResolvedValue(new Map()),
         findWaitEstimateHistory: vi.fn().mockResolvedValue(new Map()),
       };
       const service = new OccupancyService(repository as never, settings);
@@ -223,6 +244,7 @@ describe('estimate history eligibility', () => {
         findCurrentForUnits: vi.fn().mockResolvedValue(ineligible),
         findCurrentByUnit: vi.fn().mockResolvedValue(ineligible[0]),
         findHistory: vi.fn().mockResolvedValue([]),
+        findWaitBaselines: vi.fn().mockResolvedValue(new Map()),
         findWaitEstimateHistory: vi.fn().mockResolvedValue(new Map()),
       };
       const service = new OccupancyService(repository as never, settings);

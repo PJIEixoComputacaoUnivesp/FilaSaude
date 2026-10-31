@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import type { WaitBaseline } from '../../occupancy/wait-comparison.js';
 import type { WaitEstimateSample } from '../../occupancy/wait-estimate.js';
 import {
   OccupancyCurrentEntity,
@@ -44,6 +45,9 @@ const ERROR_MAX_LENGTH = 500;
  * without the flow) clears it to NULL: "not informed", never zero. Completed
  * totals are cumulative per period and replaced, never added up.
  *
+ * The flow counts of every event, applied or not, also go to the slim table
+ * read by the wait estimate, in the same statement that sends the notification.
+ *
  * `$2` restricts the batch to one event, used to isolate a failing one.
  */
 const PROCESS_PENDING_SQL = `
@@ -80,6 +84,19 @@ applied AS (
       < (EXCLUDED.occurred_at, EXCLUDED.observed_at,
          EXCLUDED.received_at, EXCLUDED.event_id)
   RETURNING unit_cnes
+),
+sampled AS (
+  INSERT INTO occupancy_flow_sample
+    (event_id, unit_cnes, source_id, attendance, occurred_at, observed_at, received_at)
+  SELECT event_id, unit_cnes, source_id,
+         jsonb_strip_nulls(jsonb_build_object(
+           'waiting', payload->'attendance'->'waiting',
+           'inService', payload->'attendance'->'inService',
+           'completed', payload->'attendance'->'completed'
+         )),
+         occurred_at, observed_at, received_at
+  FROM batch
+  ON CONFLICT (event_id) DO NOTHING
 ),
 marked AS (
   UPDATE occupancy_webhook_inbox AS inbox
@@ -147,6 +164,87 @@ export class OccupancyRepository {
     );
   }
 
+  /** The estimate only reads the recent window; older samples leave. */
+  async deleteFlowSamplesBefore(cutoff: Date): Promise<void> {
+    await this.repository.query(
+      `DELETE FROM occupancy_flow_sample WHERE occurred_at < $1`,
+      [cutoff],
+    );
+  }
+
+  /**
+   * Adds one reading per unit and refreshes the summary of the period. A
+   * replica that reaches the same instant adds nothing to the samples.
+   */
+  async recordWaitSamples(
+    readings: readonly { unitCnes: string; minutes: number }[],
+    sampledAt: Date,
+    since: Date,
+  ): Promise<void> {
+    await this.repository.query(
+      `INSERT INTO occupancy_wait_sample (unit_cnes, sampled_at, minutes)
+       SELECT reading."unitCnes", $2, reading.minutes
+       FROM jsonb_to_recordset($1::jsonb) AS reading("unitCnes" varchar, minutes int)
+       ON CONFLICT (unit_cnes, sampled_at) DO NOTHING`,
+      [JSON.stringify(readings), sampledAt],
+    );
+    await this.repository.query(
+      `DELETE FROM occupancy_wait_sample WHERE sampled_at < $1`,
+      [since],
+    );
+    await this.repository.query(
+      `DELETE FROM occupancy_wait_baseline WHERE window_end < $1`,
+      [since],
+    );
+    await this.repository.query(
+      `INSERT INTO occupancy_wait_baseline
+         (unit_cnes, typical_minutes, upper_minutes, sample_count, window_start, window_end)
+       SELECT unit_cnes,
+              percentile_disc(0.5) WITHIN GROUP (ORDER BY minutes),
+              percentile_disc(0.9) WITHIN GROUP (ORDER BY minutes),
+              count(*), min(sampled_at), max(sampled_at)
+       FROM occupancy_wait_sample
+       GROUP BY unit_cnes
+       ON CONFLICT (unit_cnes) DO UPDATE SET
+         typical_minutes = EXCLUDED.typical_minutes,
+         upper_minutes = EXCLUDED.upper_minutes,
+         sample_count = EXCLUDED.sample_count,
+         window_start = EXCLUDED.window_start,
+         window_end = EXCLUDED.window_end`,
+    );
+  }
+
+  async findWaitBaselines(
+    unitCnes: readonly string[],
+  ): Promise<Map<string, WaitBaseline>> {
+    if (unitCnes.length === 0) return new Map();
+    const rows = (await this.repository.query(
+      `SELECT unit_cnes, typical_minutes, upper_minutes, sample_count,
+              window_start, window_end
+       FROM occupancy_wait_baseline WHERE unit_cnes = ANY($1)`,
+      [[...unitCnes]],
+    )) as {
+      unit_cnes: string;
+      typical_minutes: number;
+      upper_minutes: number;
+      sample_count: number;
+      window_start: Date | string;
+      window_end: Date | string;
+    }[];
+    return new Map(
+      rows.map((row) => [
+        row.unit_cnes,
+        {
+          typicalMinutes: row.typical_minutes,
+          upperMinutes: row.upper_minutes,
+          sampleCount: row.sample_count,
+          windowStart: new Date(row.window_start),
+          windowEnd: new Date(row.window_end),
+        },
+      ]),
+    );
+  }
+
   findCurrent(): Promise<OccupancyCurrentEntity[]> {
     return this.repository.find({ order: { unitCnes: 'ASC' } });
   }
@@ -167,6 +265,8 @@ export class OccupancyRepository {
   /** One bounded, indexed read for all units, anchored to the current rows
    * already read by the caller. A concurrent update cannot enter the window.
    * Source changes stay in the result so the estimator can break the series.
+   * It reads the slim samples: a table small enough to stay in memory, while
+   * the rows of one unit in the inbox are scattered across its whole heap.
    */
   async findWaitEstimateHistory(
     current: readonly (WaitEstimateSample & { unitCnes: string })[],
@@ -180,10 +280,10 @@ export class OccupancyRepository {
          observed_at timestamptz, received_at timestamptz
        )
        CROSS JOIN LATERAL (
-         SELECT event_id, source_id, payload->'attendance' AS attendance,
+         SELECT event_id, source_id, attendance,
                 occurred_at, observed_at, received_at
-         FROM occupancy_webhook_inbox
-         WHERE unit_cnes = basis.unit_cnes AND status = 'processed'
+         FROM occupancy_flow_sample
+         WHERE unit_cnes = basis.unit_cnes
            AND occurred_at >= basis.occurred_at - ($2 * interval '1 millisecond')
            AND occurred_at <= basis.occurred_at
            AND (occurred_at, observed_at, received_at, event_id) <=
