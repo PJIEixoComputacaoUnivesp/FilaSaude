@@ -8,6 +8,7 @@ function release(overrides: Record<string, unknown> = {}) {
     nu_endereco: '100',
     nu_latitude: -23.535249,
     nu_longitude: -46.841459,
+    ds_class_estab: '008 - PRONTO ATENDIMENTO',
     ...overrides,
   };
 }
@@ -37,6 +38,7 @@ describe('CnesHistoryClient', () => {
         longitude: -46.841459,
         street: 'RUA SERRA AGULHAS NEGRAS',
         number: '100',
+        classification: '008 - PRONTO ATENDIMENTO',
       },
     ]);
   });

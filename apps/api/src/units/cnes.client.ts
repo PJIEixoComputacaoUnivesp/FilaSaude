@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { CnesHistoryClient } from './cnes-history.client.js';
 import { CNES_CODE_PATTERN } from './cnes-code.js';
 import { MunicipalitiesClient } from './municipalities.client.js';
 import {
@@ -18,15 +19,21 @@ const PAGE_BATCH_SIZE = 5;
 const REQUEST_TIMEOUT_MS = 10_000;
 const STATE_FETCH_DEADLINE_MS = 30_000;
 const NATIONAL_FETCH_DEADLINE_MS = 45_000;
+const CLASSIFICATION_CONCURRENCY = 5;
+// A mixed unit can be anything from a hospital to a rehabilitation center, so
+// it is listed only when CNES classifies it as urgent care.
+const MIXED_UNIT_TYPE = 15;
+const URGENT_CARE_CLASSIFICATION = '008 - PRONTO ATENDIMENTO';
 const unitTypes = new Map<number, HealthUnit['unitType']>([
+  [MIXED_UNIT_TYPE, 'PRONTO ATENDIMENTO'],
   [20, 'PRONTO SOCORRO GERAL'],
   [21, 'PRONTO SOCORRO ESPECIALIZADO'],
   [73, 'PRONTO ATENDIMENTO'],
 ]);
 
 /**
- * The establishment is not one the product lists: a type other than 20, 21 and
- * 73, or a municipality or state it does not know. Kept apart from a malformed
+ * The establishment is not one the product lists: a type other than 15, 20, 21
+ * and 73, or a municipality or state it does not know. Kept apart from a malformed
  * record, which is a failure of the source and must not look like a missing
  * unit.
  */
@@ -102,6 +109,14 @@ function parsePage(payload: unknown): JsonRecord[] {
   return payload.estabelecimentos;
 }
 
+/** Whether the record can only be listed after checking its classification. */
+function needsClassification(record: JsonRecord): boolean {
+  return (
+    Number(record.codigo_tipo_unidade) === MIXED_UNIT_TYPE &&
+    record.estabelecimento_faz_atendimento_ambulatorial_sus === 'SIM'
+  );
+}
+
 function normalizeUnit(
   record: JsonRecord,
   municipalities: ReadonlyMap<string, string>,
@@ -172,7 +187,10 @@ function normalizeUnit(
 export class CnesClient {
   private readonly logger = new Logger(CnesClient.name);
 
-  constructor(private readonly municipalitiesClient: MunicipalitiesClient) {}
+  constructor(
+    private readonly municipalitiesClient: MunicipalitiesClient,
+    private readonly historyClient: CnesHistoryClient,
+  ) {}
 
   /** Fetches the units of one state, or of the whole country when state is null. */
   async fetchUnits(state: BrazilianState | null): Promise<HealthUnit[]> {
@@ -187,7 +205,10 @@ export class CnesClient {
       ),
       this.municipalitiesClient.fetchNames(state),
     ]);
-    const records = recordsByType.flat();
+    const records = await this.withoutOtherClassifications(
+      recordsByType.flat(),
+      deadline,
+    );
 
     const units = this.normalizeAll(records, municipalities);
 
@@ -229,11 +250,58 @@ export class CnesClient {
       if (unit && Number(unit.id) !== Number(cnesCode)) {
         throw new Error('CNES returned a different establishment');
       }
+      if (
+        unit &&
+        needsClassification(record) &&
+        !(await this.isUrgentCare(unit.id))
+      ) {
+        return null;
+      }
       return unit;
     } catch (error: unknown) {
       if (error instanceof OutOfScopeError) return null;
       throw error;
     }
+  }
+
+  /**
+   * Drops the mixed units CNES does not classify as urgent care. The listing
+   * has no classification, so each one is looked up in the monthly releases.
+   * A failed lookup rejects the collection, like an inconsistent record does.
+   */
+  private async withoutOtherClassifications(
+    records: readonly JsonRecord[],
+    deadline: AbortSignal,
+  ): Promise<JsonRecord[]> {
+    const queue = records.filter(needsClassification);
+    const others = new Set<JsonRecord>();
+    const worker = async () => {
+      for (let record = queue.shift(); record; record = queue.shift()) {
+        if (!(await this.isUrgentCare(cnesCode(record), deadline))) {
+          others.add(record);
+        }
+      }
+    };
+    await Promise.all(
+      Array.from({ length: CLASSIFICATION_CONCURRENCY }, worker),
+    );
+    return records.filter((record) => !others.has(record));
+  }
+
+  /** Reads the classification of the latest monthly release of a unit. */
+  private async isUrgentCare(
+    unitId: string,
+    signal?: AbortSignal,
+  ): Promise<boolean> {
+    const entries = await this.historyClient.fetch(unitId, signal);
+    const latest = entries.reduce<(typeof entries)[number] | undefined>(
+      (newest, entry) =>
+        !newest || entry.referenceMonth > newest.referenceMonth
+          ? entry
+          : newest,
+      undefined,
+    );
+    return latest?.classification === URGENT_CARE_CLASSIFICATION;
   }
 
   /**

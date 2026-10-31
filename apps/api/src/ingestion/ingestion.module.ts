@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { databaseOptions } from '../database/data-source.js';
 import { HealthUnitEntity } from '../database/entities/health-unit.entity.js';
 import { HealthUnitRepository } from '../database/repositories/health-unit.repository.js';
+import { CnesHistoryClient } from '../units/cnes-history.client.js';
 import { CnesClient } from '../units/cnes.client.js';
 import { MunicipalitiesClient } from '../units/municipalities.client.js';
 import { UnitsIngestionService } from './units-ingestion.service.js';
@@ -14,6 +15,7 @@ import { UnitsIngestionService } from './units-ingestion.service.js';
   ],
   providers: [
     CnesClient,
+    CnesHistoryClient,
     MunicipalitiesClient,
     HealthUnitRepository,
     UnitsIngestionService,

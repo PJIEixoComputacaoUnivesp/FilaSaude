@@ -17,6 +17,8 @@ export interface CnesHistoryEntry {
   longitude: number | null;
   street: string | null;
   number: string | null;
+  /** `ds_class_estab`, such as `008 - PRONTO ATENDIMENTO`. */
+  classification: string | null;
 }
 
 type JsonRecord = Record<string, unknown>;
@@ -61,6 +63,7 @@ function parseEntry(record: JsonRecord): CnesHistoryEntry | null {
     longitude: optionalCoordinate(record, 'nu_longitude', 180),
     street: optionalString(record, 'no_logradouro'),
     number: optionalString(record, 'nu_endereco'),
+    classification: optionalString(record, 'ds_class_estab'),
   };
 }
 
