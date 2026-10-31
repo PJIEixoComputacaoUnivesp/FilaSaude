@@ -353,7 +353,7 @@ describe("wait estimates and resources", () => {
         ...current,
         waitComparison: { status: "unavailable" },
       }),
-    ).toBe("Comparação indisponível: poucas leituras recentes");
+    ).toBe("Comparação indisponível no momento");
     expect(
       describeWaitComparison(occupancy({ waitEstimate: estimate })),
     ).toBeNull();

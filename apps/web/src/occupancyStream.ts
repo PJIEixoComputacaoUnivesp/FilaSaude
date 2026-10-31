@@ -32,7 +32,6 @@ export function subscribeOccupancy(
   let healthy = true;
   let snapshotReady = false;
   let buffered: OccupancyResponse | null = null;
-  let attempted = false;
 
   const reportDisconnected = () => {
     if (!controller.signal.aborted) {
@@ -43,7 +42,6 @@ export function subscribeOccupancy(
 
   const refresh = async () => {
     requested = true;
-    attempted = true;
     if (running) return;
     running = true;
     try {
@@ -81,7 +79,7 @@ export function subscribeOccupancy(
   // The first snapshot still loads when the stream cannot connect.
   const failed = () => {
     reportDisconnected();
-    if (!attempted) void refresh();
+    if (!snapshotReady && !running) void refresh();
   };
   const updated = (event: Event) => {
     if (controller.signal.aborted) return;

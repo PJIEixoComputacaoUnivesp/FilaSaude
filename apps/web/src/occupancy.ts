@@ -233,7 +233,7 @@ export function describeWaitComparison(
     case "usual":
       return "Dentro do habitual desta unidade";
     case "unavailable":
-      return "Comparação indisponível: poucas leituras recentes";
+      return "Comparação indisponível no momento";
     default:
       return null;
   }

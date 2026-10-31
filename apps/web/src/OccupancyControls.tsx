@@ -161,8 +161,10 @@ export function OccupancyControls({
           id={secondaryId}
           className={`mt-2 space-y-1 ${compact ? "hidden map-wide:block" : collapsible && !isExpanded ? "hidden map-wide:block" : ""}`}
         >
-          {!response && <p className="text-xs text-slate-700">Carregando…</p>}
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-slate-800">
+          {!response && state.status !== "error" && (
+            <p className="text-xs text-slate-700">Carregando…</p>
+          )}
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-slate-800 has-disabled:cursor-not-allowed">
             <input
               type="checkbox"
               checked={layer.onlySimulated}

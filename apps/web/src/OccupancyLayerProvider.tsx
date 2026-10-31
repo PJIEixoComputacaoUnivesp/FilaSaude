@@ -99,11 +99,16 @@ export function OccupancyLayerProvider({ children }: { children: ReactNode }) {
     };
     const fail = (error: Error) => {
       if (controller.signal.aborted) return;
-      setState((previous) => ({
-        status: "error",
-        message: error.message,
-        response: responseOf(previous),
-      }));
+      setState((previous) =>
+        // A layer the server turned off does not come back as an error.
+        previous.status === "unavailable"
+          ? previous
+          : {
+              status: "error",
+              message: error.message,
+              response: responseOf(previous),
+            },
+      );
     };
     if (checking) {
       void fetchOccupancyAvailability(controller.signal)
@@ -172,7 +177,9 @@ export function OccupancyLayerProvider({ children }: { children: ReactNode }) {
     [isEnabled, response],
   );
 
-  const isFiltering = isAvailable && isEnabled && onlySimulated;
+  // Without data the filter would read as "no units" instead of "not loaded".
+  const isFiltering =
+    isAvailable && isEnabled && onlySimulated && response !== null;
   const simulatedKey = isFiltering ? [...byUnit.keys()].sort().join(",") : null;
   const simulatedFilter = useMemo(
     () =>

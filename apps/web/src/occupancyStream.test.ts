@@ -83,6 +83,29 @@ describe("subscribeOccupancy", () => {
     }
   });
 
+  it("tries the first snapshot again on the next stream failure", async () => {
+    const load = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("indisponível"))
+      .mockResolvedValue(response);
+    const { source, callbacks, unsubscribe } = fixture(load);
+    try {
+      source.dispatchEvent(new Event("error"));
+      await vi.waitFor(() => expect(load).toHaveBeenCalledOnce());
+      await vi.waitFor(() =>
+        expect(callbacks.onError).toHaveBeenCalledWith(
+          new Error("indisponível"),
+        ),
+      );
+      source.dispatchEvent(new Event("error"));
+      await vi.waitFor(() =>
+        expect(callbacks.onResponse).toHaveBeenCalledWith(response),
+      );
+    } finally {
+      unsubscribe();
+    }
+  });
+
   it("does not repeat the national request when the stream fails during it", async () => {
     let finish = (_value: typeof response) => {};
     const { source, load, unsubscribe } = fixture(
