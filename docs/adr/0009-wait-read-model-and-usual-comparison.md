@@ -39,7 +39,7 @@ estimativas eram 0 min, a mediana era 0, o p75 era 15 e o p95 era 80.
    [contrato da estimativa](../contracts/wait-estimate-v1.md) não mudam. A
    migration copia a janela recente. A API antiga não grava na tabela, então
    uma troca de mais de 10 minutos interrompe a série, e a estimativa volta
-   sozinha em até 15 minutos.
+   sozinha no primeiro envio após 15 minutos de envios contínuos.
 3. **Leituras a cada 15 minutos.** A API registra em `occupancy_wait_sample` a
    estimativa de cada unidade, sem depender de visitantes, e resume as últimas
    24 horas em `occupancy_wait_baseline`. Ler o resumo custa uma linha por
@@ -82,7 +82,8 @@ fonte real com pico diário exigiria comparar por horário: uma linha de base de
 qualquer integração real, com a validação já exigida no ADR 0008.
 
 Depois do deploy, a comparação leva 12 horas para aparecer, pois as leituras
-começam do zero. Até lá, o detalhe informa que há poucas leituras recentes.
+começam do zero. Até lá, o detalhe informa que a comparação está indisponível.
+Uma leitura que falha não é repetida: a próxima vem no intervalo seguinte.
 Limpar a inbox de uma rodada deve limpar também as três tabelas novas.
 
 As leituras e o resumo são por unidade, sem fonte, enquanto a estimativa
