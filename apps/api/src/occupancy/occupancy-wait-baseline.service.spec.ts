@@ -56,6 +56,19 @@ describe('OccupancyWaitBaselineService', () => {
     expect(occupancy.findCurrent).toHaveBeenCalledTimes(2);
   });
 
+  it('tries a failed reading again and still bounds the flow samples', async () => {
+    const { occupancy, repository, service } = setup();
+    occupancy.findCurrent.mockRejectedValueOnce(new Error('database down'));
+
+    await expect(
+      service.sample(new Date('2026-10-31T12:01:00.000Z')),
+    ).rejects.toThrow('database down');
+    expect(repository.deleteFlowSamplesBefore).toHaveBeenCalledOnce();
+
+    await service.sample(new Date('2026-10-31T12:02:00.000Z'));
+    expect(repository.recordWaitSamples).toHaveBeenCalledOnce();
+  });
+
   it('keeps flow samples for the oldest window that can still be estimated', async () => {
     const { repository, service } = setup();
 

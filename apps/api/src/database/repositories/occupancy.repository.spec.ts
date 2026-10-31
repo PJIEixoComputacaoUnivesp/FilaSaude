@@ -175,8 +175,8 @@ describe('OccupancyRepository', () => {
     const query = vi.fn().mockResolvedValue([
       {
         unit_cnes: '1234567',
-        typical_minutes: 5,
-        upper_minutes: 30,
+        typical_minutes: '5',
+        upper_minutes: '30',
         sample_count: 96,
         window_start: windowStart.toISOString(),
         window_end: windowEnd,

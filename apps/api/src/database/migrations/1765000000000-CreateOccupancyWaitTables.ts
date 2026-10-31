@@ -10,8 +10,10 @@ import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm';
  * `occupancy_wait_sample` holds the estimates taken at a fixed cadence and
  * `occupancy_wait_baseline` their summary by unit, read with the current state.
  *
- * The backfill copies the recent window, so estimates stay available across
- * the deploy. It uses the unit index, not a sequential read of the inbox.
+ * The backfill copies the recent window, so a short deploy keeps the estimates:
+ * the running API does not write samples, and a gap above the estimator's limit
+ * only restarts the series. It uses the unit index, not a sequential read.
+ * Minutes are bigint because a source may send any safe integer as a count.
  */
 export class CreateOccupancyWaitTables1765000000000 implements MigrationInterface {
   name = 'CreateOccupancyWaitTables1765000000000';
@@ -44,7 +46,7 @@ export class CreateOccupancyWaitTables1765000000000 implements MigrationInterfac
         columns: [
           { name: 'unit_cnes', type: 'varchar', length: '7', isPrimary: true },
           { name: 'sampled_at', type: 'timestamptz', isPrimary: true },
-          { name: 'minutes', type: 'integer' },
+          { name: 'minutes', type: 'bigint' },
         ],
       }),
     );
@@ -53,8 +55,8 @@ export class CreateOccupancyWaitTables1765000000000 implements MigrationInterfac
         name: 'occupancy_wait_baseline',
         columns: [
           { name: 'unit_cnes', type: 'varchar', length: '7', isPrimary: true },
-          { name: 'typical_minutes', type: 'integer' },
-          { name: 'upper_minutes', type: 'integer' },
+          { name: 'typical_minutes', type: 'bigint' },
+          { name: 'upper_minutes', type: 'bigint' },
           { name: 'sample_count', type: 'integer' },
           { name: 'window_start', type: 'timestamptz' },
           { name: 'window_end', type: 'timestamptz' },

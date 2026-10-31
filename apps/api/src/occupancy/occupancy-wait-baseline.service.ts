@@ -67,25 +67,30 @@ export class OccupancyWaitBaselineService
   async sample(now: Date): Promise<void> {
     const slot = Math.floor(now.getTime() / WAIT_SAMPLE_INTERVAL_MS);
     if (slot === this.lastSlot) return;
-    this.lastSlot = slot;
 
-    const { data } = await this.occupancy.findCurrent(now);
-    await this.repository.recordWaitSamples(
-      data.flatMap(({ unitCnes, waitEstimate }) =>
-        waitEstimate.status === 'available'
-          ? [{ unitCnes, minutes: waitEstimate.minutes }]
-          : [],
-      ),
-      new Date(slot * WAIT_SAMPLE_INTERVAL_MS),
-      new Date(now.getTime() - WAIT_BASELINE_WINDOW_MS),
-    );
-    await this.repository.deleteFlowSamplesBefore(
-      new Date(
-        now.getTime() -
-          this.settings.staleAfterMs -
-          WAIT_ESTIMATE_WINDOW_MS -
-          FLOW_MARGIN_MS,
-      ),
-    );
+    try {
+      const { data } = await this.occupancy.findCurrent(now);
+      await this.repository.recordWaitSamples(
+        data.flatMap(({ unitCnes, waitEstimate }) =>
+          waitEstimate.status === 'available'
+            ? [{ unitCnes, minutes: waitEstimate.minutes }]
+            : [],
+        ),
+        new Date(slot * WAIT_SAMPLE_INTERVAL_MS),
+        new Date(now.getTime() - WAIT_BASELINE_WINDOW_MS),
+      );
+      // A failed reading is tried again on the next check of the same slot.
+      this.lastSlot = slot;
+    } finally {
+      // The table must stay small even while the readings fail.
+      await this.repository.deleteFlowSamplesBefore(
+        new Date(
+          now.getTime() -
+            this.settings.staleAfterMs -
+            WAIT_ESTIMATE_WINDOW_MS -
+            FLOW_MARGIN_MS,
+        ),
+      );
+    }
   }
 }

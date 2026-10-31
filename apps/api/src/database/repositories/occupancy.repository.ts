@@ -184,7 +184,7 @@ export class OccupancyRepository {
     await this.repository.query(
       `INSERT INTO occupancy_wait_sample (unit_cnes, sampled_at, minutes)
        SELECT reading."unitCnes", $2, reading.minutes
-       FROM jsonb_to_recordset($1::jsonb) AS reading("unitCnes" varchar, minutes int)
+       FROM jsonb_to_recordset($1::jsonb) AS reading("unitCnes" varchar, minutes bigint)
        ON CONFLICT (unit_cnes, sampled_at) DO NOTHING`,
       [JSON.stringify(readings), sampledAt],
     );
@@ -225,8 +225,8 @@ export class OccupancyRepository {
       [[...unitCnes]],
     )) as {
       unit_cnes: string;
-      typical_minutes: number;
-      upper_minutes: number;
+      typical_minutes: string;
+      upper_minutes: string;
       sample_count: number;
       window_start: Date | string;
       window_end: Date | string;
@@ -235,8 +235,8 @@ export class OccupancyRepository {
       rows.map((row) => [
         row.unit_cnes,
         {
-          typicalMinutes: row.typical_minutes,
-          upperMinutes: row.upper_minutes,
+          typicalMinutes: Number(row.typical_minutes),
+          upperMinutes: Number(row.upper_minutes),
           sampleCount: row.sample_count,
           windowStart: new Date(row.window_start),
           windowEnd: new Date(row.window_end),
