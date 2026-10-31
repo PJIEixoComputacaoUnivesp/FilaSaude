@@ -230,8 +230,24 @@ describe('CnesClient', () => {
       expect(await client.fetchUnits(parseState('SP'))).toEqual([]);
     });
 
-    it('looks up neither the other types nor units outside SUS', async () => {
+    it('does not look up the other types', async () => {
       mockCnes([establishment(-23.55, -46.63)]);
+
+      await client.fetchUnits(parseState('SP'));
+
+      expect(history.fetch).not.toHaveBeenCalled();
+    });
+
+    it('does not look up a unit outside SUS', async () => {
+      mockCnes(
+        [
+          establishment(-23.52, -46.83, {
+            codigo_tipo_unidade: 15,
+            estabelecimento_faz_atendimento_ambulatorial_sus: 'NAO',
+          }),
+        ],
+        '15',
+      );
 
       await client.fetchUnits(parseState('SP'));
 
@@ -245,6 +261,24 @@ describe('CnesClient', () => {
       await expect(client.fetchUnits(parseState('SP'))).rejects.toThrow(
         'history down',
       );
+    });
+
+    it('stops the lookups after the first failure', async () => {
+      mockCnes(
+        Array.from({ length: 12 }, (_, index) => mixed(2_000_000 + index)),
+        '15',
+      );
+      history.fetch
+        .mockRejectedValueOnce(new Error('history down'))
+        .mockResolvedValue(releases(['2026-07', urgentCare]));
+
+      await expect(client.fetchUnits(parseState('SP'))).rejects.toThrow(
+        'history down',
+      );
+      await new Promise((resolve) => setImmediate(resolve));
+
+      // Only the lookups already in flight, one per worker.
+      expect(history.fetch).toHaveBeenCalledTimes(5);
     });
   });
 });

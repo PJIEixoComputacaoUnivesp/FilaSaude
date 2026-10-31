@@ -277,8 +277,15 @@ export class CnesClient {
     const others = new Set<JsonRecord>();
     const worker = async () => {
       for (let record = queue.shift(); record; record = queue.shift()) {
-        if (!(await this.isUrgentCare(cnesCode(record), deadline))) {
-          others.add(record);
+        try {
+          if (!(await this.isUrgentCare(cnesCode(record), deadline))) {
+            others.add(record);
+          }
+        } catch (error: unknown) {
+          // The collection is lost, so the other workers must not go on
+          // alongside the retry.
+          queue.length = 0;
+          throw error;
         }
       }
     };
