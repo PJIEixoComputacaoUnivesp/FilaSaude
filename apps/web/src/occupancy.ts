@@ -216,7 +216,7 @@ export function describeWaitEstimate(occupancy: UnitOccupancy): string {
 
 /**
  * The estimate against the unit's own recent readings. `null` when there is
- * no current estimate to compare. It describes the reading: it says nothing
+ * no current estimate to compare or the API does not send the comparison. It describes the reading: it says nothing
  * about other units and takes no part in color or ordering.
  */
 export function describeWaitComparison(
@@ -232,8 +232,10 @@ export function describeWaitComparison(
       return "Acima do habitual desta unidade";
     case "usual":
       return "Dentro do habitual desta unidade";
+    case "unavailable":
+      return "Comparação indisponível: poucas leituras recentes";
     default:
-      return "Ainda sem leituras suficientes para comparar";
+      return null;
   }
 }
 
@@ -496,7 +498,6 @@ export function parseOccupancyHistory(
   return value as unknown as OccupancyHistoryResponse;
 }
 
-/** `null` means the demonstration is turned off on this server (404). */
 /**
  * Whether the server offers the layer. It reads no data, so the switch does
  * not wait for the national snapshot, loaded only when the layer is on.
@@ -511,6 +512,7 @@ export async function fetchOccupancyAvailability(
   return true;
 }
 
+/** `null` means the demonstration is turned off on this server (404). */
 export async function fetchOccupancy(
   signal?: AbortSignal,
 ): Promise<OccupancyResponse | null> {

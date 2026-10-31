@@ -166,6 +166,8 @@ export function OccupancyControls({
             <input
               type="checkbox"
               checked={layer.onlySimulated}
+              // Filtering before the data arrives would empty the results.
+              disabled={!response}
               onChange={(event) => layer.setOnlySimulated(event.target.checked)}
               className="h-5 w-5 shrink-0 accent-occupancy-control"
             />

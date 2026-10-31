@@ -99,15 +99,11 @@ export function OccupancyLayerProvider({ children }: { children: ReactNode }) {
     };
     const fail = (error: Error) => {
       if (controller.signal.aborted) return;
-      setState((previous) =>
-        previous.status === "checking"
-          ? { status: "unavailable" }
-          : {
-              status: "error",
-              message: error.message,
-              response: responseOf(previous),
-            },
-      );
+      setState((previous) => ({
+        status: "error",
+        message: error.message,
+        response: responseOf(previous),
+      }));
     };
     if (checking) {
       void fetchOccupancyAvailability(controller.signal)

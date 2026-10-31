@@ -632,6 +632,11 @@ test("oferece a camada sem esperar os dados e só os carrega ao ligar", async ({
 
   await toggle.click({ force: true });
   await expect(page.getByText("Carregando…")).toBeVisible();
+  await expect(
+    page.getByRole("checkbox", {
+      name: /Mostrar só unidades com ocupação simulada/,
+    }),
+  ).toBeDisabled();
   await expect.poll(() => occupancyRequests).toBe(1);
   release();
   await expect(

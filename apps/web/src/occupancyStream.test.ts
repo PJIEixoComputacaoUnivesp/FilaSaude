@@ -83,6 +83,23 @@ describe("subscribeOccupancy", () => {
     }
   });
 
+  it("does not repeat the national request when the stream fails during it", async () => {
+    let finish = (_value: typeof response) => {};
+    const { source, load, unsubscribe } = fixture(
+      vi.fn(() => new Promise<typeof response>((resolve) => (finish = resolve))),
+    );
+    try {
+      source.dispatchEvent(new Event("open"));
+      source.dispatchEvent(new Event("error"));
+      finish(response);
+      await vi.waitFor(() => expect(load).toHaveBeenCalledOnce());
+      await Promise.resolve();
+      expect(load).toHaveBeenCalledOnce();
+    } finally {
+      unsubscribe();
+    }
+  });
+
   it("coalesces notifications during a slow request without losing the newest update", async () => {
     let resolveFirst!: (value: OccupancyResponse) => void;
     const load = vi
