@@ -134,9 +134,11 @@ estabelecimentos.
 
 ## Armadilhas
 
-- Não leia por inteiro `apps/api/src/boundaries/brazil-boundary.json` (~3,3 MB) nem
-  `apps/api/src/units/units.snapshot.json` (~1 MB); busque por símbolo. O contorno é
-  gerado por `node apps/api/scripts/generate-brazil-boundary.mjs <BR_Pais_2025.shp>`
+- Não leia por inteiro `apps/api/src/boundaries/brazil-boundary.json` (~3,3 MB),
+  `apps/api/src/units/municipality-boundaries.json` (~2,8 MB) nem
+  `apps/api/src/units/units.snapshot.json` (~1 MB); busque por símbolo. O contorno do
+  Brasil é gerado por `node apps/api/scripts/generate-brazil-boundary.mjs <BR_Pais_2025.shp>`
+  e os dos municípios por `node apps/api/scripts/generate-municipality-boundaries.mjs`
   (IBGE). Não edite à mão.
 - Gerados ou ignorados, não mexa: `dist/`, `node_modules/`, `test-results/`,
   `playwright-report/`, `*.tsbuildinfo`, `.worktrees/`.
