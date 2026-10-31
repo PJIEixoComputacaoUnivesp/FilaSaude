@@ -65,6 +65,12 @@ coletar somente estabelecimentos:
 - ativos (`status=1`, filtro da API);
 - dos tipos CNES `20`, `21` e `73` (`codigo_tipo_unidade`, filtro da API, com
   uma consulta por tipo);
+- do tipo `15` (unidade mista), somente quando a competência mais recente do
+  histórico mensal tem `ds_class_estab` igual a `008 - PRONTO ATENDIMENTO`. O tipo
+  inclui hospitais e unidades de reabilitação, e o Pronto Socorro Infantil de
+  Carapicuíba (CNES 2077124) ficava de fora por ser desse tipo. Essas unidades
+  são expostas como `PRONTO ATENDIMENTO`, e uma falha na consulta rejeita a
+  coleção da UF, preservando o catálogo anterior;
 - vinculados ao atendimento ambulatorial SUS. A API não oferece esse filtro, então
   a regra é aplicada localmente: somente registros com
   `estabelecimento_faz_atendimento_ambulatorial_sus` igual a `"SIM"` são
