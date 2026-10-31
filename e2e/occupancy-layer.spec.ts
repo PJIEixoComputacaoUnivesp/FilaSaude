@@ -816,6 +816,16 @@ test("o aviso escondido do painel não deixa link focável e o link leva à seç
   await expect(
     page.getByRole("heading", { name: "Ocupação simulada", level: 2 }),
   ).toBeInViewport();
+  await expect(
+    page.getByRole("region", { name: "Ocupação simulada" }),
+  ).toBeFocused();
+
+  // A reload keeps the browser's own focus.
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Ocupação simulada", level: 2 }),
+  ).toBeInViewport();
+  await expect(page.locator("body")).toBeFocused();
 });
 
 test("SSE reconecta pela consulta REST e encerra ao desligar a camada", async ({

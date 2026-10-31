@@ -11,10 +11,16 @@ export function AboutPage() {
   const headingRef = usePageHeading(title);
   const { search } = useSearchFilters();
   const { hash } = useLocation();
-  // Runs after the heading takes focus, so a link to a section lands on it.
+  // Runs after the heading takes focus, so a link to a section lands on it. A
+  // reload leaves the focus alone, as usePageHeading does.
   useEffect(() => {
-    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView();
-  }, [hash]);
+    if (!hash) return;
+    const section = document.getElementById(hash.slice(1));
+    section?.scrollIntoView();
+    if (document.activeElement === headingRef.current) {
+      section?.focus({ preventScroll: true });
+    }
+  }, [hash, headingRef]);
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-6 sm:px-6 md:gap-10 md:py-10">
@@ -43,8 +49,8 @@ export function AboutPage() {
         <p className="text-base leading-relaxed">
           Não realizamos diagnóstico, triagem nem recomendação médica, e não
           indicamos qual unidade é a mais adequada para cada caso. A ordem dos
-          resultados é alfabética e não indica prioridade. Em uma emergência,
-          procure os canais oficiais de atendimento.
+          resultados é alfabética ou por distância, e não indica prioridade. Em
+          uma emergência, procure os canais oficiais de atendimento.
         </p>
       </section>
 
@@ -66,7 +72,8 @@ export function AboutPage() {
 
       <section
         id="ocupacao-simulada"
-        className="flex scroll-mt-20 flex-col gap-3"
+        tabIndex={-1}
+        className="flex scroll-mt-20 flex-col gap-3 focus:outline-none"
         aria-labelledby="sobre-ocupacao"
       >
         <h2 id="sobre-ocupacao" className="text-xl font-bold text-slate-900">
