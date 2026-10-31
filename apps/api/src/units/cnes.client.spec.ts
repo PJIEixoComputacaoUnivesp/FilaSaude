@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import type { CnesHistoryClient } from './cnes-history.client.js';
 import { CnesClient } from './cnes.client.js';
 import type { MunicipalitiesClient } from './municipalities.client.js';
 import { parseState } from './states.js';
@@ -22,14 +23,30 @@ function establishment(
   };
 }
 
+const history = { fetch: vi.fn() };
+const historyClient = history as unknown as CnesHistoryClient;
+
+function releases(...classifications: [string, string | null][]) {
+  return classifications.map(([referenceMonth, classification]) => ({
+    referenceMonth,
+    classification,
+    latitude: null,
+    longitude: null,
+    street: null,
+    number: null,
+  }));
+}
+
+const urgentCare = '008 - PRONTO ATENDIMENTO';
+
 /** Serves `records` for unit type 73 using CNES offset (record index) semantics. */
-function mockCnes(records: unknown[]) {
+function mockCnes(records: unknown[], unitType = '73') {
   return vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
     const params = new URL(String(input)).searchParams;
     const offset = Number(params.get('offset'));
     const limit = Number(params.get('limit'));
     const page =
-      params.get('codigo_tipo_unidade') === '73'
+      params.get('codigo_tipo_unidade') === unitType
         ? records.slice(offset, offset + limit)
         : [];
     return Promise.resolve(Response.json({ estabelecimentos: page }));
@@ -45,7 +62,7 @@ describe('CnesClient', () => {
       ]),
     ),
   } as unknown as MunicipalitiesClient;
-  const client = new CnesClient(municipalities);
+  const client = new CnesClient(municipalities, historyClient);
 
   afterEach(() => {
     vi.restoreAllMocks();
@@ -168,13 +185,109 @@ describe('CnesClient', () => {
     expect(units).toHaveLength(145);
     expect(new Set(units.map((unit) => unit.id)).size).toBe(145);
   });
+
+  describe('mixed units', () => {
+    const mixed = (code: number) =>
+      establishment(-23.52, -46.83, {
+        codigo_cnes: code,
+        codigo_tipo_unidade: 15,
+      });
+
+    beforeEach(() => {
+      history.fetch.mockReset();
+    });
+
+    it('lists only the ones classified as urgent care', async () => {
+      mockCnes([mixed(2077124), mixed(1111111)], '15');
+      history.fetch.mockImplementation((id: string) =>
+        Promise.resolve(
+          releases([
+            '2026-07',
+            id === '2077124' ? urgentCare : '006 - HOSPITAL',
+          ]),
+        ),
+      );
+
+      const units = await client.fetchUnits(parseState('SP'));
+
+      expect(units.map((unit) => unit.id)).toEqual(['2077124']);
+      expect(units[0]!.unitType).toBe('PRONTO ATENDIMENTO');
+    });
+
+    it('uses the classification of the latest release', async () => {
+      mockCnes([mixed(2077124)], '15');
+      history.fetch.mockResolvedValue(
+        releases(['2026-07', '006 - HOSPITAL'], ['2026-06', urgentCare]),
+      );
+
+      expect(await client.fetchUnits(parseState('SP'))).toEqual([]);
+    });
+
+    it('leaves out a unit without releases', async () => {
+      mockCnes([mixed(2077124)], '15');
+      history.fetch.mockResolvedValue([]);
+
+      expect(await client.fetchUnits(parseState('SP'))).toEqual([]);
+    });
+
+    it('does not look up the other types', async () => {
+      mockCnes([establishment(-23.55, -46.63)]);
+
+      await client.fetchUnits(parseState('SP'));
+
+      expect(history.fetch).not.toHaveBeenCalled();
+    });
+
+    it('does not look up a unit outside SUS', async () => {
+      mockCnes(
+        [
+          establishment(-23.52, -46.83, {
+            codigo_tipo_unidade: 15,
+            estabelecimento_faz_atendimento_ambulatorial_sus: 'NAO',
+          }),
+        ],
+        '15',
+      );
+
+      await client.fetchUnits(parseState('SP'));
+
+      expect(history.fetch).not.toHaveBeenCalled();
+    });
+
+    it('fails the collection when a lookup fails', async () => {
+      mockCnes([mixed(2077124)], '15');
+      history.fetch.mockRejectedValue(new Error('history down'));
+
+      await expect(client.fetchUnits(parseState('SP'))).rejects.toThrow(
+        'history down',
+      );
+    });
+
+    it('stops the lookups after the first failure', async () => {
+      mockCnes(
+        Array.from({ length: 12 }, (_, index) => mixed(2_000_000 + index)),
+        '15',
+      );
+      history.fetch
+        .mockRejectedValueOnce(new Error('history down'))
+        .mockResolvedValue(releases(['2026-07', urgentCare]));
+
+      await expect(client.fetchUnits(parseState('SP'))).rejects.toThrow(
+        'history down',
+      );
+      await new Promise((resolve) => setImmediate(resolve));
+
+      // Only the lookups already in flight, one per worker.
+      expect(history.fetch).toHaveBeenCalledTimes(5);
+    });
+  });
 });
 
 describe('CnesClient.fetchUnit', () => {
   const municipalities = {
     fetchNames: vi.fn().mockResolvedValue(new Map([['355030', 'São Paulo']])),
   } as unknown as MunicipalitiesClient;
-  const client = new CnesClient(municipalities);
+  const client = new CnesClient(municipalities, historyClient);
 
   afterEach(() => {
     vi.restoreAllMocks();
@@ -208,6 +321,22 @@ describe('CnesClient.fetchUnit', () => {
     respondWith(null, 404);
 
     expect(await client.fetchUnit('9999999')).toBeNull();
+  });
+
+  it('returns a mixed unit classified as urgent care', async () => {
+    respondWith(establishment(-23.52, -46.83, { codigo_tipo_unidade: 15 }));
+    history.fetch.mockResolvedValue(releases(['2026-07', urgentCare]));
+
+    expect(await client.fetchUnit('1234567')).toMatchObject({
+      unitType: 'PRONTO ATENDIMENTO',
+    });
+  });
+
+  it('returns null for a mixed unit with another classification', async () => {
+    respondWith(establishment(-23.52, -46.83, { codigo_tipo_unidade: 15 }));
+    history.fetch.mockResolvedValue(releases(['2026-07', '006 - HOSPITAL']));
+
+    expect(await client.fetchUnit('1234567')).toBeNull();
   });
 
   it('returns null for an establishment that is not an urgent care unit', async () => {

@@ -73,6 +73,7 @@ function release(
     longitude,
     street: 'Rua Teste',
     number: '100',
+    classification: null,
     ...overrides,
   };
 }
