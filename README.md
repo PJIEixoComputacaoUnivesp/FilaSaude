@@ -28,8 +28,8 @@ veja o [Guia do FilaSaúde](docs/guia-filasaude.md).
 O FilaSaúde não é uma plataforma de orientação médica. Ele não faz diagnóstico,
 triagem nem avaliação de sintomas, não recomenda qual estabelecimento procurar,
 não estima tempo de espera e não substitui os canais oficiais de saúde e de
-emergência. A ordem dos resultados é alfabética e não indica prioridade. Esses
-limites orientam o produto e cada decisão de arquitetura abaixo.
+emergência. A ordem dos resultados é alfabética ou por distância, e não indica
+prioridade. Esses limites orientam o produto e cada decisão de arquitetura abaixo.
 
 ## Estado do projeto
 
