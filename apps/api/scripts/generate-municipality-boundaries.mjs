@@ -62,12 +62,10 @@ async function boundariesOf(state) {
     throw new Error(`IBGE returned no boundaries for ${state}`);
   }
   return Object.fromEntries(
-    features
-      .map(({ properties, geometry }) => [
-        properties.codarea.slice(0, 6),
-        polygonsOf(geometry),
-      ])
-      .sort(([left], [right]) => left.localeCompare(right)),
+    features.map(({ properties, geometry }) => [
+      properties.codarea.slice(0, 6),
+      polygonsOf(geometry),
+    ]),
   );
 }
 
