@@ -143,10 +143,12 @@ mínima) com tolerância de 5 km, porque o contorno é simplificado. Os contorno
 ficam em `apps/api/src/units/municipality-boundaries.json`, gerado por
 `node apps/api/scripts/generate-municipality-boundaries.mjs`, e não são buscados
 durante a requisição: em 2026-10-30 o servidor de produção não alcançava o host
-do IBGE (`UND_ERR_CONNECT_TIMEOUT`, com o CNES acessível), a verificação era pulada e as unidades ficavam com o
-ponto cru do CNES, sem aviso na interface. Rode o script de novo quando o IBGE
-publicar municípios novos. Quando a coordenada está fora, ou ausente, a posição é escolhida
-nesta ordem, e `location.precision` informa qual foi usada:
+do IBGE (`UND_ERR_CONNECT_TIMEOUT`, com o CNES acessível), a verificação era
+pulada e as unidades ficavam com o ponto cru do CNES, sem aviso na interface. A
+API lê o arquivo ao iniciar e não sobe se ele estiver inválido. Rode o script de
+novo quando o IBGE publicar municípios novos: até lá, as unidades deles ficam
+sem verificação. Quando a coordenada está fora, ou ausente, a posição é
+escolhida nesta ordem, e `location.precision` informa qual foi usada:
 
 1. posição definida por um administrador (`manual`), sempre que existir, mesmo
    sobre uma coordenada do CNES que esteja dentro do município (ver
@@ -201,7 +203,7 @@ certa. O cadastro principal já vem da ingestão, mas o histórico continua send
 consultado durante a requisição, só para as unidades com coordenada inválida,
 com um prazo único de 10 s para a fase, concorrência 5 e cache de 24 h das
 linhas por unidade. Se falhar, a unidade cai no centro do município e a resposta
-é reavaliada em 1 hora.
+é reavaliada em 1 hora (em 5 minutos quando a verificação não pôde ser feita).
 Persistir esse enriquecimento deve ser tratado em uma evolução separada.
 
 Município sem contorno no IBGE: a malha tem 5.570 municípios e não inclui os
