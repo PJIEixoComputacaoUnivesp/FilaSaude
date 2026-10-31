@@ -173,6 +173,13 @@ não é a duração de uma consulta nem prevê quanto alguém real aguardará.
 Mudanças na demanda e critérios clínicos podem mudar a ordem e o ritmo do
 atendimento. A estimativa não altera a cor nem a ordem das unidades na lista.
 
+**Acima do habitual** compara a estimativa com as leituras da própria unidade
+nas últimas 24 horas, registradas a cada 15 minutos. A marcação aparece quando a
+espera passa de 9 em cada 10 dessas leituras e fica ao menos 15 minutos acima da
+metade delas. São necessárias 12 horas de leituras. Ela não compara unidades,
+não muda a cor nem a ordem e não sugere nenhuma ação. Como o simulador não tem
+padrão por horário, aqui ela reflete sobretudo variação aleatória.
+
 O botão e cada resumo indicam que os dados são simulados, com a fonte
 (Simulador do FilaSaúde) e o horário do envio. Os números não descrevem
 nenhuma unidade de verdade, e as cores **não são classificação de risco**.

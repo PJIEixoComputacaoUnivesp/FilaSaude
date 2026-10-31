@@ -7,6 +7,7 @@ import {
   loadOccupancySettings,
   OCCUPANCY_SETTINGS,
 } from './occupancy-settings.js';
+import { OccupancyWaitBaselineService } from './occupancy-wait-baseline.service.js';
 import { OccupancyController } from './occupancy.controller.js';
 import { OccupancyService } from './occupancy.service.js';
 import { OccupancyStreamService } from './occupancy-stream.service.js';
@@ -20,6 +21,7 @@ import { OccupancyStreamService } from './occupancy-stream.service.js';
     OccupancyProcessorService,
     OccupancyService,
     OccupancyStreamService,
+    OccupancyWaitBaselineService,
   ],
 })
 export class OccupancyModule {}

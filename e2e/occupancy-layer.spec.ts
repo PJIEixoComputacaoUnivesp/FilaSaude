@@ -125,6 +125,11 @@ async function emitOccupancyEvent(page: Page, type: string, payload?: unknown) {
 
 async function mockApi(page: Page, occupancyStatus = 200) {
   await mockOccupancyStream(page);
+  await page.route("**/api/occupancy/availability", (route) =>
+    occupancyStatus === 404
+      ? route.fulfill({ status: 404, body: "" })
+      : route.fulfill({ json: { simulated: true } }),
+  );
   await page.route("**/api/units?state=SP", (route) =>
     route.fulfill({ json: unitsResponse }),
   );
@@ -604,6 +609,94 @@ for (const viewport of [
     });
   }
 }
+
+test("oferece a camada sem esperar os dados e só os carrega ao ligar", async ({
+  page,
+}) => {
+  await mockApi(page);
+  let occupancyRequests = 0;
+  let release = () => {};
+  const slowResponse = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/occupancy", async (route) => {
+    occupancyRequests += 1;
+    await slowResponse;
+    await route.fulfill({ json: { data: [highOccupancy], metadata } });
+  });
+  await page.goto("/units?uf=SP");
+
+  const toggle = page.getByRole("switch", { name: "Ocupação simulada" });
+  await expect(toggle).toBeVisible();
+  expect(occupancyRequests).toBe(0);
+
+  await toggle.click({ force: true });
+  await expect(page.getByText("Carregando…")).toBeVisible();
+  await expect(
+    page.getByRole("checkbox", {
+      name: /Mostrar só unidades com ocupação simulada/,
+    }),
+  ).toBeDisabled();
+  await expect.poll(() => occupancyRequests).toBe(1);
+  release();
+  await expect(
+    page.getByText("1 unidade com ocupação simulada no Brasil"),
+  ).toBeAttached();
+  expect(occupancyRequests).toBe(1);
+});
+
+test("mostra a espera acima do habitual sem tratar como recomendação", async ({
+  page,
+}) => {
+  await mockApi(page);
+  const current = {
+    ...highOccupancy,
+    waitEstimate: {
+      status: "available",
+      minutes: 45,
+      method: "recent-start-rate",
+      sampleCount: 30,
+      started: 6,
+      windowStart: "2026-10-15T14:39:00Z",
+      windowEnd: highOccupancy.occurredAt,
+    },
+    waitComparison: {
+      status: "above-usual",
+      typicalMinutes: 5,
+      upperMinutes: 30,
+      sampleCount: 96,
+      windowStart: "2026-10-14T15:00:00Z",
+      windowEnd: "2026-10-15T15:00:00Z",
+    },
+  };
+  await page.route("**/api/occupancy", (route) =>
+    route.fulfill({ json: { data: [current], metadata } }),
+  );
+  await page.goto("/units?uf=SP");
+  await page
+    .getByRole("switch", { name: "Ocupação simulada" })
+    .click({ force: true });
+
+  const card = page.getByRole("article").filter({ hasText: "UPA Vila Mariana" });
+  await expect(
+    card.getByText("Espera estimada: 45 min · acima do habitual"),
+  ).toBeVisible();
+
+  await card.getByRole("link", { name: /Ver detalhes/ }).click();
+  const section = page.getByRole("region", {
+    name: "Ocupação e atendimento simulados",
+  });
+  const row = section.locator("dl > div").filter({
+    has: page.getByText("Comparação com o habitual", { exact: true }),
+  });
+  await expect(row.getByRole("definition")).toHaveText(
+    "Acima do habitual desta unidade",
+  );
+  await section.getByText("Como a estimativa é calculada").click();
+  await expect(
+    section.getByText(/A comparação não considera outras\s+unidades/),
+  ).toBeVisible();
+});
 
 test("a camada começa desligada e mostra só dados cadastrais", async ({
   page,

@@ -129,8 +129,10 @@ encerre a tarefa quando terminar a validação.
 
 Encerre apenas as tarefas iniciadas pela sessão pelo identificador do harness.
 Se precisar limpar, remova somente as linhas dos IDs de fonte criados por esta
-sessão em `occupancy_current` e `occupancy_webhook_inbox`, com lista explícita e
-confirmada. Não use prefixos amplos que possam incluir fontes de outras sessões.
+sessão em `occupancy_current`, `occupancy_webhook_inbox` e `occupancy_flow_sample`,
+com lista explícita e confirmada. Não use prefixos amplos que possam incluir fontes
+de outras sessões. As leituras de `occupancy_wait_sample` e `occupancy_wait_baseline`
+não têm fonte: limpe-as pelos CNES das unidades usadas só por esta sessão.
 Não pare nem limpe o PostgreSQL compartilhado.
 
 ## Playwright

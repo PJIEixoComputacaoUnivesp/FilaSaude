@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import {
-  fetchOccupancy,
+  fetchOccupancyAvailability,
   type OccupancyResponse,
   type UnitOccupancy,
 } from "./occupancy";
@@ -100,8 +100,9 @@ export function OccupancyLayerProvider({ children }: { children: ReactNode }) {
     const fail = (error: Error) => {
       if (controller.signal.aborted) return;
       setState((previous) =>
-        previous.status === "checking"
-          ? { status: "unavailable" }
+        // A layer the server turned off does not come back as an error.
+        previous.status === "unavailable"
+          ? previous
           : {
               status: "error",
               message: error.message,
@@ -110,14 +111,13 @@ export function OccupancyLayerProvider({ children }: { children: ReactNode }) {
       );
     };
     if (checking) {
-      void fetchOccupancy(controller.signal)
-        .then(receive)
-        .catch((error: unknown) => {
-          fail(
-            error instanceof Error
-              ? error
-              : new Error("Não foi possível carregar a ocupação simulada."),
-          );
+      void fetchOccupancyAvailability(controller.signal)
+        .then((available) => {
+          if (controller.signal.aborted) return;
+          setState({ status: available ? "loading" : "unavailable" });
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setState({ status: "unavailable" });
         });
       return () => controller.abort();
     }
@@ -177,7 +177,9 @@ export function OccupancyLayerProvider({ children }: { children: ReactNode }) {
     [isEnabled, response],
   );
 
-  const isFiltering = isAvailable && isEnabled && onlySimulated;
+  // Without data the filter would read as "no units" instead of "not loaded".
+  const isFiltering =
+    isAvailable && isEnabled && onlySimulated && response !== null;
   const simulatedKey = isFiltering ? [...byUnit.keys()].sort().join(",") : null;
   const simulatedFilter = useMemo(
     () =>

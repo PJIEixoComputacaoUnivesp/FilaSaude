@@ -53,6 +53,10 @@ Isso funciona também quando outro worker ou instância processa os eventos.
 
 O stream não guarda um log para replay. Os IDs identificam e ordenam mensagens
 do processo atual; não são cursores duráveis entre reinícios ou réplicas.
+`GET /occupancy/availability` diz se a camada existe, sem ler dados: responde
+`{ "simulated": true }`, ou 404 com a demonstração desligada. O cliente a consulta
+para oferecer o botão e só abre o stream com a camada ligada.
+
 O cliente refaz `GET /occupancy` em toda abertura/reconexão e ao receber `resync`,
 sem depender de `Last-Event-ID`. Deltas recebidos durante esse GET são agrupados
 e aplicados depois do snapshot, evitando que uma resposta lenta apague dados novos.

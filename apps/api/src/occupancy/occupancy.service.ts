@@ -2,8 +2,14 @@ import { Inject, Injectable } from '@nestjs/common';
 import type {
   OccupancyAttendanceValue,
   OccupancyCategoryValue,
+  OccupancyCurrentEntity,
 } from '../database/entities/occupancy-current.entity.js';
 import { OccupancyRepository } from '../database/repositories/occupancy.repository.js';
+import {
+  compareWait,
+  type WaitBaseline,
+  type WaitComparison,
+} from './wait-comparison.js';
 import {
   estimateWait,
   isEstimable,
@@ -39,6 +45,8 @@ export interface UnitOccupancy {
   attendance: OccupancyAttendanceValue | null;
   /** Calculated by FilaSaúde from received history, never supplied by a source. */
   waitEstimate: WaitEstimate;
+  /** The estimate against the unit's own recent readings. */
+  waitComparison: WaitComparison;
   occurredAt: string;
   observedAt: string;
   receivedAt: string;
@@ -82,6 +90,11 @@ export interface OccupancyHistoryResponse {
   metadata: OccupancyMetadata & { periodHours: number };
 }
 
+interface EstimateInputs {
+  history: Map<string, WaitEstimateSample[]>;
+  baselines: Map<string, WaitBaseline>;
+}
+
 const SOURCE = {
   name: 'Simulador de ocupação e atendimento do FilaSaúde',
   description:
@@ -96,28 +109,17 @@ export class OccupancyService {
   ) {}
 
   async findCurrent(now = new Date()): Promise<OccupancyResponse> {
-    const rows = await this.repository.findCurrent();
-    const history = await this.findEstimateHistory(rows, now);
-    return {
-      data: rows.map((row) =>
-        this.toUnitOccupancy(row, now, history.get(row.unitCnes)),
-      ),
-      metadata: this.metadata(now),
-    };
+    return this.toResponse(await this.repository.findCurrent(), now);
   }
 
   async findCurrentForUnits(
     unitCnes: readonly string[],
     now = new Date(),
   ): Promise<OccupancyResponse> {
-    const rows = await this.repository.findCurrentForUnits(unitCnes);
-    const history = await this.findEstimateHistory(rows, now);
-    return {
-      data: rows.map((row) =>
-        this.toUnitOccupancy(row, now, history.get(row.unitCnes)),
-      ),
-      metadata: this.metadata(now),
-    };
+    return this.toResponse(
+      await this.repository.findCurrentForUnits(unitCnes),
+      now,
+    );
   }
 
   async findHistory(
@@ -129,17 +131,12 @@ export class OccupancyService {
       this.repository.findCurrentByUnit(unitCnes),
       this.repository.findHistory(unitCnes, since),
     ]);
-    const estimateHistory = await this.findEstimateHistory(
-      current ? [current] : [],
-      now,
-    );
+    const inputs = await this.findEstimateInputs(current ? [current] : [], now);
 
     return {
       data: {
         unitCnes,
-        current: current
-          ? this.toUnitOccupancy(current, now, estimateHistory.get(unitCnes))
-          : null,
+        current: current ? this.toUnitOccupancy(current, now, inputs) : null,
         // Each point is read as it was when observed, so it is never stale.
         history: history.map((row) => {
           const { percentage, level, levelDrivers } = summarizeUnitStatus(
@@ -168,20 +165,35 @@ export class OccupancyService {
     };
   }
 
+  private async toResponse(
+    rows: OccupancyCurrentEntity[],
+    now: Date,
+  ): Promise<OccupancyResponse> {
+    const inputs = await this.findEstimateInputs(rows, now);
+    return {
+      data: rows.map((row) => this.toUnitOccupancy(row, now, inputs)),
+      metadata: this.metadata(now),
+    };
+  }
+
   /** Avoid reading history that the estimator cannot use, in every public view. */
-  private findEstimateHistory(
+  private async findEstimateInputs(
     rows: readonly (WaitEstimateSample & { unitCnes: string })[],
     now: Date,
-  ): Promise<Map<string, WaitEstimateSample[]>> {
+  ): Promise<EstimateInputs> {
     const eligible = rows.filter((row) =>
       isEstimable(row, now, this.settings.staleAfterMs),
     );
-    return eligible.length === 0
-      ? Promise.resolve(new Map())
-      : this.repository.findWaitEstimateHistory(
-          eligible,
-          WAIT_ESTIMATE_WINDOW_MS,
-        );
+    if (eligible.length === 0)
+      return { history: new Map(), baselines: new Map() };
+    const [history, baselines] = await Promise.all([
+      this.repository.findWaitEstimateHistory(
+        eligible,
+        WAIT_ESTIMATE_WINDOW_MS,
+      ),
+      this.repository.findWaitBaselines(eligible.map((row) => row.unitCnes)),
+    ]);
+    return { history, baselines };
   }
 
   private toUnitOccupancy(
@@ -196,8 +208,14 @@ export class OccupancyService {
       receivedAt: Date;
     },
     now: Date,
-    history: readonly WaitEstimateSample[] = [],
+    inputs: EstimateInputs,
   ): UnitOccupancy {
+    const waitEstimate = estimateWait(
+      row,
+      inputs.history.get(row.unitCnes) ?? [],
+      now,
+      this.settings.staleAfterMs,
+    );
     return {
       unitCnes: row.unitCnes,
       eventId: row.eventId,
@@ -214,7 +232,12 @@ export class OccupancyService {
         occupied,
       })),
       attendance: row.attendance ?? null,
-      waitEstimate: estimateWait(row, history, now, this.settings.staleAfterMs),
+      waitEstimate,
+      waitComparison: compareWait(
+        waitEstimate,
+        inputs.baselines.get(row.unitCnes),
+        now,
+      ),
       occurredAt: row.occurredAt.toISOString(),
       observedAt: row.observedAt.toISOString(),
       receivedAt: row.receivedAt.toISOString(),

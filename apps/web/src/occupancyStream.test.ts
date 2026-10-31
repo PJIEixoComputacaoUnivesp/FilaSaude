@@ -68,6 +68,61 @@ describe("subscribeOccupancy", () => {
     expect(close).toHaveBeenCalledOnce();
   });
 
+  it("still loads the first snapshot when the stream cannot connect", async () => {
+    const { source, load, callbacks, unsubscribe } = fixture();
+    try {
+      source.dispatchEvent(new Event("error"));
+      await vi.waitFor(() =>
+        expect(callbacks.onResponse).toHaveBeenCalledWith(response),
+      );
+      expect(callbacks.onError).toHaveBeenCalled();
+      source.dispatchEvent(new Event("error"));
+      expect(load).toHaveBeenCalledOnce();
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  it("tries the first snapshot again on the next stream failure", async () => {
+    const load = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("indisponível"))
+      .mockResolvedValue(response);
+    const { source, callbacks, unsubscribe } = fixture(load);
+    try {
+      source.dispatchEvent(new Event("error"));
+      await vi.waitFor(() => expect(load).toHaveBeenCalledOnce());
+      await vi.waitFor(() =>
+        expect(callbacks.onError).toHaveBeenCalledWith(
+          new Error("indisponível"),
+        ),
+      );
+      source.dispatchEvent(new Event("error"));
+      await vi.waitFor(() =>
+        expect(callbacks.onResponse).toHaveBeenCalledWith(response),
+      );
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  it("does not repeat the national request when the stream fails during it", async () => {
+    let finish = (_value: typeof response) => {};
+    const { source, load, unsubscribe } = fixture(
+      vi.fn(() => new Promise<typeof response>((resolve) => (finish = resolve))),
+    );
+    try {
+      source.dispatchEvent(new Event("open"));
+      source.dispatchEvent(new Event("error"));
+      finish(response);
+      await vi.waitFor(() => expect(load).toHaveBeenCalledOnce());
+      await Promise.resolve();
+      expect(load).toHaveBeenCalledOnce();
+    } finally {
+      unsubscribe();
+    }
+  });
+
   it("coalesces notifications during a slow request without losing the newest update", async () => {
     let resolveFirst!: (value: OccupancyResponse) => void;
     const load = vi
