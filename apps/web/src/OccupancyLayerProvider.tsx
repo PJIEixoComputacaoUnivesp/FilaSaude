@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import {
-  fetchOccupancy,
+  fetchOccupancyAvailability,
   type OccupancyResponse,
   type UnitOccupancy,
 } from "./occupancy";
@@ -110,14 +110,13 @@ export function OccupancyLayerProvider({ children }: { children: ReactNode }) {
       );
     };
     if (checking) {
-      void fetchOccupancy(controller.signal)
-        .then(receive)
-        .catch((error: unknown) => {
-          fail(
-            error instanceof Error
-              ? error
-              : new Error("Não foi possível carregar a ocupação simulada."),
-          );
+      void fetchOccupancyAvailability(controller.signal)
+        .then((available) => {
+          if (controller.signal.aborted) return;
+          setState({ status: available ? "loading" : "unavailable" });
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setState({ status: "unavailable" });
         });
       return () => controller.abort();
     }

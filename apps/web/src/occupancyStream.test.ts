@@ -68,6 +68,21 @@ describe("subscribeOccupancy", () => {
     expect(close).toHaveBeenCalledOnce();
   });
 
+  it("still loads the first snapshot when the stream cannot connect", async () => {
+    const { source, load, callbacks, unsubscribe } = fixture();
+    try {
+      source.dispatchEvent(new Event("error"));
+      await vi.waitFor(() =>
+        expect(callbacks.onResponse).toHaveBeenCalledWith(response),
+      );
+      expect(callbacks.onError).toHaveBeenCalled();
+      source.dispatchEvent(new Event("error"));
+      expect(load).toHaveBeenCalledOnce();
+    } finally {
+      unsubscribe();
+    }
+  });
+
   it("coalesces notifications during a slow request without losing the newest update", async () => {
     let resolveFirst!: (value: OccupancyResponse) => void;
     const load = vi

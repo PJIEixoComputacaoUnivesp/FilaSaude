@@ -76,6 +76,11 @@ export function subscribeOccupancy(
     snapshotReady = false;
     void refresh();
   };
+  // The first snapshot still loads when the stream cannot connect.
+  const failed = () => {
+    reportDisconnected();
+    if (!snapshotReady) void refresh();
+  };
   const updated = (event: Event) => {
     if (controller.signal.aborted) return;
     try {
@@ -97,7 +102,7 @@ export function subscribeOccupancy(
   source.addEventListener("open", resync);
   source.addEventListener("resync", resync);
   source.addEventListener("occupancy.updated", updated);
-  source.addEventListener("error", reportDisconnected);
+  source.addEventListener("error", failed);
   source.addEventListener("unavailable", reportDisconnected);
 
   return () => {
@@ -105,7 +110,7 @@ export function subscribeOccupancy(
     source.removeEventListener("open", resync);
     source.removeEventListener("resync", resync);
     source.removeEventListener("occupancy.updated", updated);
-    source.removeEventListener("error", reportDisconnected);
+    source.removeEventListener("error", failed);
     source.removeEventListener("unavailable", reportDisconnected);
     source.close();
   };
