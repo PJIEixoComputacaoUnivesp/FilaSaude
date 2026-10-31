@@ -9,6 +9,7 @@ import {
   SIMULATION_SOURCE,
   describeCompletedPeriod,
   describeOccupancy,
+  describeWaitComparison,
   describeWaitEstimate,
   fetchOccupancyHistory,
   formatDateTime,
@@ -199,12 +200,17 @@ function AttendanceSummary({
     value === undefined
       ? "Não informada"
       : `${value === 1 ? "1 pessoa" : `${value} pessoas`} simultaneamente`;
+  const comparison = describeWaitComparison(occupancy);
+  const usual = occupancy.waitComparison;
   const rows = [
     {
       label: "Espera estimada até o início do atendimento",
       value: describeWaitEstimate(occupancy),
       wide: true,
     },
+    ...(comparison === null
+      ? []
+      : [{ label: "Comparação com o habitual", value: comparison, wide: true }]),
     { label: "Pessoas esperando", value: count(attendance?.waiting) },
     { label: "Pessoas em atendimento", value: count(attendance?.inService) },
     {
@@ -274,6 +280,16 @@ function AttendanceSummary({
             Brasília), em {occupancy.waitEstimate.sampleCount} envios. Se o
             ritmo mudar, a espera muda.
           </p>
+          {usual && usual.status !== "unavailable" && (
+            <p className="mt-2">
+              O habitual vem de {usual.sampleCount} leituras simuladas desta
+              unidade, de {formatDateTime(usual.windowStart)} a{" "}
+              {formatDateTime(usual.windowEnd)} (horário de Brasília): metade
+              ficou em até {usual.typicalMinutes} min e 9 em cada 10, em até{" "}
+              {usual.upperMinutes} min. A comparação não considera outras
+              unidades e não muda a cor nem a ordem da lista.
+            </p>
+          )}
         </details>
       )}
       {attendance?.completed && (

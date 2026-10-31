@@ -50,6 +50,8 @@ export function OccupancyBadge({
       {status !== "stale" && occupancy.waitEstimate?.status === "available" && (
         <div className="mt-1 text-xs tabular-nums text-slate-800">
           Espera estimada: {describeWaitEstimate(occupancy)}
+          {occupancy.waitComparison?.status === "above-usual" &&
+            " · acima do habitual"}
         </div>
       )}
       <div className="mt-1 text-xs leading-relaxed text-slate-600">

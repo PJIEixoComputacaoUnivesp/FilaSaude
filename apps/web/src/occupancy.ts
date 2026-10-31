@@ -50,6 +50,17 @@ export type WaitEstimate =
         "missing-data" | "stale" | "insufficient-history" | "no-throughput";
     };
 
+export type WaitComparison =
+  | {
+      status: "above-usual" | "usual";
+      typicalMinutes: number;
+      upperMinutes: number;
+      sampleCount: number;
+      windowStart: string;
+      windowEnd: string;
+    }
+  | { status: "unavailable" };
+
 export interface UnitOccupancy {
   unitCnes: string;
   /** Present in current API responses; optional for older snapshots. */
@@ -65,6 +76,8 @@ export interface UnitOccupancy {
   attendance?: UnitAttendance | null;
   /** Optional for compatibility with APIs that predate the estimate. */
   waitEstimate?: WaitEstimate;
+  /** Absent in older API responses: not compared. */
+  waitComparison?: WaitComparison;
   categories: OccupancyCategory[];
   occurredAt: string;
   observedAt: string;
@@ -199,6 +212,29 @@ export function describeWaitEstimate(occupancy: UnitOccupancy): string {
     "no-throughput": "Indisponível: nenhum atendimento começou no período analisado",
   };
   return reasons[estimate.reason];
+}
+
+/**
+ * The estimate against the unit's own recent readings. `null` when there is
+ * no current estimate to compare. It describes the reading: it says nothing
+ * about other units and takes no part in color or ordering.
+ */
+export function describeWaitComparison(
+  occupancy: UnitOccupancy,
+): string | null {
+  if (
+    occupancy.confirmation === "stale" ||
+    occupancy.waitEstimate?.status !== "available"
+  )
+    return null;
+  switch (occupancy.waitComparison?.status) {
+    case "above-usual":
+      return "Acima do habitual desta unidade";
+    case "usual":
+      return "Dentro do habitual desta unidade";
+    default:
+      return "Ainda sem leituras suficientes para comparar";
+  }
 }
 
 /** How the color is chosen; completed attendances never take part. */
@@ -366,6 +402,23 @@ function isWaitEstimate(value: unknown): boolean {
   );
 }
 
+function isWaitComparison(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!isRecord(value)) return false;
+  if (value.status === "unavailable") return true;
+  return (
+    (value.status === "above-usual" || value.status === "usual") &&
+    isCount(value.typicalMinutes) &&
+    value.typicalMinutes !== undefined &&
+    isCount(value.upperMinutes) &&
+    value.upperMinutes !== undefined &&
+    isCount(value.sampleCount) &&
+    value.sampleCount !== undefined &&
+    isDateTime(value.windowStart) &&
+    isDateTime(value.windowEnd)
+  );
+}
+
 function isLevel(value: unknown): value is OccupancyLevel | null {
   return (
     value === null ||
@@ -394,6 +447,7 @@ function isUnitOccupancy(value: unknown): value is UnitOccupancy {
     isRecord(value) &&
     typeof value.unitCnes === "string" &&
     isWaitEstimate(value.waitEstimate) &&
+    isWaitComparison(value.waitComparison) &&
     (value.confirmation === "recent" || value.confirmation === "stale")
   );
 }
@@ -443,6 +497,20 @@ export function parseOccupancyHistory(
 }
 
 /** `null` means the demonstration is turned off on this server (404). */
+/**
+ * Whether the server offers the layer. It reads no data, so the switch does
+ * not wait for the national snapshot, loaded only when the layer is on.
+ */
+export async function fetchOccupancyAvailability(
+  signal?: AbortSignal,
+): Promise<boolean> {
+  const response = await fetch("/api/occupancy/availability", { signal });
+  if (response.status === 404) return false;
+  if (!response.ok)
+    throw new Error("Não foi possível consultar a ocupação simulada.");
+  return true;
+}
+
 export async function fetchOccupancy(
   signal?: AbortSignal,
 ): Promise<OccupancyResponse | null> {

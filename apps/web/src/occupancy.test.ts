@@ -2,8 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   describeCompletedPeriod,
   describeOccupancy,
+  describeWaitComparison,
   describeWaitEstimate,
   fetchOccupancy,
+  fetchOccupancyAvailability,
   waitingStatus,
   waitingPerSlot,
   formatDateTime,
@@ -322,6 +324,87 @@ describe("wait estimates and resources", () => {
       ),
     ).toBe("0 min");
     expect(describeWaitEstimate(occupancy())).toBe("Não informada");
+  });
+  it("compares only a current estimate with the unit's own readings", () => {
+    const comparison = {
+      status: "above-usual",
+      typicalMinutes: 5,
+      upperMinutes: 30,
+      sampleCount: 96,
+      windowStart: "2026-10-28T12:20:00.000Z",
+      windowEnd: "2026-10-29T12:20:00.000Z",
+    } as const;
+    const current = occupancy({
+      waitEstimate: estimate,
+      waitComparison: comparison,
+    });
+
+    expect(describeWaitComparison(current)).toBe(
+      "Acima do habitual desta unidade",
+    );
+    expect(
+      describeWaitComparison({
+        ...current,
+        waitComparison: { ...comparison, status: "usual" },
+      }),
+    ).toBe("Dentro do habitual desta unidade");
+    expect(
+      describeWaitComparison({
+        ...current,
+        waitComparison: { status: "unavailable" },
+      }),
+    ).toBe("Ainda sem leituras suficientes para comparar");
+    expect(
+      describeWaitComparison({ ...current, confirmation: "stale" }),
+    ).toBeNull();
+    expect(
+      describeWaitComparison({
+        ...current,
+        waitEstimate: { status: "unavailable", reason: "no-throughput" },
+      }),
+    ).toBeNull();
+  });
+  it("keeps older responses without a comparison and rejects a malformed one", () => {
+    const metadata = {
+      simulated: true,
+      source: { name: "Simulador", description: "Sintético" },
+      generatedAt: "2026-10-29T12:20:00.000Z",
+      staleAfterMinutes: 20,
+      thresholds: { moderate: 70, high: 90 },
+      waitingThresholds: { moderate: 1, high: 2 },
+    };
+    const body = (waitComparison?: unknown) => ({
+      data: [
+        { ...occupancy({ waitEstimate: estimate }), waitComparison },
+      ],
+      metadata,
+    });
+
+    expect(() => parseOccupancyResponse(body())).not.toThrow();
+    expect(() =>
+      parseOccupancyResponse(body({ status: "unavailable" })),
+    ).not.toThrow();
+    expect(() =>
+      parseOccupancyResponse(
+        body({ status: "above-usual", typicalMinutes: -1 }),
+      ),
+    ).toThrow();
+  });
+  it("asks for the availability without loading the data", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("{}"))
+      .mockResolvedValueOnce(new Response("", { status: 404 }))
+      .mockResolvedValueOnce(new Response("", { status: 500 }));
+    vi.stubGlobal("fetch", fetcher);
+    try {
+      await expect(fetchOccupancyAvailability()).resolves.toBe(true);
+      await expect(fetchOccupancyAvailability()).resolves.toBe(false);
+      await expect(fetchOccupancyAvailability()).rejects.toThrow();
+      expect(fetcher.mock.calls[0]![0]).toBe("/api/occupancy/availability");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
   it("never presents a stale estimate as current", () => {
     expect(
