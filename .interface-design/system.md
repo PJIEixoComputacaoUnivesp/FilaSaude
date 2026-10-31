@@ -75,6 +75,12 @@
   moderada de 1 a menos de 3, alta a partir de 3. São convenções da simulação.
   Sem espera ou postos ativos informados, mostrar “Espera não informada”; zero
   pessoas esperando é um valor válido. Não usar leitos como fallback.
+- “Posto” fica só no código e nos contratos (`serviceSlots`): na tela é lido
+  como posto de saúde. A interface usa “Capacidade de atendimento”,
+  separando “Em operação: até N pessoas simultaneamente” (`serviceSlots`) de
+  “Capacidade total do cenário: N pessoas simultaneamente”
+  (`installedServiceSlots`), e descreve as
+  faixas como a fila em relação à capacidade. A razão por posto não aparece.
 - Leitos por categoria e histórico de ocupação ficam como informações
   complementares no detalhe. A faixa de espera da tabela histórica usa a mesma
   regra do mapa. Leitos, pessoas em atendimento e conclusões não mudam a cor.
@@ -82,10 +88,14 @@
   para dado não informado e anel cinza tracejado sem confirmação recente.
   Texto acompanha a cor; a legenda explica que não é classificação de risco.
   Controles permanecem violetas. Manter `occupancy.ts` e `index.css` coerentes.
-- Every simulated value carries the "Dados simulados" pill or the "Dado
-  simulado · Simulador do FilaSaúde" line, the time it was sent and the level
-  in words. The notice "Dados fictícios… não são a ocupação real" stays
-  visible while the layer is on.
+- Say it once, in the right place. Each container of simulated data (popup and
+  card summary, detail section) carries one mark: the violet tint or the
+  section title, plus the line "Simulador do FilaSaúde · enviado às HH:MM".
+  Values inside do not repeat "simulado". The short notice
+  (`SIMULATION_NOTICE`, or `SIMULATION_NOTICE_SHORT` on the narrow map panel)
+  stays visible while the layer is on, with a link to "Sobre os dados", which
+  holds the full explanation. The legend keeps one color notice (not risk
+  classification, not which unit to seek). No pill, no repeated paragraphs.
 - In the list the occupancy is one more field of the card, after the registry
   data, not a highlight. On desktop the map panel is capped in height and
   scrolls. On mobile it contains only search, the filters action and the layer
@@ -103,7 +113,8 @@
   instalados/ativos e serviços do cenário simulado. A lista e o popup mostram
   a estimativa quando disponível, sem alterar a cor nem a ordem das unidades.
   A estimativa usa somente o histórico agregado recebido; é distinta de média
-  observada de esperas individuais e sempre identificada como simulada.
+  observada de esperas individuais e fica dentro de um bloco já marcado como
+  simulado, com uma frase de que não é previsão para pessoas reais.
   Ausência, histórico insuficiente, ritmo nulo e expiração são explícitos;
   dados antigos não mantêm uma estimativa apresentada como atual.
 
@@ -242,7 +253,16 @@
 
 - Product status: compact bordered pill with explicit text.
 - Safety notice: amber-tinted surface with a strong left border and direct label
-  where it needs emphasis; a short plain footer paragraph elsewhere.
+  where it needs emphasis ("O que o FilaSaúde não faz", near the top of Sobre);
+  a short plain footer paragraph elsewhere. Data-quality notices (source
+  outage, approximate or corrected position, in the popup too) use the same
+  amber surface (`AMBER_NOTICE` in `notice.ts`), never amber text alone.
+- Radii: `rounded-2xl` for cards and panels, `rounded-xl` for boxes inside them,
+  notices and boxed controls (inputs, selects, filled buttons); `rounded-lg`
+  only for the compact map panel controls and text-like buttons.
+- The layer controls in the list are a violet-tinted card
+  (`occupancy-surface`), not a white card, so they do not read as one more
+  unit result.
 - Public-data records must expose source and update time in their own context.
 - Empty search: say what was searched and offer "Limpar busca".
 

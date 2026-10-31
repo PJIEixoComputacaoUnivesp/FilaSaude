@@ -5,13 +5,15 @@ import {
   formatDateTime,
   formatTime,
   occupancyStatus,
+  SIMULATION_SOURCE,
   type UnitOccupancy,
 } from "./occupancy";
 
 /**
  * Situation of one unit next to its registry data: the level in words, the
- * current waiting and in-service counts, its source, when it was sent and
- * the simulation mark, never the color alone. Divs, not paragraphs: Leaflet
+ * current waiting and in-service counts, its source and when it was sent,
+ * never the color alone. The tint and the source line are the simulation
+ * mark; the values inside do not repeat it. Divs, not paragraphs: Leaflet
  * adds a large margin to paragraphs in popups.
  */
 export function OccupancyBadge({
@@ -34,7 +36,7 @@ export function OccupancyBadge({
         ];
   return (
     <div
-      className={`rounded-lg border border-occupancy-border bg-occupancy-surface px-3 py-2 text-sm text-slate-800 ${className}`}
+      className={`rounded-xl border border-occupancy-border bg-occupancy-surface px-3 py-2 text-sm text-slate-800 ${className}`}
     >
       <div className="flex items-center gap-2 font-semibold text-slate-900">
         <OccupancySwatch status={status} />
@@ -47,12 +49,11 @@ export function OccupancyBadge({
       )}
       {status !== "stale" && occupancy.waitEstimate?.status === "available" && (
         <div className="mt-1 text-xs tabular-nums text-slate-800">
-          Espera estimada: {describeWaitEstimate(occupancy)} (simulada)
+          Espera estimada: {describeWaitEstimate(occupancy)}
         </div>
       )}
-      <div className="mt-1 text-xs leading-relaxed text-slate-700">
-        <span className="font-semibold text-occupancy-ink">Dado simulado</span>{" "}
-        · Simulador do FilaSaúde ·{" "}
+      <div className="mt-1 text-xs leading-relaxed text-slate-600">
+        {SIMULATION_SOURCE} ·{" "}
         {status === "stale" ? "último envio em " : "enviado às "}
         <time dateTime={occupancy.observedAt}>
           {status === "stale"

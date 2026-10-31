@@ -38,6 +38,19 @@ de capacidade.
    e o indicador, e a legenda avisa que não é classificação de risco nem ordem
    de atendimento.
 
+### Atualizações posteriores
+
+- Desde `ff38434`, a interface pinta o mapa só pela espera por posto; leitos
+  ficam como informação complementar no detalhe. A API continua devolvendo
+  `level`, `indicators` e `levelDrivers` como descrito no item 4.
+- O item 5 mudou na revisão dos avisos de simulação: o texto que acompanha a
+  cor é só o nível (“Espera alta”), sem a razão “por posto” nem o indicador.
+  Cada bloco tem uma marca de simulação e a linha da fonte com o horário; a
+  legenda mantém o aviso de que as cores não são classificação de risco, ordem
+  de atendimento nem indicação de unidade. Na tela, “posto” virou
+  “Capacidade de atendimento”, com valores separados para “Em operação” e
+  “Capacidade total do cenário”, em pessoas simultaneamente.
+
 ## Alternativas e consequências
 
 Manter a cor só pelos leitos seria mais simples, mas não mostraria a situação

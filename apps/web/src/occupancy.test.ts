@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  describeCompletedPeriod,
   describeOccupancy,
   describeWaitEstimate,
   fetchOccupancy,
   waitingStatus,
   waitingPerSlot,
-  formatWaitingPerSlot,
   formatDateTime,
   occupancyStatus,
   parseOccupancyResponse,
@@ -77,16 +77,18 @@ describe("occupancyStatus", () => {
 
 describe("describeOccupancy", () => {
   it.each([
-    [19, 20, "Espera baixa, menos de 1 por posto"],
-    [59, 20, "Espera moderada, menos de 3 por posto"],
-    [999, 1000, "Espera baixa, menos de 1 por posto"],
-    [2999, 1000, "Espera moderada, menos de 3 por posto"],
+    [0, 4, "Espera baixa"],
+    [19, 20, "Espera baixa"],
+    [20, 20, "Espera moderada"],
+    [59, 20, "Espera moderada"],
+    [7, 2, "Espera alta"],
   ])(
-    "keeps %s/%s below the next band in the summary",
+    "names the band of %s waiting for %s simultaneous attendances, without the ratio",
     (waiting, serviceSlots, expected) => {
       expect(
         describeOccupancy(
           occupancy({
+            levelDrivers: ["beds", "waiting"],
             attendance: { waiting, serviceSlots },
           }),
         ),
@@ -94,29 +96,56 @@ describe("describeOccupancy", () => {
     },
   );
 
-  it("describes the queue without the bed percentage or aggregate drivers", () => {
-    expect(
-      describeOccupancy(
-        occupancy({
-          levelDrivers: ["beds", "waiting"],
-          attendance: { waiting: 7, serviceSlots: 2 },
-        }),
-      ),
-    ).toBe("Espera alta, 3,5 por posto");
-    expect(
-      describeOccupancy(
-        occupancy({
-          attendance: { waiting: 0, serviceSlots: 4 },
-        }),
-      ),
-    ).toBe("Espera baixa, 0 por posto");
-  });
-
   it("makes missing and stale data explicit", () => {
     expect(describeOccupancy(occupancy())).toBe("Espera não informada");
     expect(describeOccupancy(occupancy({ confirmation: "stale" }))).toBe(
-      "Sem confirmação recente",
+      "Sem dados recentes",
     );
+  });
+});
+
+describe("describeCompletedPeriod", () => {
+  it("reads a whole Brasília day as that day", () => {
+    expect(
+      describeCompletedPeriod({
+        count: 86,
+        periodStart: "2026-10-15T00:00:00-03:00",
+        periodEnd: "2026-10-16T00:00:00-03:00",
+      }),
+    ).toBe("em 15/10 (horário de Brasília)");
+  });
+
+  it("keeps any other period explicit", () => {
+    expect(
+      describeCompletedPeriod({
+        count: 12,
+        periodStart: "2026-10-15T06:00:00-03:00",
+        periodEnd: "2026-10-15T12:00:00-03:00",
+      }),
+    ).toBe("de 15/10 às 06:00 a 15/10 às 12:00 (horário de Brasília)");
+  });
+
+  it.each(["30", "00.001"])(
+    "does not treat a full day starting at 00:00:%s as a calendar day",
+    (seconds) => {
+      expect(
+        describeCompletedPeriod({
+          count: 12,
+          periodStart: `2026-10-15T00:00:${seconds}-03:00`,
+          periodEnd: `2026-10-16T00:00:${seconds}-03:00`,
+        }),
+      ).toBe("de 15/10 às 00:00 a 16/10 às 00:00 (horário de Brasília)");
+    },
+  );
+
+  it("recognizes exact Brasília midnight represented in UTC", () => {
+    expect(
+      describeCompletedPeriod({
+        count: 12,
+        periodStart: "2026-10-15T03:00:00.000Z",
+        periodEnd: "2026-10-16T03:00:00.000Z",
+      }),
+    ).toBe("em 15/10 (horário de Brasília)");
   });
 });
 
@@ -145,27 +174,6 @@ describe("waitingStatus", () => {
   ])("does not classify incomplete data: %s", (attendance) => {
     expect(waitingStatus(attendance)).toBe("unknown");
   });
-});
-
-describe("formatWaitingPerSlot", () => {
-  it.each([
-    [0, "0"],
-    [0.94, "0,9"],
-    [0.95, "menos de 1"],
-    [0.999, "menos de 1"],
-    [1, "1"],
-    [1.25, "1,3"],
-    [2.94, "2,9"],
-    [2.95, "menos de 3"],
-    [2.999, "menos de 3"],
-    [3, "3"],
-    [3.5, "3,5"],
-  ] as const)(
-    "formats %s consistently with the waiting band",
-    (ratio, expected) => {
-      expect(formatWaitingPerSlot(ratio)).toBe(expected);
-    },
-  );
 });
 
 describe("waitingPerSlot", () => {
@@ -320,7 +328,7 @@ describe("wait estimates and resources", () => {
       describeWaitEstimate(
         occupancy({ confirmation: "stale", waitEstimate: estimate }),
       ),
-    ).toBe("Indisponível: sem confirmação recente");
+    ).toBe("Indisponível: dados desatualizados");
   });
   it.each([
     { ...estimate, minutes: -1 },

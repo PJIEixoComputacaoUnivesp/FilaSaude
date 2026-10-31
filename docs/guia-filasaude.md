@@ -117,14 +117,14 @@ Com a demonstração ligada, cada unidade ganha uma cor:
 
 | Cor | Situação | Quando aparece |
 | --- | --- | --- |
-| Verde | Espera baixa | Menos de 1 pessoa esperando por posto de atendimento ativo |
-| Amarelo | Espera moderada | De 1 a menos de 3 pessoas esperando por posto de atendimento ativo |
-| Vermelho | Espera alta | 3 ou mais pessoas esperando por posto de atendimento ativo |
+| Verde | Espera baixa | Fila menor que a capacidade de atendimento |
+| Amarelo | Espera moderada | Fila de 1 a menos de 3 vezes a capacidade |
+| Vermelho | Espera alta | Fila de 3 vezes a capacidade ou mais |
 
-A cor depende apenas das pessoas esperando por posto de atendimento ativo
-(por exemplo, "Espera alta, 3,5 por posto"). Sem a quantidade de pessoas
-esperando ou sem postos ativos informados, aparece **"Espera não informada"**
-em cinza. Zero pessoas esperando é diferente de dado ausente.
+A capacidade é quantas pessoas a unidade atende ao mesmo tempo no cenário
+simulado. A cor compara só a fila com essa capacidade. Sem a quantidade de
+pessoas esperando ou sem a capacidade informada, aparece **"Espera não
+informada"** em cinza. Zero pessoas esperando é diferente de dado ausente.
 
 O resumo no mapa e na lista destaca pessoas esperando e em atendimento. A
 ocupação de leitos fica como informação complementar nos detalhes da unidade:
@@ -173,7 +173,8 @@ não é a duração de uma consulta nem prevê quanto alguém real aguardará.
 Mudanças na demanda e critérios clínicos podem mudar a ordem e o ritmo do
 atendimento. A estimativa não altera a cor nem a ordem das unidades na lista.
 
-Tudo isso aparece marcado como **"Dados simulados"**. Os números não descrevem
+O botão e cada resumo indicam que os dados são simulados, com a fonte
+(Simulador do FilaSaúde) e o horário do envio. Os números não descrevem
 nenhuma unidade de verdade, e as cores **não são classificação de risco**.
 
 ### O que o FilaSaúde não faz
@@ -273,27 +274,29 @@ ganham as cores verde, amarelo e vermelho; as demais continuam em azul.
 
 Ao abrir uma unidade, o resumo mostra a faixa de espera, as pessoas esperando
 e as pessoas em atendimento, com fonte e horário do envio. Quando há histórico
-suficiente, também aparece **Espera estimada**, em minutos e identificada como
-simulada. Leitos, capacidade e serviços ficam nos detalhes da unidade. Dados
+suficiente, também aparece **Espera estimada**, em minutos. Leitos, capacidade e serviços ficam nos detalhes da unidade. Dados
 ausentes aparecem como não informados.
 
 ![Resumo de uma unidade com a situação simulada](evidencias/fluxo-atendimento-popup-390x844.png)
 
 Em **Legenda da situação simulada** estão as faixas de cada cor. Se uma unidade
-fica mais de 20 minutos sem enviar dados, a cor some e aparece "Sem confirmação
-recente", para que um número antigo não pareça atual.
+fica mais de 20 minutos sem enviar dados, a cor some e aparece "Sem dados
+recentes", para que um número antigo não pareça atual.
 
 ![Legenda da situação simulada](evidencias/fluxo-atendimento-legenda-1280x800.png)
 
 Na página de detalhes, a seção **Ocupação e atendimento simulados** separa:
 
-- **Atendimento agora**: pessoas esperando, espera estimada, pessoas em
-  atendimento, postos ativos e espera por posto;
+- **Atendimento agora**: o nível da espera, a espera estimada, pessoas
+  esperando e pessoas em atendimento. Em **Capacidade de atendimento**,
+  “Em operação” mostra até quantas pessoas podem ser atendidas simultaneamente
+  agora; “Capacidade total do cenário” mostra o limite total simulado. Esses
+  valores não são a quantidade de pessoas em atendimento nem leitos;
 - **Como a estimativa é calculada**: toque para ver o método, o intervalo e a
   quantidade de envios considerados;
-- **Capacidade instalada e serviços simulados**: postos instalados, leitos das
-  categorias informadas e os serviços fictícios disponíveis no cenário;
-- **Volume do período**: atendimentos concluídos no dia, em horário de Brasília;
+- **Atendimentos concluídos**: o total do dia, em horário de Brasília;
+- **Serviços disponíveis**: os serviços do cenário, que não confirmam a oferta
+  real da unidade;
 - **Leitos por categoria** e o histórico das últimas 24 horas, em gráfico e em
   tabela.
 
@@ -306,10 +309,10 @@ Se a estimativa estiver indisponível, leia o motivo no próprio detalhe:
 | Mensagem | O que significa |
 | --- | --- |
 | "Não informada" | A versão do FilaSaúde consultada ainda não informa a estimativa. |
-| "Indisponível: dados não informados" | Faltam as contagens necessárias para o cálculo. |
-| "Indisponível: histórico insuficiente" | Ainda não há uma sequência longa o suficiente de envios compatíveis. |
-| "Indisponível: sem ritmo de atendimento no intervalo" | O histórico não registra inícios suficientes para calcular um ritmo positivo. |
-| "Indisponível: sem confirmação recente" | Os dados venceram; a estimativa antiga não é apresentada como atual. |
+| "Indisponível: faltam dados da unidade" | Faltam as contagens necessárias para o cálculo. |
+| "Indisponível: ainda há poucos dados para calcular" | Ainda não há uma sequência longa o suficiente de envios compatíveis. |
+| "Indisponível: nenhum atendimento começou no período analisado" | O histórico não registra inícios suficientes para calcular um ritmo positivo. |
+| "Indisponível: dados desatualizados" | Os dados venceram; a estimativa antiga não é apresentada como atual. |
 
 A demonstração fica ligada só na aba aberta. Para desligar, use o mesmo botão.
 
@@ -317,7 +320,7 @@ A demonstração fica ligada só na aba aberta. Para desligar, use o mesmo botã
 
 **Os números de leitos e de espera são reais?**
 Não. São fictícios, criados pelo simulador para a demonstração acadêmica, e
-sempre aparecem marcados como "Dados simulados".
+aparecem com a fonte "Simulador do FilaSaúde" e o aviso de dados simulados.
 
 **A espera estimada vem do governo ou do simulador?**
 É calculada pelo FilaSaúde a partir das contagens recebidas e guardadas no

@@ -116,7 +116,7 @@ export function OccupancyLayerProvider({ children }: { children: ReactNode }) {
           fail(
             error instanceof Error
               ? error
-              : new Error("Não foi possível consultar a ocupação simulada de leitos."),
+              : new Error("Não foi possível carregar a ocupação simulada."),
           );
         });
       return () => controller.abort();
