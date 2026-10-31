@@ -56,16 +56,26 @@ describe('OccupancyWaitBaselineService', () => {
     expect(occupancy.findCurrent).toHaveBeenCalledTimes(2);
   });
 
-  it('tries a failed reading again and still bounds the flow samples', async () => {
+  it('bounds the flow samples and waits for the next slot after a failure', async () => {
     const { occupancy, repository, service } = setup();
     occupancy.findCurrent.mockRejectedValueOnce(new Error('database down'));
 
-    await expect(
-      service.sample(new Date('2026-10-31T12:01:00.000Z')),
-    ).rejects.toThrow('database down');
-    expect(repository.deleteFlowSamplesBefore).toHaveBeenCalledOnce();
-
+    await service.sample(new Date('2026-10-31T12:01:00.000Z'));
     await service.sample(new Date('2026-10-31T12:02:00.000Z'));
+
+    expect(repository.deleteFlowSamplesBefore).toHaveBeenCalledOnce();
+    expect(occupancy.findCurrent).toHaveBeenCalledOnce();
+    expect(repository.recordWaitSamples).not.toHaveBeenCalled();
+  });
+
+  it('keeps the reading when only the cleanup fails', async () => {
+    const { repository, service } = setup();
+    repository.deleteFlowSamplesBefore.mockRejectedValueOnce(
+      new Error('lock timeout'),
+    );
+
+    await service.sample(new Date('2026-10-31T12:01:00.000Z'));
+
     expect(repository.recordWaitSamples).toHaveBeenCalledOnce();
   });
 

@@ -45,15 +45,9 @@ export class OccupancyWaitBaselineService
   onApplicationBootstrap(): void {
     if (!this.settings.processorEnabled) return;
     this.timer = setInterval(() => {
-      this.running ??= this.sample(new Date())
-        .catch((error: unknown) => {
-          this.logger.error(
-            `Wait sampling failed: ${error instanceof Error ? error.message : 'unknown error'}`,
-          );
-        })
-        .finally(() => {
-          this.running = null;
-        });
+      this.running ??= this.sample(new Date()).finally(() => {
+        this.running = null;
+      });
     }, CHECK_MS);
     this.timer.unref();
   }
@@ -64,33 +58,47 @@ export class OccupancyWaitBaselineService
     await this.running;
   }
 
+  /**
+   * Runs once per slot, even after a failure: one lost reading does not change
+   * the baseline, and repeating a national read would load a struggling
+   * database. Each step is independent, so the flow samples stay bounded while
+   * the readings fail.
+   */
   async sample(now: Date): Promise<void> {
     const slot = Math.floor(now.getTime() / WAIT_SAMPLE_INTERVAL_MS);
     if (slot === this.lastSlot) return;
+    this.lastSlot = slot;
 
-    try {
-      const { data } = await this.occupancy.findCurrent(now);
-      await this.repository.recordWaitSamples(
-        data.flatMap(({ unitCnes, waitEstimate }) =>
-          waitEstimate.status === 'available'
-            ? [{ unitCnes, minutes: waitEstimate.minutes }]
-            : [],
-        ),
-        new Date(slot * WAIT_SAMPLE_INTERVAL_MS),
-        new Date(now.getTime() - WAIT_BASELINE_WINDOW_MS),
-      );
-      // A failed reading is tried again on the next check of the same slot.
-      this.lastSlot = slot;
-    } finally {
-      // The table must stay small even while the readings fail.
-      await this.repository.deleteFlowSamplesBefore(
+    const steps = await Promise.allSettled([
+      this.recordReadings(now, slot),
+      this.repository.deleteFlowSamplesBefore(
         new Date(
           now.getTime() -
             this.settings.staleAfterMs -
             WAIT_ESTIMATE_WINDOW_MS -
             FLOW_MARGIN_MS,
         ),
-      );
+      ),
+    ]);
+    for (const step of steps) {
+      if (step.status === 'rejected') {
+        this.logger.error(
+          `Wait sampling failed: ${step.reason instanceof Error ? step.reason.message : 'unknown error'}`,
+        );
+      }
     }
+  }
+
+  private async recordReadings(now: Date, slot: number): Promise<void> {
+    const { data } = await this.occupancy.findCurrent(now);
+    await this.repository.recordWaitSamples(
+      data.flatMap(({ unitCnes, waitEstimate }) =>
+        waitEstimate.status === 'available'
+          ? [{ unitCnes, minutes: waitEstimate.minutes }]
+          : [],
+      ),
+      new Date(slot * WAIT_SAMPLE_INTERVAL_MS),
+      new Date(now.getTime() - WAIT_BASELINE_WINDOW_MS),
+    );
   }
 }
